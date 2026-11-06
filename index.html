@@ -239,7 +239,7 @@ body.display .spt{pointer-events:none}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=7;
+const APP_VERSION=8;
 const IS_APP=!!window.AndroidApp;
 const UPD_BASE='https://raw.githubusercontent.com/archie24bagadiong-max/matchmaker-app/main/';
 let ROLE='off', MAIN_IP='';
@@ -460,7 +460,7 @@ function vCourts(){
     if(!c.p.length) pitch=`<div class="empty-court">Empty — Auto match or Pick players</div>`;
     else{
       const half=S.mode==='doubles'?2:1;
-      const L=c.p.slice(0,half), R=c.p.slice(half);
+      let L=c.p.slice(0,half), R=c.p.slice(half); if(c.sc&&c.sc.flip){ const t=L; L=R; R=t; }
       pitch=`<div class="side">${L.map(id=>plBtn(id,i)).join('')}</div><div class="net"></div><div class="side">${R.map(id=>plBtn(id,i)).join('')}</div>`;
     }
     h+=`<div class="court">
@@ -593,7 +593,7 @@ function scSummary(sc){
 }
 function scServerId(sc){ if(!sc.srv) return ''; const pos=sc.pos[sc.srv]; return pos.length>1?pos[sc[sc.srv]%2]:pos[0]; }
 function scReceiverId(sc){ if(!sc.srv) return ''; const o=sc.srv==='a'?'b':'a', pos=sc.pos[o]; return pos.length>1?pos[sc[sc.srv]%2]:pos[0]; }
-function scPush(sc){ sc.undo.push(JSON.stringify({g:sc.g,a:sc.a,b:sc.b,srv:sc.srv,pos:sc.pos,done:sc.done})); if(sc.undo.length>80) sc.undo.shift(); }
+function scPush(sc){ sc.undo.push(JSON.stringify({g:sc.g,a:sc.a,b:sc.b,srv:sc.srv,pos:sc.pos,done:sc.done,flip:!!sc.flip})); if(sc.undo.length>80) sc.undo.shift(); }
 function scPoint(i,t){
   const sc=scEnsure(i); if(!sc||sc.done) return;
   if(!sc.srv){ toast('First choose who serves'); return; }
@@ -607,8 +607,8 @@ function scPoint(i,t){
     sc.g.push([sc.a,sc.b]);
     const w=sc.a>sc.b?'a':'b';
     if(scWon(sc,w)>=Math.ceil(SC.best/2)){ sc.done=w; flash(scTeam(sc,w)+' win the match!'); }
-    else { sc.a=0; sc.b=0; sc.srv=w; flash('Game '+gi+' to '+scTeam(sc,w)+' — change ends'); }
-  } else if(sc[t]===11&&sc[o]<11){ flash(deciding?'Interval — change ends':'Interval (11 points)'); }
+    else { sc.a=0; sc.b=0; sc.srv=w; sc.flip=!sc.flip; flash('Game '+gi+' to '+scTeam(sc,w)+' — teams change ends ⇄'); }
+  } else if(sc[t]===11&&sc[o]<11){ if(deciding){ sc.flip=!sc.flip; flash('Interval — teams change ends ⇄'); } else flash('Interval (11 points)'); }
   else if(sc.a===20&&sc.b===20){ flash('20 all — win by 2 (max 30)'); }
   else if(sc.a===29&&sc.b===29){ flash('29 all — next point wins'); }
   save(); renderScore();
@@ -647,7 +647,7 @@ function renderScore(){
   else msg=`<b>${nm(srvId)}</b> serves from the <b>${sc[sc.srv]%2?'left':'right'}</b> court to <b>${nm(rcvId)}</b>`;
   v.innerHTML=`<div class="sbar"><b>Court ${i+1}</b><span>${sc.done?'Match finished':'Game '+(sc.g.length+1)+' of '+SC.best+' · to '+SC.pts}</span><button class="btn sm" data-act="sc-close">Close</button></div>
   <div class="smsg">${msg}</div>
-  <div class="sboard">${side('a')}<div class="snet"></div>${side('b')}</div>
+  <div class="sboard">${side(sc.flip?'b':'a')}<div class="snet"></div>${side(sc.flip?'a':'b')}</div>
   <div class="sprev">${prev||'<span>Tap a score to add a point · rally scoring</span>'}</div>
   <div class="sfoot"><button class="btn" data-act="sc-undo" ${sc.undo.length?'':'disabled'}>↶ Undo</button><button class="btn warn" data-act="sc-reset">${confirmKey==='screset'?'Tap again to reset score':'Reset score'}</button>${sc.done?`<button class="btn lime big" data-act="sc-save">Save result &amp; clear court</button>`:''}</div>
   <div id="scflash" class="scflash"></div>`;
@@ -660,8 +660,7 @@ function sheetWinner(ci){
   const sc=c.sc, ss=sc?scSummary(sc):'';
   openSheet(`<h3>Court ${ci+1} — who won?</h3><div class="hint" style="margin:0">${ss?'Score so far: <b>'+esc(ss)+'</b> · ':''}Tap the winning team</div>
   <div class="acts">
-    <button class="winb" data-act="win" data-c="${ci}" data-k="a"><span class="wl">Left side</span>${team(A)}</button>
-    <button class="winb" data-act="win" data-c="${ci}" data-k="b"><span class="wl">Right side</span>${team(B)}</button>
+    ${(sc&&sc.flip?[['b',B],['a',A]]:[['a',A],['b',B]]).map((x,j)=>`<button class="winb" data-act="win" data-c="${ci}" data-k="${x[0]}"><span class="wl">${j?'Right':'Left'} side</span>${team(x[1])}</button>`).join('')}
     <button class="btn" data-act="win" data-c="${ci}" data-k="x">Skip — no result</button>
   </div>`);
 }

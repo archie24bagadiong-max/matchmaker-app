@@ -60,7 +60,7 @@ Each court has a **Keep score** button that opens a full-screen scoreboard, run 
 1. Tap **Serves first** on the team that won the toss; use **⇄ Swap left/right** to set who stands in the right court (only at 0–0).
 2. Tap a team's big score to give it the rally. The app shows who serves, from which court (even score = right, odd = left), and who receives.
 3. Serving side wins the rally: same server, switches court. Receiving side wins: they serve, from the court matching their score.
-4. Alerts: interval at 11, change ends between games and at 11 in game 3, 20–20 and 29–29.
+4. Teams change ends automatically: the scoreboard and the court card swap sides after game 1, after game 2, and when a team reaches 11 in game 3 (Undo swaps back). Alerts also show the interval at 11, 20–20 and 29–29.
 5. The game winner serves first in the next game. **Undo** reverses the last rally (any number of times); **Reset score** clears it.
 6. When the match ends, **Save result & clear court** records the winner and game scores in History (and the Match History sheet's Score column). **Game done** picks the winner automatically from the score: the team with more games won, or if games are level, the higher current score. It asks only when nothing separates the teams (no score kept, or a tied score).
 7. Replacing a player mid-match keeps the score; new players on a court start a fresh score.
@@ -144,6 +144,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 7 Nov 2026 | Page v8 | Automatic change of ends on the scoreboard |
 | 7 Nov 2026 | Page v7, APK 1.5 | Tablet sync over local network; Android code now in Java (android/ folder) |
 | 7 Nov 2026 | Page v6 | Game done picks the winner from the score |
 | 7 Nov 2026 | Page v5 | Title adds Badminton Club |
