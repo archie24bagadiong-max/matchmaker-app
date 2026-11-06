@@ -15,6 +15,7 @@ public class LocalServer extends Thread {
     private static LocalServer instance;
     private static volatile byte[] state = "{}".getBytes();
     private static volatile long rev = 0;
+    private static volatile byte[] photos = "{}".getBytes();
     private static final Map<String, Long> clients = new HashMap<String, Long>();
     private volatile boolean stopped = false;
     private ServerSocket ss;
@@ -45,6 +46,10 @@ public class LocalServer extends Thread {
 
     public static void setState(String json) {
         try { state = json.getBytes("UTF-8"); rev++; } catch (Exception e) {}
+    }
+
+    public static void setPhotos(String json) {
+        try { photos = json.getBytes("UTF-8"); } catch (Exception e) {}
     }
 
     public static int recentClients() {
@@ -85,6 +90,10 @@ public class LocalServer extends Thread {
                 byte[] body = state;
                 out.write(("HTTP/1.1 200 OK\r\n" + head + "Content-Type: application/json; charset=utf-8\r\nX-Rev: " + rev
                         + "\r\nContent-Length: " + body.length + "\r\n\r\n").getBytes("UTF-8"));
+                out.write(body);
+            } else if (line.startsWith("GET /photos")) {
+                byte[] body = photos;
+                out.write(("HTTP/1.1 200 OK\r\n" + head + "Content-Type: application/json; charset=utf-8\r\nContent-Length: " + body.length + "\r\n\r\n").getBytes("UTF-8"));
                 out.write(body);
             } else if (line.startsWith("GET /ping")) {
                 byte[] body = "{\"app\":\"matchmaker\"}".getBytes("UTF-8");

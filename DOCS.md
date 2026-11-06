@@ -80,6 +80,18 @@ Several tablets can show the same session over a hotspot or Wi-Fi, with no inter
 - The Main tablet keeps its screen on; keep the app open on it during the session.
 - How it works: the Main tablet runs a small server on port 8787 (`GET /state` returns the session as JSON); Displays poll it.
 
+## Player photos
+
+Each player can have a photo, shown next to their name on the court cards, the scoreboard, the pick list, Attendance and Players. Players without a photo show their initials.
+
+1. Tap a player's name on a court, in the waiting queue, or **Edit** on the Players tab.
+2. Tap **📷 Take photo** (opens the tablet camera) or **Choose photo** (gallery). **Remove** deletes it (tap twice).
+3. The photo is cropped to a square and saved at about 20 KB.
+
+- The camera button needs APK 1.6 or later; older APKs fall back to choosing a file.
+- Photos are stored on the tablet, separate from the session data, and are passed to Display tablets automatically. In the Claude link they sync across signed-in devices.
+- Photos are not included in the Excel report.
+
 ## Fees
 
 Subscriber: 2.50 SR per game. Guest: 25 SR minimum covering 3 games, then 3.33 SR per extra game (6 games = 35 SR).
@@ -144,6 +156,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 7 Nov 2026 | Page v9, APK 1.6 | Player photos from camera or gallery |
 | 7 Nov 2026 | Page v8 | Automatic change of ends on the scoreboard |
 | 7 Nov 2026 | Page v7, APK 1.5 | Tablet sync over local network; Android code now in Java (android/ folder) |
 | 7 Nov 2026 | Page v6 | Game done picks the winner from the score |
