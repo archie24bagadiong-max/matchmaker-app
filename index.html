@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Badminton Match Maker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --court:#0f3d2e; --court2:#145a42; --line:#e9f5ee; --lime:#c8f169;
+  --bg:#f3f6f2; --card:#fff; --ink:#15211b; --muted:#66756d; --border:#dfe6e0;
+  --A:#e4572e; --B:#e89b0c; --C:#25a065; --D:#3a7bd5;
+  --radius:14px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Barlow,system-ui,sans-serif;font-size:16px}
+button{font:inherit;cursor:pointer;color:var(--ink)}
+input,select,textarea{font:inherit;color:inherit}
+header{background:var(--court);color:#fff;padding:calc(env(safe-area-inset-top) + 14px) 16px 14px;position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px}
+header h1{font-family:"Barlow Condensed",sans-serif;font-weight:800;font-size:24px;letter-spacing:.5px;margin:0;flex:1;text-transform:uppercase}
+header h1 span{color:var(--lime)}
+.sync{font-size:12px;opacity:.8;display:flex;align-items:center;gap:6px}
+.sync i{width:8px;height:8px;border-radius:50%;background:#aaa;display:inline-block}
+.sync.ok i{background:var(--lime)}
+main{padding:14px 14px calc(env(safe-area-inset-bottom) + 90px);max-width:900px;margin:0 auto}
+nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:30}
+nav button{flex:1;min-width:0;border:0;background:none;padding:10px 0 12px;color:var(--muted);font-weight:600;font-size:11.5px;display:flex;flex-direction:column;align-items:center;gap:3px}
+nav button svg{width:22px;height:22px}
+nav button.on{color:var(--court2)}
+nav button.on svg{stroke:var(--court2)}
+h2{font-family:"Barlow Condensed",sans-serif;font-size:20px;text-transform:uppercase;letter-spacing:.4px;margin:18px 2px 10px;display:flex;align-items:center;gap:8px}
+h2 small{font-family:Barlow;font-size:13px;color:var(--muted);text-transform:none;letter-spacing:0;font-weight:500}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.grow{flex:1}
+.btn{border:1px solid var(--border);background:#fff;border-radius:10px;padding:10px 14px;font-weight:600}
+.btn.pri{background:var(--court2);color:#fff;border-color:var(--court2)}
+.btn.lime{background:var(--lime);border-color:var(--lime);color:var(--court)}
+.btn.warn{color:#b3261e;border-color:#f0c9c6;background:#fff7f6}
+.btn.sm{padding:6px 10px;font-size:14px;border-radius:8px}
+.btn:disabled{opacity:.45}
+.cat{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;color:#fff;font-weight:700;font-size:13px;flex:none}
+.cA{background:var(--A)}.cB{background:var(--B)}.cC{background:var(--C)}.cD{background:var(--D)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{color:var(--ink);white-space:nowrap;border:1px solid var(--border);background:#fff;border-radius:999px;padding:6px 12px;font-weight:600;font-size:14px}
+.chip.on{background:var(--court);color:#fff;border-color:var(--court)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stat{background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px 6px;text-align:center}
+.stat b{display:block;font-family:"Barlow Condensed";font-size:24px;line-height:1}
+.stat span{font-size:12px;color:var(--muted)}
+
+/* courts */
+.courts{display:grid;gap:12px}
+@media(min-width:720px){.courts{grid-template-columns:1fr 1fr}}
+.court{background:var(--court);border-radius:var(--radius);color:#fff;overflow:hidden}
+.court-h{display:flex;align-items:center;gap:8px;padding:10px 12px}
+.court-h b{font-family:"Barlow Condensed";font-size:20px;text-transform:uppercase;letter-spacing:.5px}
+.court-h .t{margin-left:auto;font-size:13px;opacity:.85}
+.lv{display:flex;gap:4px;padding:0 12px 8px;align-items:center;font-size:12px;opacity:.95}
+.lv button{border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;border-radius:6px;width:28px;height:24px;font-weight:700;font-size:12px;padding:0}
+.lv button.on{background:#fff;color:var(--court)}
+.lv span{margin-right:4px;opacity:.75}
+.pitch{margin:0 12px;border:2px solid var(--line);border-radius:6px;display:grid;grid-template-columns:minmax(0,1fr) 2px minmax(0,1fr);min-height:120px;background:var(--court2)}
+.net{background:var(--line);opacity:.9}
+.side{display:flex;flex-direction:column;justify-content:center;gap:8px;padding:8px 6px;min-width:0}
+.pl{background:rgba(255,255,255,.96);color:var(--ink);border:0;border-radius:10px;padding:7px 6px;display:flex;align-items:center;gap:5px;min-width:0;text-align:left;font-weight:600;font-size:15px;min-height:40px;width:100%}
+.pl .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl .g{font-size:11px;color:var(--muted);font-weight:500;flex:none}
+.pl .gb{font-size:9px;padding:1px 4px}
+.empty-court{grid-column:1/-1;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.7);font-size:14px;padding:20px;text-align:center}
+.court-f{display:flex;gap:8px;padding:12px}
+.court-f .btn{flex:1;padding:10px 8px}
+.court-f .ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.35)}
+
+/* lists */
+.list{display:flex;flex-direction:column}
+.item{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--border)}
+.item:last-child{border-bottom:0}
+.item .nm{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .meta{font-size:13px;color:var(--muted)}
+.check{width:26px;height:26px;border-radius:8px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex:none;background:#fff}
+.item.sel .check{background:var(--court2);border-color:var(--court2)}
+.item.sel .check:after{content:"";width:7px;height:12px;border:solid #fff;border-width:0 3px 3px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.tapr{cursor:pointer;user-select:none}
+.wait{display:flex;flex-wrap:wrap;gap:6px}
+.wp{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:6px 10px 6px 6px;font-weight:600;font-size:14px}
+.wp small{color:var(--muted);font-weight:500}
+.wp.rest{border-style:dashed}
+input[type=text],input[type=search],select,textarea{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fff;width:100%}
+textarea{min-height:140px;resize:vertical}
+select.mini{width:auto;padding:6px 8px;border-radius:8px}
+.hint{font-size:13px;color:var(--muted);margin:6px 2px 0;line-height:1.4}
+.seg{display:flex;background:#e6ece7;border-radius:10px;padding:3px}
+.seg button{flex:1;border:0;background:none;padding:8px;border-radius:8px;font-weight:600;font-size:14px;color:var(--muted)}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.set{display:flex;flex-direction:column;gap:14px}
+.set label{font-weight:600;font-size:14px;display:block;margin-bottom:6px}
+.stepper{display:flex;align-items:center;gap:10px}
+.stepper b{font-family:"Barlow Condensed";font-size:24px;min-width:26px;text-align:center}
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(10,25,18,.45);z-index:50;display:none}
+.scrim.open{display:block}
+.sheet{position:fixed;left:0;right:0;bottom:0;background:#fff;border-radius:18px 18px 0 0;z-index:60;max-height:82vh;overflow:auto;padding:8px 16px calc(env(safe-area-inset-bottom) + 18px);transform:translateY(105%);transition:transform .22s ease;max-width:640px;margin:0 auto}
+.sheet.open{transform:none}
+.grab{width:40px;height:4px;border-radius:2px;background:#d5ddd7;margin:4px auto 12px}
+.sheet h3{margin:0 0 4px;font-size:20px;display:flex;align-items:center;gap:8px}
+.sheet .acts{display:flex;flex-direction:column;gap:8px;margin:14px 0}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 84px);transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:80;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
+.toast.show{opacity:1}
+.gb{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;background:#fff1d6;color:#8a5a00;border:1px solid #f0d49a;border-radius:5px;padding:1px 5px;line-height:1.4;flex:none}
+.gb.sb{background:#e3eefb;color:#1f4f8f;border-color:#bcd3f0}
+.typeb{border:1px solid var(--border);background:#fff;border-radius:8px;padding:6px 8px;font-size:12px;font-weight:700;min-width:44px}
+.typeb.g{background:#fff1d6;border-color:#f0d49a;color:#8a5a00}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:6px 4px;border-bottom:1px solid var(--border)}
+.tbl td{padding:8px 4px;border-bottom:1px solid var(--border);vertical-align:middle}
+.tbl td.num,.tbl th.num{text-align:right;white-space:nowrap}
+.tbl .nmc{display:flex;align-items:center;gap:6px;font-weight:600;min-width:0}
+.prow{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border)}
+.prow:last-child{border-bottom:0}
+.pinfo{flex:1;min-width:0}
+.pn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.pnote{font-size:12px;color:var(--muted);margin-top:2px}
+.phead{display:flex;align-items:center;gap:8px;margin-top:12px;padding:8px 0;border-bottom:2px solid var(--border);font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.phead .pfee{text-align:right;display:block}
+.pg{width:56px;text-align:center;flex:none}
+.pg b{font-family:'Barlow Condensed';font-size:22px}
+.pfee{display:flex;flex-direction:column;align-items:flex-end;gap:4px;min-width:74px;font-size:14px}
+.gadj{display:inline-flex;align-items:center;gap:6px;flex:none}
+.gadj b{min-width:20px;text-align:center;font-family:'Barlow Condensed';font-size:20px}
+.gadj button{width:34px;height:34px;border-radius:9px;border:1px solid var(--border);background:#f3f6f2;padding:0;font-weight:700;font-size:20px;line-height:1;color:var(--court)}
+.paidb{border:1px solid var(--border);border-radius:8px;padding:5px 8px;font-size:12px;font-weight:700;background:#fff;color:var(--muted)}
+.paidb.on{background:var(--C);border-color:var(--C);color:#fff}
+.money{font-family:'Barlow Condensed';font-size:22px}
+.gpill{flex:none;font-size:12px;font-weight:700;padding:3px 8px;border-radius:999px;background:#e7f0ea;color:var(--court2);white-space:nowrap}
+.gpill.z{background:#eaf7d0;color:#3d6b00}
+.winb{display:flex;flex-direction:column;align-items:flex-start;gap:6px;border:2px solid var(--border);background:#fff;border-radius:12px;padding:12px;text-align:left}
+.winb:active{border-color:var(--C);background:#eefaf3}
+.wl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+.tm{display:flex;align-items:center;gap:6px;font-weight:600;min-width:0}
+.tm span:not(.cat):not(.gb){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hcard{margin-bottom:10px;padding:12px}
+.hh{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.hh b{font-family:'Barlow Condensed';font-size:18px;text-transform:uppercase}
+.hh span{font-size:13px;color:var(--muted)}
+.hteams{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:stretch}
+.ht{border:1px solid var(--border);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.ht.won{border:2px solid var(--C);background:#eefaf3}
+.trophy{font-size:11px;font-weight:700;color:var(--C);text-transform:uppercase;letter-spacing:.3px}
+.vs{align-self:center;font-size:12px;color:var(--muted);font-weight:700}
+.hf{display:flex;align-items:center;gap:6px;margin-top:8px}
+.pgs{width:40px;text-align:center;flex:none;font-size:14px}
+.phead .pgs{font-size:10px}
+.nmc{flex-wrap:nowrap}
+.rk{font-family:'Barlow Condensed';font-weight:700;color:var(--muted);min-width:18px}
+.filebtn{position:relative;display:inline-block;overflow:hidden}
+.filebtn input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:100px}
+#updbar{position:sticky;top:58px;z-index:19;background:var(--lime);color:var(--court);display:flex;align-items:center;gap:10px;padding:8px 14px;font-weight:600;font-size:14px}
+#updbar span{flex:1}
+#updbar .btn{background:var(--court);color:#fff;border-color:var(--court)}
+.emptybox{text-align:center;padding:26px 14px;color:var(--muted)}
+.emptybox b{display:block;color:var(--ink);font-size:17px;margin-bottom:6px}
+</style>
+</head>
+<body>
+<header>
+  <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="25" r="5" fill="#fff"/><path d="M12 21 7 5l6 3 3-5 3 5 6-3-5 16" stroke="#c8f169" stroke-width="2" stroke-linejoin="round" fill="none"/></svg>
+  <h1>Match<span>Maker</span></h1>
+  <div class="sync" id="sync"><i></i><span>Local</span></div>
+</header>
+<main id="app"></main>
+<nav id="nav">
+  <button data-tab="courts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M12 4v16M3 12h18"/></svg>Courts</button>
+  <button data-tab="checkin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m4 12 5 5L20 6"/></svg>Attendance</button>
+  <button data-tab="players"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M17 11a3 3 0 1 0 0-6M22 21c0-3-2-5-4-5.5"/></svg>Players</button>
+  <button data-tab="pay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20M6 15h4"/></svg>Payments</button>
+  <button data-tab="hist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3"/></svg>History</button>
+  <button data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+</nav>
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+const CATS=['A','B','C','D'];
+const RATE={A:4,B:3,C:2,D:1};
+const APP_VERSION=1;
+const IS_APP=!!window.AndroidApp;
+const UPD_BASE='https://raw.githubusercontent.com/archie24bagadiong-max/matchmaker-app/main/';
+const LS_KEY=IS_APP?'bmm_offline_v1':'bmm_state_v1';
+const CLIENT=Math.random().toString(36).slice(2);
+
+function fresh(){
+  return {players:[],present:{},resting:{},games:{},lastEnd:{},partners:{},
+    courts:[0,1,2].map(()=>({lv:CATS.slice(),p:[],t:0})),
+    mode:'doubles',mix:'adjacent',autoNext:true,prio:'strong',paid:{},hist:[],fee:{gp:25,gn:3,gx:10,sp:2.5}};
+}
+function normalize(s){
+  const d=fresh();
+  s=(s&&typeof s==='object')?s:{};
+  for(const k in d){ if(s[k]===undefined) s[k]=d[k]; }
+  if(!Array.isArray(s.players)) s.players=[];
+  s.players=s.players.filter(p=>p&&p.id&&typeof p.n==='string').map(p=>({id:String(p.id),n:p.n.slice(0,40),c:CATS.includes(p.c)?p.c:'C',t:p.t==='G'?'G':'S'}));
+  if(!Array.isArray(s.courts)||!s.courts.length) s.courts=d.courts;
+  s.courts=s.courts.map(c=>({lv:Array.isArray(c&&c.lv)?c.lv.filter(x=>CATS.includes(x)):CATS.slice(),p:Array.isArray(c&&c.p)?c.p.map(String):[],t:+(c&&c.t)||0}));
+  if(!Array.isArray(s.hist)) s.hist=[];
+  s.hist=s.hist.filter(x=>x&&Array.isArray(x.a)&&Array.isArray(x.b)).slice(-1000);
+  ['present','resting','games','lastEnd','partners'].forEach(k=>{if(typeof s[k]!=='object'||!s[k]||Array.isArray(s[k]))s[k]={};});
+  if(!['doubles','singles'].includes(s.mode)) s.mode='doubles';
+  if(!['strict','adjacent','any'].includes(s.mix)) s.mix='adjacent';
+  s.autoNext=!!s.autoNext;
+  if(!['strong','tie','none'].includes(s.prio)) s.prio='strong';
+  if(typeof s.paid!=='object'||!s.paid||Array.isArray(s.paid)) s.paid={};
+  const f=(s.fee&&typeof s.fee==='object')?s.fee:{};
+  s.fee={gp:isFinite(+f.gp)&&+f.gp>=0?+f.gp:25, gn:isFinite(+f.gn)&&+f.gn>=1?Math.round(+f.gn):3, gx:f.gx!==undefined&&f.gx!==null&&f.gx!==''&&isFinite(+f.gx)&&+f.gx>=0?+f.gx:10, sp:isFinite(+f.sp)&&+f.sp>=0?+f.sp:2.5};
+  return s;
+}
+
+let S=fresh();
+try{ const raw=localStorage.getItem(LS_KEY); if(raw) S=normalize(JSON.parse(raw)); }catch(e){}
+
+let tab='courts', ciFilter='All', ciSearch='', plSearch='', plFilter='All', confirmKey=null;
+
+/* ---------- persistence ---------- */
+let dbRef=null, writing=false, dirty=false, saveTimer=null, lastTs=0;
+function setSync(ok,label){const el=document.getElementById('sync');el.className='sync'+(ok?' ok':'');el.querySelector('span').textContent=label;}
+function save(){
+  try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){}
+  if(!dbRef) return;
+  dirty=true; clearTimeout(saveTimer); saveTimer=setTimeout(flush,600);
+}
+async function flush(){
+  if(!dbRef||writing||!dirty) return;
+  writing=true; dirty=false; lastTs=Date.now();
+  try{ await dbRef.set({state:JSON.stringify(S),client:CLIENT,ts:lastTs}); setSync(true,'Synced'); }
+  catch(e){ if(e&&e.code==='invalid_argument'){setSync(false,'View only');} else {setSync(false,'Offline'); dirty=true;} }
+  writing=false;
+  if(dirty) saveTimer=setTimeout(flush,800);
+}
+(async()=>{
+  try{
+    if(!window.claude||!window.claude.use) return;
+    const db=await window.claude.use('db');
+    if(!db) return;
+    dbRef=db.doc('club/state');
+    setSync(false,'Connecting…');
+    let first=true;
+    const to=setTimeout(()=>setSync(false,'Offline'),10000);
+    dbRef.onSnapshot(snap=>{
+      if(!snap.metadata.fromCache) clearTimeout(to);
+      if(snap.metadata.hasPendingWrites) return;
+      if(!snap.exists){
+        if(first&&S.players.length){ dirty=true; flush(); }
+        first=false; if(!snap.metadata.fromCache) setSync(true,'Synced'); return;
+      }
+      const d=snap.data();
+      first=false;
+      if(!snap.metadata.fromCache) setSync(true,'Synced');
+      if(d.client===CLIENT && d.ts<=lastTs) return;
+      if(dirty||writing) return;
+      try{ S=normalize(JSON.parse(d.state)); try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){} render(); }catch(e){}
+    },err=>{clearTimeout(to);setSync(false,'Local');});
+  }catch(e){}
+})();
+
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const byId=id=>S.players.find(p=>p.id===id);
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const need=()=>S.mode==='doubles'?4:2;
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2200);}
+function onCourt(){const m={};S.courts.forEach((c,i)=>c.p.forEach(id=>m[id]=i));return m;}
+function pkey(a,b){return a<b?a+'|'+b:b+'|'+a;}
+function catBadge(c){return `<span class="cat c${c}">${c}</span>`;}
+function typeBadge(p){return p.t==='G'?'<span class="gb">Guest</span>':'<span class="gb sb">Sub</span>';}
+function isG(p){return p.t==='G'?1:0;}
+function prioritySort(list){
+  const g=(a,b)=>S.prio==='none'?0:isG(a)-isG(b);
+  const n=(a,b)=>((S.games[a.id]||0)-(S.games[b.id]||0));
+  return list.slice().sort((a,b)=>(S.prio==='strong'?(g(a,b)||n(a,b)):(n(a,b)||g(a,b)))||((S.lastEnd[a.id]||0)-(S.lastEnd[b.id]||0))||a.n.localeCompare(b.n));
+}
+function fee(p){
+  const g=S.games[p.id]||0; if(!g) return 0;
+  if(p.t!=='G') return g*S.fee.sp;
+  return S.fee.gp+Math.max(0,g-S.fee.gn)*(S.fee.gx/S.fee.gn);
+}
+const sr=v=>(Math.round(v*100)/100).toFixed(2).replace(/\.00$/,'')+' SR';
+function waiting(){
+  const oc=onCourt();
+  return prioritySort(S.players.filter(p=>S.present[p.id]&&!S.resting[p.id]&&oc[p.id]===undefined));
+}
+function dist(a,b){return Math.abs(RATE[a]-RATE[b]);}
+function allowed(d){return S.mix==='strict'?d===0:S.mix==='adjacent'?d<=1:true;}
+
+/* ---------- matching ---------- */
+function pickGroup(pool,n){
+  // the longest-waiting player who can make a full group is the seed; others chosen around them
+  for(let s=0;s<pool.length;s++){
+    const seed=pool[s];
+    const cands=pool.filter((p,i)=>i!==s&&allowed(dist(p.c,seed.c)))
+      .map(p=>({p,score:(S.prio==='strong'&&isG(p)?100000:0)+dist(p.c,seed.c)*1000+pool.indexOf(p)}))
+      .sort((a,b)=>a.score-b.score).map(x=>x.p);
+    if(cands.length>=n-1) return [seed].concat(cands.slice(0,n-1));
+  }
+  return null;
+}
+function arrange(ids){
+  if(ids.length!==4) return ids;
+  const opts=[[0,1,2,3],[0,2,1,3],[0,3,1,2]];
+  let best=null,bc=Infinity;
+  for(const o of opts){
+    const P=o.map(i=>ids[i]); const r=id=>RATE[byId(id).c];
+    const diff=Math.abs(r(P[0])+r(P[1])-r(P[2])-r(P[3]));
+    const rep=(S.partners[pkey(P[0],P[1])]||0)+(S.partners[pkey(P[2],P[3])]||0);
+    const cost=diff*10+rep;
+    if(cost<bc){bc=cost;best=P;}
+  }
+  return best;
+}
+function fillCourt(i,quiet,exclude){
+  const c=S.courts[i]; if(c.p.length) return true;
+  const pool=waiting().filter(p=>c.lv.includes(p.c)&&!(exclude&&exclude.includes(p.id)));
+  const g=pickGroup(pool,need());
+  if(!g){ if(!quiet) toast(`Court ${i+1}: not enough waiting players for its levels`); return false; }
+  c.p=arrange(g.map(p=>p.id)); c.t=Date.now();
+  return true;
+}
+function fillAll(){
+  let n=0; S.courts.forEach((c,i)=>{ if(!c.p.length && fillCourt(i,true)) n++; });
+  save(); render(); toast(n?`Filled ${n} court${n>1?'s':''}`:'No court could be filled — check attendance & levels');
+}
+function finish(i,count,win){
+  const c=S.courts[i]; const now=Date.now();
+  if(count&&c.p.length){
+    const half=c.p.length/2, A=c.p.slice(0,half), B=c.p.slice(half), nm=id=>(byId(id)||{}).n||'?';
+    S.hist.push({d:now,s:c.t||now,c:i+1,a:A,b:B,an:A.map(nm),bn:B.map(nm),w:win||''});
+    if(S.hist.length>1000) S.hist=S.hist.slice(-1000);
+  }
+  if(count){
+    c.p.forEach(id=>{S.games[id]=(S.games[id]||0)+1;S.lastEnd[id]=now;});
+    if(c.p.length===4){[[0,1],[2,3]].forEach(([a,b])=>{const k=pkey(c.p[a],c.p[b]);S.partners[k]=(S.partners[k]||0)+1;});}
+  }
+  c.p=[];c.t=0;
+  save(); render();
+}
+function substitutes(courtIdx,outId){
+  const c=S.courts[courtIdx], out=byId(outId);
+  return waiting().filter(p=>c.lv.includes(p.c))
+    .map((p,i)=>({p,score:(S.prio==='strong'&&isG(p)?100000:0)+dist(p.c,out.c)*1000+i})).sort((a,b)=>a.score-b.score).map(x=>x.p);
+}
+function replace(courtIdx,outId,inId,rest){
+  const c=S.courts[courtIdx]; const k=c.p.indexOf(outId); if(k<0) return;
+  if(rest) S.resting[outId]=1;
+  if(inId){ c.p[k]=inId; }
+  else{
+    const subs=substitutes(courtIdx,outId).filter(p=>p.id!==outId);
+    if(!subs.length){ toast('No substitute available — player removed'); c.p.splice(k,1); }
+    else c.p[k]=subs[0].id;
+  }
+  closeSheet(); save(); render();
+}
+
+/* ---------- render ---------- */
+function render(){
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+  const app=$('#app');
+  if(tab==='courts') app.innerHTML=vCourts();
+  else if(tab==='checkin') app.innerHTML=vCheckin();
+  else if(tab==='players') app.innerHTML=vPlayers();
+  else if(tab==='pay') app.innerHTML=vPay();
+  else if(tab==='hist') app.innerHTML=vHist();
+  else app.innerHTML=vSettings();
+}
+function elapsed(t){if(!t)return'';const m=Math.floor((Date.now()-t)/60000);return m<1?'just started':m+' min';}
+function plBtn(id,ci){
+  const p=byId(id); if(!p) return '';
+  return `<button class="pl" data-act="court-pl" data-c="${ci}" data-id="${id}">${catBadge(p.c)}<span class="nm">${esc(p.n)}</span>${typeBadge(p)}<span class="g">${S.games[id]||0}g</span></button>`;
+}
+function vCourts(){
+  const present=S.players.filter(p=>S.present[p.id]);
+  const w=waiting(); const resting=S.players.filter(p=>S.present[p.id]&&S.resting[p.id]);
+  let h=`<div class="stats">
+    <div class="stat"><b>${present.length}</b><span>Present</span></div>
+    <div class="stat"><b>${S.courts.reduce((a,c)=>a+c.p.length,0)}</b><span>Playing</span></div>
+    <div class="stat"><b>${w.length}</b><span>Waiting</span></div>
+    <div class="stat"><b>${resting.length}</b><span>Resting</span></div></div>`;
+  if(!present.length){
+    h+=`<div class="card emptybox" style="margin-top:14px"><b>No one checked in yet</b>${S.players.length?'Mark today\'s attendees first.':'Add your players, then mark attendance.'}<div style="margin-top:12px"><button class="btn pri" data-act="go" data-tab="${S.players.length?'checkin':'players'}">${S.players.length?'Take attendance':'Add players'}</button></div></div>`;
+  }
+  h+=`<h2>Courts <small>${S.mode==='doubles'?'Doubles':'Singles'}</small><span class="grow"></span><button class="btn lime sm" data-act="fill-all">Fill empty courts</button></h2><div class="courts">`;
+  S.courts.forEach((c,i)=>{
+    const lv=CATS.map(k=>`<button class="${c.lv.includes(k)?'on':''}" data-act="lv" data-c="${i}" data-k="${k}">${k}</button>`).join('');
+    let pitch;
+    if(!c.p.length) pitch=`<div class="empty-court">Empty — Auto match or Pick players</div>`;
+    else{
+      const half=S.mode==='doubles'?2:1;
+      const L=c.p.slice(0,half), R=c.p.slice(half);
+      pitch=`<div class="side">${L.map(id=>plBtn(id,i)).join('')}</div><div class="net"></div><div class="side">${R.map(id=>plBtn(id,i)).join('')}</div>`;
+    }
+    h+=`<div class="court">
+      <div class="court-h"><b>Court ${i+1}</b><span class="t" data-t="${c.t}">${elapsed(c.t)}</span></div>
+      <div class="lv"><span>Levels</span>${lv}</div>
+      <div class="pitch">${pitch}</div>
+      <div class="court-f">${c.p.length
+        ?`<button class="btn lime" data-act="finish" data-c="${i}">Game done</button><button class="btn ghost" data-act="reshuffle" data-c="${i}">Reshuffle</button><button class="btn ghost" data-act="cancel" data-c="${i}">Clear</button>`
+        :`<button class="btn lime" data-act="gen" data-c="${i}">Auto match</button><button class="btn ghost" data-act="pick" data-c="${i}">Pick players</button>`}</div>
+    </div>`;
+  });
+  h+=`</div>`;
+  h+=`<h2>Waiting queue <small>next up first · tap to manage</small></h2><div class="card">`;
+  h+= w.length?`<div class="wait">${w.map(p=>`<button class="wp" data-act="wait-pl" data-id="${p.id}">${catBadge(p.c)}${esc(p.n)} ${typeBadge(p)}<small>${S.games[p.id]||0}g</small></button>`).join('')}</div>`:`<div class="hint" style="margin:0">Nobody waiting.</div>`;
+  h+=`</div>`;
+  if(resting.length){
+    h+=`<h2>Resting / can't play <small>${resting.length}</small></h2><div class="card"><div class="list">${resting.map(p=>`<div class="item">${catBadge(p.c)}<div class="nm">${esc(p.n)}</div>${typeBadge(p)}${gpill(p.id)}<button class="btn sm pri" data-act="unrest" data-id="${p.id}">Back to play</button></div>`).join('')}</div></div>`;
+  }
+  return h;
+}
+function filterChips(cur,act){
+  return `<div class="chips">${['All'].concat(CATS).map(k=>`<button class="chip ${cur===k?'on':''}" data-act="${act}" data-k="${k}">${k}${k!=='All'?' <span style="opacity:.7">'+S.players.filter(p=>p.c===k).length+'</span>':''}</button>`).join('')}</div>`;
+}
+function vCheckin(){
+  if(!S.players.length) return `<div class="card emptybox"><b>No players yet</b>Add your roster first.<div style="margin-top:12px"><button class="btn pri" data-act="go" data-tab="players">Add players</button></div></div>`;
+  const counts=CATS.map(k=>`<div class="stat"><b>${S.players.filter(p=>p.c===k&&S.present[p.id]).length}</b><span>${k} present</span></div>`).join('');
+  let list=S.players.filter(p=>(ciFilter==='All'||p.c===ciFilter)&&(!ciSearch||p.n.toLowerCase().includes(ciSearch.toLowerCase())));
+  list.sort((a,b)=>a.c.localeCompare(b.c)||a.n.localeCompare(b.n));
+  const scope=ciFilter==='All'?'everyone':'all '+ciFilter;
+  return `<div class="stats">${counts}</div>
+  <h2>Who's here today?</h2>
+  <div class="card">
+    ${filterChips(ciFilter,'ci-f')}
+    <div style="margin-top:10px"><input type="search" id="ci-s" placeholder="Search name…" value="${esc(ciSearch)}"></div>
+    <div class="row" style="margin-top:10px"><button class="btn sm" data-act="ci-all">Check in ${scope}</button><button class="btn sm" data-act="ci-none">Uncheck ${scope}</button></div>
+    <div class="list" style="margin-top:6px">${list.map(p=>`<div class="item tapr ${S.present[p.id]?'sel':''}" data-act="ci" data-id="${p.id}"><div class="check"></div>${catBadge(p.c)}<div class="nm">${esc(p.n)}</div>${typeBadge(p)}${S.resting[p.id]?`<button class="btn sm pri" data-act="unrest" data-id="${p.id}">Back to play</button>`:''}</div>`).join('')||'<div class="hint">No matches.</div>'}</div>
+  </div>`;
+}
+function vPlayers(){
+  let list=S.players.filter(p=>(plFilter==='All'||p.c===plFilter)&&(!plSearch||p.n.toLowerCase().includes(plSearch.toLowerCase())));
+  list.sort((a,b)=>a.c.localeCompare(b.c)||a.n.localeCompare(b.n));
+  return `<h2>Add player</h2>
+  <div class="card">
+    <form id="addf" class="row"><input class="grow" type="text" id="add-n" placeholder="Player name" maxlength="40" style="flex:1;min-width:150px"><select id="add-c" class="mini">${CATS.map(k=>`<option ${k==='C'?'selected':''}>${k}</option>`).join('')}</select><select id="add-t" class="mini"><option value="S">Subscriber</option><option value="G">Guest</option></select><button class="btn pri">Add</button></form>
+    <p class="hint">A = strongest … D = beginner. Subscribers get priority on courts.</p>
+  </div>
+  <h2>Import from Excel / CSV</h2>
+  <div class="card">
+    <div class="filebtn btn pri">Choose file (.xlsx, .xls, .csv)<input type="file" id="file-in" accept=".xlsx,.xls,.csv,.ods,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" aria-label="Choose Excel or CSV file"></div>
+    <p class="hint">If the file picker doesn't open on your phone, open the sheet in Excel, select the Name and Category columns, copy, and paste into “Add many at once” below.<br>Uses the first sheet. Put names in one column and A/B/C/D in another — headers like <b>Name</b> and <b>Category</b> (or Level / Skill / Grade) are detected automatically. Without headers: column 1 = name, column 2 = category. Add a <b>Type</b> column with Subscriber or Guest (blank = Subscriber). Players already in the roster get updated instead of being added twice.</p>
+  </div>
+  <h2>Add many at once</h2>
+  <div class="card">
+    <textarea id="bulk" placeholder="One per line: Name, Category, Type&#10;Juan Dela Cruz, A&#10;Maria Santos, B, Guest&#10;Ahmed, C"></textarea>
+    <div class="row" style="margin-top:8px"><button class="btn pri" data-act="bulk">Add list</button>${S.players.length?'':'<button class="btn" data-act="sample">Load 100 sample players</button>'}</div>
+    <p class="hint">Paste from a spreadsheet too — comma or tab works. Missing category = C. Add “Guest” on the line for guests; otherwise Subscriber.</p>
+  </div>
+  <h2>Roster <small>${S.players.filter(p=>p.t!=='G').length} subscribers · ${S.players.filter(p=>p.t==='G').length} guests · tap Sub/Guest to switch</small></h2>
+  <div class="card">
+    ${filterChips(plFilter,'pl-f')}
+    <div style="margin-top:10px"><input type="search" id="pl-s" placeholder="Search name…" value="${esc(plSearch)}"></div>
+    <div class="list" style="margin-top:6px">${list.map(p=>`<div class="item">
+      <select class="mini" data-act="setcat" data-id="${p.id}">${CATS.map(k=>`<option ${k===p.c?'selected':''}>${k}</option>`).join('')}</select>
+      <button class="typeb ${p.t==='G'?'g':''}" data-act="settype" data-id="${p.id}">${p.t==='G'?'Guest':'Sub'}</button>
+      <div class="nm">${esc(p.n)}</div><span class="meta">${S.games[p.id]||0}g</span>
+      <button class="btn sm" data-act="rename" data-id="${p.id}">Edit</button>
+      <button class="btn sm warn" data-act="del" data-id="${p.id}">${confirmKey==='del'+p.id?'Sure?':'✕'}</button></div>`).join('')||'<div class="hint">No players.</div>'}</div>
+  </div>`;
+}
+let payFilter='All';
+function vPay(){
+  const rows=S.players.filter(p=>S.present[p.id]||(S.games[p.id]||0)>0);
+  const subs=rows.filter(p=>p.t!=='G'), gs=rows.filter(p=>p.t==='G');
+  const tot=l=>l.reduce((a,p)=>a+fee(p),0);
+  const got=rows.filter(p=>S.paid[p.id]).reduce((a,p)=>a+fee(p),0);
+  const games=S.players.reduce((a,p)=>a+(S.games[p.id]||0),0)/(need());
+  let list=rows.filter(p=>payFilter==='All'||(payFilter==='Guests'?p.t==='G':payFilter==='Unpaid'?!S.paid[p.id]&&fee(p)>0:p.t!=='G'));
+  list.sort((a,b)=>((S.games[b.id]||0)-(S.games[a.id]||0))||a.n.localeCompare(b.n));
+  return `<div class="stats" style="grid-template-columns:repeat(2,1fr)">
+    <div class="stat"><b class="money">${sr(tot(rows))}</b><span>Total due today</span></div>
+    <div class="stat"><b class="money">${sr(got)}</b><span>Collected</span></div>
+    <div class="stat"><b class="money">${sr(tot(subs))}</b><span>${subs.length} subscribers</span></div>
+    <div class="stat"><b class="money">${sr(tot(gs))}</b><span>${gs.length} guests</span></div></div>
+  <p class="hint">${Math.round(games)} games played today · Subscriber ${sr(S.fee.sp)}/game · Guest ${sr(S.fee.gp)} for ${S.fee.gn} games, ${sr(S.fee.gp+S.fee.gx)} for ${S.fee.gn*2}</p>
+  <h2>Games &amp; fees per player</h2>
+  <div class="card">
+    <div class="chips">${['All','Subscribers','Guests','Unpaid'].map(k=>`<button class="chip ${payFilter===k?'on':''}" data-act="pay-f" data-k="${k}">${k}</button>`).join('')}</div>
+    ${list.length?`<div class="phead"><span class="pinfo">Player</span><span class="pg">Games</span><span class="pfee">Fee / Paid</span></div><div class="list">${list.map(p=>{const g=S.games[p.id]||0,f=fee(p);
+      const note=p.t==='G'?(g===0?'minimum '+sr(S.fee.gp)+' covers '+S.fee.gn+' games':g<S.fee.gn?(S.fee.gn-g)+' more covered by minimum':g===S.fee.gn?'minimum used':(g-S.fee.gn)+' extra × '+sr(S.fee.gx/S.fee.gn)):sr(S.fee.sp)+' per game';
+      return `<div class="prow">
+        <div class="pinfo"><div class="nmc">${catBadge(p.c)}<span class="pn">${esc(p.n)}</span>${typeBadge(p)}</div><div class="pnote">${note}</div></div>
+        <div class="pg"><b>${g}</b></div>
+        <div class="pfee"><b>${f?sr(f):'0 SR'}</b><button class="paidb ${S.paid[p.id]?'on':''}" data-act="paid" data-id="${p.id}" ${f?'':'disabled'}>${S.paid[p.id]?'Paid':'Unpaid'}</button></div>
+      </div>`;}).join('')}</div>`
+    :`<div class="emptybox"><b>No players to show</b>Only players checked in today appear here.<div style="margin-top:12px"><button class="btn pri" data-act="go" data-tab="checkin">Take attendance</button></div></div>`}
+    <p class="hint">Games are counted automatically when you tap “Game done” on a court.</p>
+  </div>
+  <h2>Summary to share</h2>
+  <div class="card"><textarea readonly id="paytxt">${esc(rows.slice().sort((a,b)=>a.n.localeCompare(b.n)).map(p=>`${p.n}${p.t==='G'?' (Guest)':''} – ${S.games[p.id]||0} games – ${fee(p)?sr(fee(p)):'0 SR'}${S.paid[p.id]?' ✓ paid':''}`).join('\n')+(rows.length?`\n\nTotal: ${sr(tot(rows))}`:''))}</textarea>
+  <div class="row" style="margin-top:8px"><button class="btn" data-act="copypay">Copy summary</button></div></div>`;
+}
+function sheetWinner(ci){
+  const c=S.courts[ci]; if(!c.p.length) return;
+  const half=c.p.length/2, A=c.p.slice(0,half), B=c.p.slice(half);
+  const team=ids=>ids.map(id=>{const p=byId(id);return p?`<div class="tm">${catBadge(p.c)}<span>${esc(p.n)}</span>${typeBadge(p)}</div>`:''}).join('');
+  openSheet(`<h3>Court ${ci+1} — who won?</h3><div class="hint" style="margin:0">Tap the winning team</div>
+  <div class="acts">
+    <button class="winb" data-act="win" data-c="${ci}" data-k="a"><span class="wl">Left side</span>${team(A)}</button>
+    <button class="winb" data-act="win" data-c="${ci}" data-k="b"><span class="wl">Right side</span>${team(B)}</button>
+    <button class="btn" data-act="win" data-c="${ci}" data-k="x">Skip — no result</button>
+  </div>`);
+}
+let histCourt='All', histRange='today', histView='matches';
+function dayKey(t){const d=new Date(t);return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
+function fmtTime(t){try{return new Date(t).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});}catch(e){return '';}}
+function fmtDay(t){try{return new Date(t).toLocaleDateString([], {weekday:'short',day:'numeric',month:'short',year:'numeric'});}catch(e){return '';}}
+function vHist(){
+  const today=dayKey(Date.now());
+  let H=S.hist.filter(x=>histRange==='all'||dayKey(x.d)===today);
+  const courtsUsed=[...new Set(S.hist.map(x=>x.c))].sort((a,b)=>a-b);
+  const tabs=`<div class="seg" style="margin-bottom:10px"><button class="${histView==='matches'?'on':''}" data-act="h-v" data-k="matches">Matches</button><button class="${histView==='board'?'on':''}" data-act="h-v" data-k="board">Wins leaderboard</button></div>
+  <div class="chips" style="margin-bottom:8px"><button class="chip ${histRange==='today'?'on':''}" data-act="h-r" data-k="today">Today</button><button class="chip ${histRange==='all'?'on':''}" data-act="h-r" data-k="all">All dates</button></div>`;
+  if(histView==='board'){
+    const st={};
+    H.forEach(x=>{[['a',x.a,x.an],['b',x.b,x.bn]].forEach(([s,ids,ns])=>ids.forEach((id,j)=>{const r=st[id]||(st[id]={id,n:(byId(id)||{}).n||ns[j],p:0,w:0,l:0});r.p++; if(x.w===s)r.w++; else if(x.w)r.l++;}));});
+    const rows=Object.values(st).sort((a,b)=>b.w-a.w||(b.w/(b.w+b.l||1))-(a.w/(a.w+a.l||1))||b.p-a.p);
+    return tabs+`<div class="card">${rows.length?`<div class="phead"><span class="pinfo">Player</span><span class="pgs">Played</span><span class="pgs">Won</span><span class="pgs">Lost</span><span class="pgs">Win %</span></div><div class="list">${rows.map((r,i)=>{const p=byId(r.id);const pct=r.w+r.l?Math.round(r.w*100/(r.w+r.l))+'%':'—';
+      return `<div class="prow"><div class="pinfo"><div class="nmc"><span class="rk">${i+1}</span>${p?catBadge(p.c):''}<span class="pn">${esc(r.n)}</span>${p?typeBadge(p):''}</div></div><div class="pgs">${r.p}</div><div class="pgs"><b style="color:var(--C)">${r.w}</b></div><div class="pgs">${r.l}</div><div class="pgs">${pct}</div></div>`}).join('')}</div>`:'<div class="emptybox"><b>No results yet</b>Pick the winning team when you tap “Game done”.</div>'}</div>`;
+  }
+  if(histCourt!=='All') H=H.filter(x=>String(x.c)===histCourt);
+  H=H.slice().reverse();
+  let h=tabs+`<div class="chips" style="margin-bottom:12px">${['All'].concat(courtsUsed.map(String)).map(k=>`<button class="chip ${histCourt===k?'on':''}" data-act="h-f" data-k="${k}">${k==='All'?'All courts':'Court '+k}</button>`).join('')}</div>`;
+  if(!H.length) return h+`<div class="card emptybox"><b>No matches yet</b>Finished games show up here with the court and the winning team.</div>`;
+  let lastDay='';
+  H.forEach((x,idx)=>{
+    const dk=dayKey(x.d); if(dk!==lastDay){lastDay=dk; h+=`<h2 style="margin-top:${idx?18:4}px">${fmtDay(x.d)} <small>${S.hist.filter(y=>dayKey(y.d)===dk).length} matches</small></h2>`;}
+    const mins=Math.max(1,Math.round((x.d-x.s)/60000));
+    const team=(ids,ns,won)=>`<div class="ht ${won?'won':''}">${won?'<span class="trophy">🏆 Winner</span>':''}${ids.map((id,j)=>{const p=byId(id);return `<div class="tm">${p?catBadge(p.c):''}<span>${esc(p?p.n:ns[j])}</span>${p?typeBadge(p):''}</div>`}).join('')}</div>`;
+    h+=`<div class="card hcard"><div class="hh"><b>Court ${x.c}</b><span>${fmtTime(x.d)} · ${mins} min</span></div>
+      <div class="hteams">${team(x.a,x.an,x.w==='a')}<div class="vs">vs</div>${team(x.b,x.bn,x.w==='b')}</div>
+      <div class="hf">${x.w?'':'<span class="hint" style="margin:0">No result recorded</span>'}<span class="grow"></span><button class="btn sm" data-act="h-win" data-id="${x.d}">Change winner</button><button class="btn sm warn" data-act="h-del" data-id="${x.d}">${confirmKey==='hd'+x.d?'Delete?':'✕'}</button></div></div>`;
+  });
+  return h;
+}
+function vSettings(){
+  const exp=S.players.map(p=>p.n+', '+p.c+(p.t==='G'?', Guest':'')).join('\n');
+  return `<h2>Session settings</h2>
+  <div class="card set">
+    <div><label>Number of courts</label><div class="stepper"><button class="btn sm" data-act="courts-" ${S.courts.length<=1?'disabled':''}>−</button><b>${S.courts.length}</b><button class="btn sm" data-act="courts+" ${S.courts.length>=8?'disabled':''}>+</button></div></div>
+    <div><label>Game type</label><div class="seg"><button class="${S.mode==='doubles'?'on':''}" data-act="mode" data-k="doubles">Doubles (4)</button><button class="${S.mode==='singles'?'on':''}" data-act="mode" data-k="singles">Singles (2)</button></div></div>
+    <div><label>Mixing skill levels</label><div class="seg">
+      <button class="${S.mix==='strict'?'on':''}" data-act="mix" data-k="strict">Same only</button>
+      <button class="${S.mix==='adjacent'?'on':''}" data-act="mix" data-k="adjacent">Next level OK</button>
+      <button class="${S.mix==='any'?'on':''}" data-act="mix" data-k="any">Any</button></div>
+      <p class="hint">Same only: A plays A. Next level OK: A with B, B with C… (same level is always tried first). Any: fills from everyone, nearest level first. Doubles teams are balanced by level.</p></div>
+    <div><label>Subscriber priority</label><div class="seg">
+      <button class="${S.prio==='strong'?'on':''}" data-act="prio" data-k="strong">Subscribers first</button>
+      <button class="${S.prio==='tie'?'on':''}" data-act="prio" data-k="tie">Fair turns</button>
+      <button class="${S.prio==='none'?'on':''}" data-act="prio" data-k="none">Equal</button></div>
+      <p class="hint">Subscribers first: guests only get a court when there aren't enough subscribers waiting. Fair turns: whoever has played least goes first; subscribers win ties. Equal: no difference.</p></div>
+    <div><label>Fees</label>
+      <div class="row"><span style="min-width:110px">Guest</span><input type="text" inputmode="decimal" data-fee="gp" value="${S.fee.gp}" style="width:80px"> SR per <input type="text" inputmode="numeric" data-fee="gn" value="${S.fee.gn}" style="width:56px"> games</div>
+      <div class="row" style="margin-top:8px"><span style="min-width:110px">Guest extra</span>+<input type="text" inputmode="decimal" data-fee="gx" value="${S.fee.gx}" style="width:80px"> SR per extra ${S.fee.gn} games (${sr(S.fee.gx/S.fee.gn)} each)</div>
+      <div class="row" style="margin-top:8px"><span style="min-width:110px">Subscriber</span><input type="text" inputmode="decimal" data-fee="sp" value="${S.fee.sp}" style="width:80px"> SR per game</div>
+      <p class="hint">Guest minimum: ${sr(S.fee.gp)} (covers ${S.fee.gn} games). Each game after that: ${sr(S.fee.gx/S.fee.gn)} → ${S.fee.gn*2} games = ${sr(S.fee.gp+S.fee.gx)}.</p></div>
+  </div>
+  <h2>New session</h2>
+  <div class="card">
+    <p class="hint" style="margin-top:0">Clears today's attendance, games played, payments, courts and resting list. Your roster stays.</p>
+    <button class="btn warn" data-act="reset">${confirmKey==='reset'?'Tap again to confirm':'Start new session'}</button>
+  </div>
+  ${IS_APP?`<h2>App updates</h2>
+  <div class="card"><p class="hint" style="margin-top:0">You have version <b>${APP_VERSION}</b>. ${updInfo?`<b style="color:var(--C)">Version ${esc(updInfo.version)} is available.</b>${updInfo.notes?' '+esc(updInfo.notes):''}`:'The app checks for updates each time it opens.'}</p>
+  <div class="row">${updInfo?`<button class="btn pri" data-act="upd-go">Update now</button>`:''}<button class="btn" data-act="upd-check">Check for updates</button></div>
+  <p class="hint">Updating keeps all your players, payments and history.</p></div>`:''}
+  <h2>Match history</h2>
+  <div class="card"><p class="hint" style="margin-top:0">${S.hist.length} matches saved. “Start new session” keeps history; this deletes it all.</p>
+  <button class="btn warn" data-act="h-clear">${confirmKey==='hclear'?'Tap again to delete all history':'Clear match history'}</button></div>
+  <h2>Backup roster</h2>
+  <div class="card">
+    <textarea readonly id="exp">${esc(exp)}</textarea>
+    <div class="row" style="margin-top:8px"><button class="btn" data-act="copy">Copy list</button><button class="btn warn" data-act="wipe">${confirmKey==='wipe'?'Tap again — deletes all players':'Delete all players'}</button></div>
+    <p class="hint">Paste this list into "Add many at once" to restore.</p>
+  </div>`;
+}
+
+/* ---------- sheets ---------- */
+function openSheet(html){$('#sheet').innerHTML='<div class="grab"></div>'+html;$('#sheet').classList.add('open');$('#scrim').classList.add('open');}
+function closeSheet(){$('#sheet').classList.remove('open');$('#scrim').classList.remove('open');}
+function gpill(id){const g=S.games[id]||0;return `<span class="gpill ${g===0?'z':''}">${g===0?'Not played':'Played '+g}</span>`;}
+function pickRow(s,attrs,sel){
+  return `<div class="item tapr ${sel?'sel':''}" ${attrs}>${sel!==undefined?'<div class="check"></div>':''}${catBadge(s.c)}<div class="nm">${esc(s.n)}</div>${typeBadge(s)}${gpill(s.id)}</div>`;
+}
+function sheetCourtPlayer(ci,id){
+  const p=byId(id); const c=S.courts[ci];
+  const all=waiting().slice().sort((a,b)=>((S.games[a.id]||0)-(S.games[b.id]||0))||((S.lastEnd[a.id]||0)-(S.lastEnd[b.id]||0))); const okIds=new Set(substitutes(ci,id).map(x=>x.id)); const ok=all.filter(x=>okIds.has(x.id));
+  const other=all.filter(x=>!okIds.has(x.id));
+  openSheet(`<h3>${catBadge(p.c)}${esc(p.n)} ${typeBadge(p)}</h3><div class="hint" style="margin:0">Court ${ci+1} · ${gpill(id)}</div>
+  <div class="acts">
+    <button class="btn pri" data-act="sub-rest" data-c="${ci}" data-id="${id}">Can't play — replace &amp; set resting</button>
+    <button class="btn" data-act="sub-auto" data-c="${ci}" data-id="${id}">Replace with next in line</button>
+  </div>
+  <h2 style="margin-top:4px">Pick a substitute <small>fewest games first</small></h2>
+  <div class="list">${ok.map(s=>pickRow(s,`data-act="sub-pick" data-c="${ci}" data-id="${id}" data-in="${s.id}"`)).join('')||'<div class="hint">No one waiting at this court\'s levels.</div>'}</div>
+  ${other.length?`<h2>Other levels waiting</h2><div class="list">${other.map(s=>pickRow(s,`data-act="sub-pick" data-c="${ci}" data-id="${id}" data-in="${s.id}"`)).join('')}</div>`:''}`);
+}
+let pickCourt=null, pickSel=[], pickCat='All';
+function sheetPick(){
+  const ci=pickCourt; const c=S.courts[ci]; const n=need();
+  const all=waiting().filter(p=>pickCat==='All'||p.c===pickCat);
+  openSheet(`<h3>Court ${ci+1} — pick ${n} players</h3>
+  <div class="hint" style="margin:0 0 10px">Selected ${pickSel.length} / ${n} · sorted by fewest games</div>
+  <div class="chips">${['All'].concat(CATS).map(k=>`<button class="chip ${pickCat===k?'on':''}" data-act="pick-f" data-k="${k}">${k}</button>`).join('')}</div>
+  <div class="list" style="margin-top:6px">${all.map(s=>pickRow(s,`data-act="pick-t" data-id="${s.id}"`,pickSel.includes(s.id))).join('')||'<div class="hint">No one waiting.</div>'}</div>
+  <div class="acts" style="position:sticky;bottom:0;background:#fff;padding-top:8px;margin-bottom:0">
+    <button class="btn pri" data-act="pick-go" ${pickSel.length===n?'':'disabled'}>Start game (${pickSel.length}/${n})</button>
+  </div>`);
+}
+function sheetWaiting(id){
+  const p=byId(id);
+  const free=S.courts.map((c,i)=>({c,i})).filter(x=>x.c.p.length && x.c.p.length<need());
+  openSheet(`<h3>${catBadge(p.c)}${esc(p.n)}</h3><div class="hint" style="margin:0">${S.games[id]||0} games today</div>
+  <div class="acts">
+    <button class="btn" data-act="rest" data-id="${id}">Rest / sit out for now</button>
+    <button class="btn warn" data-act="checkout" data-id="${id}">Went home (remove from attendance)</button>
+    ${free.map(x=>`<button class="btn pri" data-act="addto" data-c="${x.i}" data-id="${id}">Add to Court ${x.i+1} (open slot)</button>`).join('')}
+  </div>`);
+}
+function sheetRename(id){
+  const p=byId(id);
+  openSheet(`<h3>Edit player</h3><form id="renf" data-id="${id}" class="acts"><input type="text" id="ren-n" maxlength="40" value="${esc(p.n)}"><button class="btn pri">Save</button></form>`);
+  setTimeout(()=>{const i=$('#ren-n');i&&i.focus();},250);
+}
+
+/* ---------- events ---------- */
+document.getElementById('nav').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;tab=b.dataset.tab;confirmKey=null;render();window.scrollTo(0,0);});
+$('#scrim').addEventListener('click',closeSheet);
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-act]'); if(!el) return;
+  const a=el.dataset.act, id=el.dataset.id, ci=el.dataset.c!==undefined?+el.dataset.c:null, k=el.dataset.k;
+  if(!['del','reset','wipe','h-del','h-clear'].includes(a)) confirmKey=null;
+  switch(a){
+    case 'go': tab=el.dataset.tab; render(); break;
+    case 'fill-all': fillAll(); break;
+    case 'gen': if(fillCourt(ci)){save();render();} break;
+    case 'finish': sheetWinner(ci); break;
+    case 'win': closeSheet(); finish(ci,true,k==='x'?'':k); toast(k==='x'?'Game saved (no result)':'Result saved'); break;
+    case 'h-f': histCourt=k; render(); break;
+    case 'h-r': histRange=k; render(); break;
+    case 'h-v': histView=k; render(); break;
+    case 'h-del':{ const i=S.hist.findIndex(x=>String(x.d)===id); if(i<0)break;
+      if(confirmKey!=='hd'+id){confirmKey='hd'+id;render();break;} confirmKey=null; S.hist.splice(i,1); save(); render(); break;}
+    case 'h-win':{ const x=S.hist.find(x=>String(x.d)===id); if(x){ x.w=x.w==='a'?'b':x.w==='b'?'':'a'; save(); render(); } break;}
+    case 'h-clear': if(confirmKey!=='hclear'){confirmKey='hclear';render();break;} confirmKey=null; S.hist=[]; save(); render(); toast('History cleared'); break;
+    case 'cancel': finish(ci,false); break;
+    case 'reshuffle':{ const c=S.courts[ci]; const old=c.p; c.p=[];
+      // try a fresh group from the queue first; if not enough, mix the current players with the queue
+      if(!fillCourt(ci,true,old)){ if(!fillCourt(ci,true)){c.p=old;toast('Not enough players to reshuffle');} }
+      save();render(); break;}
+    case 'lv':{ const c=S.courts[ci]; const has=c.lv.includes(k); if(has&&c.lv.length===1){toast('Keep at least one level');break;} c.lv=has?c.lv.filter(x=>x!==k):c.lv.concat(k).sort(); save();render(); break;}
+    case 'court-pl': sheetCourtPlayer(ci,id); break;
+    case 'sub-rest': replace(ci,id,null,true); break;
+    case 'sub-auto': replace(ci,id,null,false); break;
+    case 'sub-pick': replace(ci,id,el.dataset.in,false); break;
+    case 'wait-pl': sheetWaiting(id); break;
+    case 'rest': S.resting[id]=1; closeSheet(); save(); render(); break;
+    case 'unrest': delete S.resting[id]; save(); render(); toast(byId(id).n+' is back in the queue'); break;
+    case 'checkout': delete S.present[id]; delete S.resting[id]; closeSheet(); save(); render(); break;
+    case 'addto': if(S.courts[ci].p.length<need()){S.courts[ci].p.push(id);} closeSheet(); save(); render(); break;
+    case 'ci-f': ciFilter=k; render(); break;
+    case 'pl-f': plFilter=k; render(); break;
+    case 'ci':{ const oc=onCourt();
+      if(S.present[id]){ if(oc[id]!==undefined){toast('On court now — replace them from the Courts tab first');break;} delete S.present[id]; delete S.resting[id]; }
+      else S.present[id]=1;
+      save(); render(); break;}
+    case 'ci-all': case 'ci-none':{ const oc=onCourt();
+      S.players.filter(p=>ciFilter==='All'||p.c===ciFilter).forEach(p=>{ if(a==='ci-all') S.present[p.id]=1; else if(oc[p.id]===undefined){delete S.present[p.id];delete S.resting[p.id];} });
+      save(); render(); break;}
+    case 'bulk':{ const t=$('#bulk').value; let n=0;
+      t.split(/\r?\n/).forEach(line=>{ line=line.trim(); if(!line) return;
+        let parts=line.split(/\t|,|;/).map(s=>s.trim()).filter(Boolean); if(!parts.length) return;
+        let t='S'; parts=parts.filter((x,i)=>{ if(i>0&&/^(guest|g|sub|subscriber|member)$/i.test(x)){ if(/^g/i.test(x)) t='G'; return false;} return true; });
+        if(!parts.length) return;
+        let c='C', name=parts[0];
+        const last=parts[parts.length-1].toUpperCase();
+        if(parts.length>1 && CATS.includes(last)){ c=last; name=parts.slice(0,-1).join(' '); }
+        else { const m=line.match(/^(.*?)[\s\-–(]+([ABCD])\)?$/i); if(m&&m[1].trim()){name=m[1].trim();c=m[2].toUpperCase();} }
+        S.players.push({id:uid(),n:name.slice(0,40),c,t}); n++; });
+      save(); render(); toast(`Added ${n} player${n===1?'':'s'}`); break;}
+    case 'sample':{ const first=['Alex','Ben','Carlo','Dina','Eli','Faisal','Gina','Hana','Ivan','Jo','Kai','Lea','Mo','Nina','Omar','Pia','Quinn','Rafi','Sara','Tom'];
+      for(let i=0;i<100;i++){ S.players.push({id:uid(),n:first[i%20]+' '+(Math.floor(i/20)+1),c:CATS[i<20?0:i<50?1:i<80?2:3]}); }
+      save(); render(); toast('100 sample players added'); break;}
+    case 'rename': sheetRename(id); break;
+    case 'del':
+      if(confirmKey!=='del'+id){confirmKey='del'+id;render();break;}
+      confirmKey=null; S.players=S.players.filter(p=>p.id!==id); ['present','resting','games','lastEnd'].forEach(x=>delete S[x][id]);
+      S.courts.forEach(c=>c.p=c.p.filter(x=>x!==id)); save(); render(); break;
+    case 'courts+': S.courts.push({lv:CATS.slice(),p:[],t:0}); save(); render(); break;
+    case 'courts-':{ const last=S.courts[S.courts.length-1]; if(last.p.length){toast('Clear the last court first');break;} S.courts.pop(); save(); render(); break;}
+    case 'mode': if(S.courts.some(c=>c.p.length)){toast('Finish or clear all courts first');break;} S.mode=k; save(); render(); break;
+    case 'mix': S.mix=k; save(); render(); break;
+    case 'auto': S.autoNext=k==='1'; save(); render(); break;
+    case 'reset':
+      if(confirmKey!=='reset'){confirmKey='reset';render();break;}
+      confirmKey=null; S.present={};S.resting={};S.games={};S.lastEnd={};S.partners={};S.paid={}; S.courts.forEach(c=>{c.p=[];c.t=0;}); save(); render(); toast('New session started'); break;
+    case 'wipe':
+      if(confirmKey!=='wipe'){confirmKey='wipe';render();break;}
+      confirmKey=null; const keep=S.courts.length; S=fresh(); S.courts=Array.from({length:keep},()=>({lv:CATS.slice(),p:[],t:0})); save(); render(); break;
+    case 'pick': pickCourt=ci; pickSel=[]; pickCat='All'; sheetPick(); break;
+    case 'pick-f': pickCat=k; sheetPick(); break;
+    case 'pick-t':{ const i=pickSel.indexOf(id); if(i>=0) pickSel.splice(i,1); else if(pickSel.length<need()) pickSel.push(id); else toast('Already '+need()+' selected — tap one to remove'); sheetPick(); break;}
+    case 'pick-go':{ const c=S.courts[pickCourt]; if(c.p.length||pickSel.length!==need()) break;
+      const w=new Set(waiting().map(p=>p.id)); if(!pickSel.every(x=>w.has(x))){toast('Someone is no longer available');pickSel=pickSel.filter(x=>w.has(x));sheetPick();break;}
+      c.p=need()===4?arrange(pickSel.slice()):pickSel.slice(); c.t=Date.now(); pickSel=[]; closeSheet(); save(); render(); break;}
+    case 'upd-check': toast('Checking…'); checkUpdate(true); break;
+    case 'upd-go': doUpdate(); break;
+    case 'settype':{ const p=byId(id); if(p){p.t=p.t==='G'?'S':'G'; save(); render();} break;}
+    case 'prio': S.prio=k; save(); render(); break;
+    case 'pay-f': payFilter=k; render(); break;
+    case 'paid': if(S.paid[id]) delete S.paid[id]; else S.paid[id]=1; save(); render(); break;
+    case 'g+': S.games[id]=(S.games[id]||0)+1; S.present[id]=1; save(); render(); break;
+    case 'g-': if((S.games[id]||0)>0){ S.games[id]--; save(); render(); } break;
+    case 'copypay': try{ navigator.clipboard.writeText($('#paytxt').value).then(()=>toast('Copied'),()=>{$('#paytxt').select();toast('Select & copy manually');}); }catch(err){ $('#paytxt').select(); toast('Select & copy manually'); } break;
+    case 'copy': try{ navigator.clipboard.writeText($('#exp').value).then(()=>toast('Copied'),()=>{$('#exp').select();toast('Select & copy manually');}); }catch(err){ $('#exp').select(); toast('Select & copy manually'); } break;
+  }
+});
+document.addEventListener('change',e=>{
+  const el=e.target; if(el.dataset.act==='setcat'){ const p=byId(el.dataset.id); if(p){p.c=el.value; save(); render();} }
+  if(el.id==='file-in'&&el.files&&el.files[0]) importFile(el.files[0]);
+  if(el.dataset.fee){ const v=parseFloat(String(el.value).replace(',','.')); const k=el.dataset.fee;
+    if(isFinite(v)&&v>=0&&(k!=='gn'||v>=1)){ S.fee[k]=k==='gn'?Math.round(v):v; save(); toast('Fee updated'); } render(); }
+});
+let xlsxLoading=null;
+function loadXLSX(){
+  if(window.XLSX) return Promise.resolve();
+  if(!xlsxLoading) xlsxLoading=new Promise((res,rej)=>{const s=document.createElement('script');s.src=IS_APP?'file:///android_asset/xlsx.full.min.js':'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=res;s.onerror=()=>{xlsxLoading=null;rej();};document.head.appendChild(s);});
+  return xlsxLoading;
+}
+function parseCat(v){
+  const s=String(v==null?'':v).trim().toUpperCase().replace(/^(CAT(EGORY)?|LEVEL|GRADE|CLASS)\s*/,'');
+  if(CATS.includes(s)) return s;
+  const n={'1':'A','2':'B','3':'C','4':'D'}[s]; return n||null;
+}
+function importRows(rows){
+  rows=rows.map(r=>(r||[]).map(x=>x==null?'':String(x).trim())).filter(r=>r.some(x=>x));
+  if(!rows.length) return toast('The file looks empty');
+  let nameCol=0, catCol=-1, start=0;
+  const head=rows[0].map(x=>x.toLowerCase());
+  const ni=head.findIndex(x=>/name|player/.test(x));
+  const ci=head.findIndex(x=>/cat|level|skill|grade|class|group|rank/.test(x));
+  const ti=head.findIndex(x=>/type|member|status|guest|subscri/.test(x));
+  if(ni>=0||ci>=0||ti>=0){ start=1; if(ni>=0) nameCol=ni; if(ci>=0) catCol=ci; }
+  if(catCol<0){ // guess: the column whose values are mostly A-D
+    const w=Math.max(...rows.map(r=>r.length)); let best=-1,bs=0;
+    for(let c=0;c<w;c++){ if(c===nameCol) continue; const sc=rows.slice(start).filter(r=>parseCat(r[c])).length; if(sc>bs){bs=sc;best=c;} }
+    catCol=best;
+  }
+  const idx={}; S.players.forEach(p=>idx[p.n.toLowerCase()]=p);
+  let added=0, updated=0, noCat=0;
+  rows.slice(start).forEach(r=>{
+    const name=(r[nameCol]||'').slice(0,40); if(!name) return;
+    let c=catCol>=0?parseCat(r[catCol]):null; if(!c){c='C';noCat++;}
+    const tv=ti>=0?String(r[ti]||'').trim():''; const t=/^g/i.test(tv)?'G':(/^(s|m)/i.test(tv)?'S':null);
+    const ex=idx[name.toLowerCase()];
+    if(ex){ let ch=false; if(ex.c!==c){ex.c=c;ch=true;} if(t&&ex.t!==t){ex.t=t;ch=true;} if(ch) updated++; }
+    else { const p={id:uid(),n:name,c,t:t||'S'}; S.players.push(p); idx[name.toLowerCase()]=p; added++; }
+  });
+  save(); render();
+  toast(`Imported: ${added} added${updated?', '+updated+' updated':''}${noCat?' · '+noCat+' had no category (set to C)':''}`);
+}
+async function importFile(f){
+  toast('Reading '+f.name+'…');
+  try{
+    if(/\.csv$/i.test(f.name)){
+      const t=await f.text();
+      const sep=t.includes('\t')?'\t':(t.split(';').length>t.split(',').length?';':',');
+      return importRows(t.split(/\r?\n/).map(l=>l.split(sep).map(x=>x.replace(/^"|"$/g,''))));
+    }
+    await loadXLSX();
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    importRows(XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:''}));
+  }catch(err){ toast('Could not read that file — try saving it as .xlsx or .csv'); }
+  const fi=document.getElementById('file-in'); if(fi) fi.value='';
+}
+document.addEventListener('input',e=>{
+  if(e.target.id==='ci-s'){ ciSearch=e.target.value; const pos=e.target.selectionStart; render(); const i=$('#ci-s'); i.focus(); try{i.setSelectionRange(pos,pos);}catch(_){} }
+  if(e.target.id==='pl-s'){ plSearch=e.target.value; const pos=e.target.selectionStart; render(); const i=$('#pl-s'); i.focus(); try{i.setSelectionRange(pos,pos);}catch(_){} }
+});
+document.addEventListener('submit',e=>{
+  e.preventDefault();
+  if(e.target.id==='addf'){ const n=$('#add-n').value.trim(); if(!n) return; S.players.push({id:uid(),n:n.slice(0,40),c:$('#add-c').value,t:$('#add-t').value}); save(); render(); toast('Added '+n); setTimeout(()=>{const i=$('#add-n');i&&i.focus();},0); }
+  if(e.target.id==='renf'){ const p=byId(e.target.dataset.id); const n=$('#ren-n').value.trim(); if(p&&n){p.n=n.slice(0,40); save();} closeSheet(); render(); }
+});
+setInterval(()=>{document.querySelectorAll('[data-t]').forEach(el=>{el.textContent=elapsed(+el.dataset.t);});},30000);
+/* ---------- app updates (Android app only) ---------- */
+let updInfo=null, updBusy=false;
+function showUpdBanner(){
+  let b=document.getElementById('updbar');
+  if(!updInfo){ if(b) b.remove(); return; }
+  if(!b){ b=document.createElement('div'); b.id='updbar'; document.querySelector('header').after(b); }
+  b.innerHTML=`<span>New version ${esc(updInfo.version)} available${updInfo.notes?' — '+esc(updInfo.notes):''}</span><button class="btn sm lime" data-act="upd-go">Update</button>`;
+}
+async function checkUpdate(manual){
+  if(!IS_APP) return;
+  try{
+    const r=await fetch(UPD_BASE+'version.json?t='+Date.now(),{cache:'no-store'});
+    const j=await r.json();
+    if(+j.version>APP_VERSION){ updInfo=j; } else { updInfo=null; if(manual) toast('You have the latest version'); }
+  }catch(e){ if(manual) toast('No internet — could not check for updates'); }
+  showUpdBanner(); if(tab==='settings') render();
+}
+async function doUpdate(){
+  if(updBusy) return; updBusy=true; toast('Downloading update…');
+  try{
+    const r=await fetch(UPD_BASE+'index.html?t='+Date.now(),{cache:'no-store'});
+    const t=await r.text();
+    if(r.ok && t.length>20000 && t.indexOf('APP_VERSION=')>0 && /^\s*<!DOCTYPE html>/i.test(t)){
+      try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){}
+      if(window.AndroidApp.saveUpdate(t)){ location.reload(); return; }
+    }
+    toast('Update failed — please try again');
+  }catch(e){ toast('No internet — could not update'); }
+  updBusy=false;
+}
+if(IS_APP){ setSync(true,'Saved on this tablet'); setTimeout(()=>checkUpdate(false),1200); }
+
+render();
+})();
+</script>
+</body>
+</html>
