@@ -14,7 +14,80 @@ Match Maker runs the club's badminton sessions: attendance, fair doubles matches
 
 The Android app is the main version at the court. The Android app and the Claude link do not share data.
 
-## Quick start
+## How to use the app
+
+Set up once, then each playing day the organizer runs the session from the Main tablet while players score on the court tablets.
+
+### A. Before the first session (once)
+
+1. **Install the app** on every tablet: open MatchMaker.apk → allow this source → **Install** (Play Protect: **More details → Install anyway**). A newer APK installs over the old one and keeps the data.
+2. **Prepare the player list** in MatchMaker_Template.xlsx: Players sheet, columns Name, Category (A–D), Type (Subscriber or Guest). Keep Players as the first sheet.
+3. **Copy the Excel file to the Main tablet** (WhatsApp, email or Drive → save to Downloads).
+4. On the Main tablet: **Players → Choose file** → pick the file.
+5. Check **Settings**: Number of courts (for example 4), Doubles, Mixing skill levels, Subscriber priority, Fees.
+6. Optional: add **player photos** — tap a name → 📷 **Take photo**.
+
+### B. Setting up the tablets at the court (each day)
+
+1. Turn on a **hotspot** (a phone or the Main tablet) and connect every tablet to it. No mobile data is needed.
+2. **Main tablet (organizer):** Settings → Tablet sync → **Main tablet**. Note the address it shows (e.g. 192.168.43.1).
+3. **Court tablets (one per court):** Settings → Tablet sync → **Court tablet** → Main address, court, PIN → **Start court mode**.
+4. **Display tablet:** Settings → Tablet sync → **Display tablet** → Main address → **Connect**.
+5. Only one tablet? Leave Tablet sync **Off** and run everything on it.
+
+```
+          Hotspot network (no internet needed)
+                 ┌──────────────────────┐
+                 │ Main tablet (organizer)│
+                 └──────────┬───────────┘
+      players & courts ↓    │    ↑ scores
+   ┌────────┬────────┬──────┴─┬────────┬──────────┐
+ Court 1  Court 2  Court 3  Court 4   Display (view only)
+```
+
+### C. Running the session (organizer, on the Main tablet)
+
+1. **Attendance:** tick everyone who arrives (Check in all, or by level).
+2. **Courts:** **Auto match** (fair, balanced teams) or **Pick players** (tick 4, fewest games first). **Fill empty courts** does all at once.
+3. The court tablet switches to that match's scoreboard automatically.
+4. **Someone can't play:** tap their name → **Can't play — replace & set resting**, or pick a substitute. Later: **Back to play**.
+5. **Match ends:** tap **Game done**. Winner is picked from the score and saved to History; the court empties.
+6. Put the next players on and repeat.
+7. **Payments:** tap **Unpaid → Paid** as players pay.
+
+### D. Scoring a match (players, on the court tablet)
+
+1. After the toss, tap **Serves first**; use **⇄ Swap left/right** so names match positions (only at 0–0).
+2. Tap the big score of the team that wins each rally. The top bar shows server, side and receiver.
+3. Mistake? **↶ Undo**.
+4. Interval at 11, deuce at 20–20, 29–29 are announced; sides swap on screen when teams change ends.
+5. When over, the tablet shows **Match finished**; the organizer records it.
+6. Leaving court mode: **⚙** + PIN.
+
+### E. Closing the day
+
+1. **Payments → Unpaid**: collect what is left.
+2. **Export Excel report** and save it (record and backup).
+3. **Settings → Start new session** (tap twice).
+
+## Everyday tasks (on the Main tablet)
+
+| I want to… | Do this |
+| --- | --- |
+| Add one player or guest | Players → name, level, Subscriber/Guest → Add |
+| Add many players | Players → Choose file, or paste `Maria, B, Guest` lines into Add many at once |
+| Change level or Sub/Guest | Players → dropdown, or tap Sub/Guest |
+| Rename or add a photo | Players → Edit, or tap the name on a court / in the queue |
+| Mark someone resting | Queue → name → Rest; on court → Can't play |
+| Someone went home | Queue → name → Went home, or untick in Attendance |
+| Give guests more turns | Settings → Subscriber priority → Fair turns |
+| Fix a wrong winner | History → Change winner |
+| Send the day's totals | Payments → Copy summary → WhatsApp |
+| Get the Excel report | Payments → Export Excel report |
+| Start a new day | Settings → Start new session (twice) |
+| Get a new version | Tap Update (court tablets update themselves while waiting) |
+
+## Quick start (short version)
 
 First-time setup:
 1. Install MatchMaker.apk on the tablet.
@@ -166,6 +239,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 7 Nov 2026 | Docs | Full how-to guide and everyday tasks added |
 | 7 Nov 2026 | Page v12 | Court tablets update themselves while their court is waiting; all tablets re-check for updates every 15 min (court: 3 min) |
 | 7 Nov 2026 | Page v11 | Scoreboard layout fixed for landscape / short screens |
 | 7 Nov 2026 | Page v10, APK 1.7 | Court tablets locked to one court's scoreboard |
