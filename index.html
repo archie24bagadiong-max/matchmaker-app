@@ -235,7 +235,7 @@ body.noscroll{overflow:hidden}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=5;
+const APP_VERSION=6;
 const IS_APP=!!window.AndroidApp;
 const UPD_BASE='https://raw.githubusercontent.com/archie24bagadiong-max/matchmaker-app/main/';
 const LS_KEY=IS_APP?'bmm_offline_v1':'bmm_state_v1';
@@ -565,6 +565,14 @@ function scEnsure(i){
   return c.sc;
 }
 const scTeam=(sc,t)=>sc.pos[t].map(id=>(byId(id)||{}).n||'?').join(' & ');
+function scLeader(sc){
+  if(!sc) return '';
+  if(sc.done) return sc.done;
+  const ga=scWon(sc,'a'), gb=scWon(sc,'b');
+  if(ga!==gb) return ga>gb?'a':'b';
+  if(sc.a!==sc.b) return sc.a>sc.b?'a':'b';
+  return '';
+}
 const scWon=(sc,t)=>sc.g.filter(x=>t==='a'?x[0]>x[1]:x[1]>x[0]).length;
 const scGameOver=(a,b)=>{const m=Math.max(a,b);return (m>=SC.pts&&Math.abs(a-b)>=2)||m>=SC.cap;};
 function scSummary(sc){
@@ -828,7 +836,7 @@ document.addEventListener('click',e=>{
     case 'go': tab=el.dataset.tab; render(); break;
     case 'fill-all': fillAll(); break;
     case 'gen': if(fillCourt(ci)){save();render();} break;
-    case 'finish':{ const sc=S.courts[ci].sc; if(sc&&sc.done){ const w=sc.done; finish(ci,true,w); toast('Result saved: '+scSummary(sc||{})); break; } sheetWinner(ci); break;}
+    case 'finish':{ const sc=S.courts[ci].sc, w=scLeader(sc); if(w){ const who=scTeam(sc,w), sum=scSummary(sc); finish(ci,true,w); toast(who+' win · '+sum); break; } sheetWinner(ci); break;}
     case 'score': scoreOpen=ci; renderScore(); break;
     case 'sc-close': scoreOpen=null; renderScore(); render(); break;
     case 'sc-pt': scPoint(scoreOpen,k); break;

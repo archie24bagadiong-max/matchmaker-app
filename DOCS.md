@@ -62,7 +62,7 @@ Each court has a **Keep score** button that opens a full-screen scoreboard, run 
 3. Serving side wins the rally: same server, switches court. Receiving side wins: they serve, from the court matching their score.
 4. Alerts: interval at 11, change ends between games and at 11 in game 3, 20–20 and 29–29.
 5. The game winner serves first in the next game. **Undo** reverses the last rally (any number of times); **Reset score** clears it.
-6. When the match ends, **Save result & clear court** records the winner and game scores in History (and the Match History sheet's Score column). **Game done** does the same if the match is finished; if not, it asks for the winner and stores the partial score.
+6. When the match ends, **Save result & clear court** records the winner and game scores in History (and the Match History sheet's Score column). **Game done** picks the winner automatically from the score: the team with more games won, or if games are level, the higher current score. It asks only when nothing separates the teams (no score kept, or a tied score).
 7. Replacing a player mid-match keeps the score; new players on a court start a fresh score.
 
 ## Fees
@@ -129,6 +129,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 7 Nov 2026 | Page v6 | Game done picks the winner from the score |
 | 7 Nov 2026 | Page v5 | Title adds Badminton Club |
 | 7 Nov 2026 | Page v4 | App title: Match Maker - JAMREIBIZ |
 | 7 Nov 2026 | Page v3 | Live badminton scoring with official serving rules |
