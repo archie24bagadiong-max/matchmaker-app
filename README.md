@@ -1,4 +1,4 @@
-# Badminton Match Maker
+# Match Maker - JAMREIBIZ
 
 Update source for the Match Maker Android app.
 
