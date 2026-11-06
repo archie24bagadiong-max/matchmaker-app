@@ -253,6 +253,20 @@ body.courtmode nav,body.courtmode main{display:none}
 .cw-s{opacity:.8;font-size:16px;max-width:420px}
 .pinin{width:200px;text-align:center;font-size:28px;letter-spacing:8px;color:var(--ink)}
 .cdone{flex:2;display:flex;align-items:center;justify-content:center;background:rgba(200,241,105,.2);border:1px solid var(--lime);border-radius:10px;font-weight:700;padding:8px;text-align:center}
+.helpbtn{flex:none;width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.6);background:transparent;color:#fff;font-weight:800;font-size:16px;padding:0;margin-left:4px}
+.hsec{background:#fff;border:1px solid var(--border);border-radius:12px;margin-bottom:8px;overflow:hidden}
+.hhead{width:100%;display:flex;justify-content:space-between;align-items:center;border:0;background:none;padding:14px;font-weight:700;font-size:16px;text-align:left}
+.hsec.open .hhead{background:#eef5f0}
+.chev{font-size:20px;color:var(--court2)}
+.hbody{padding:4px 16px 14px;line-height:1.5;font-size:15px}
+.hbody ol,.hbody ul{padding-left:20px;margin:8px 0}
+.hbody li{margin-bottom:6px}
+.htbl{width:100%;border-collapse:collapse;font-size:14px}
+.htbl td{padding:8px 6px;border-bottom:1px solid var(--border);vertical-align:top}
+.htbl td:first-child{font-weight:600;width:45%}
+.schelp{position:absolute;left:50%;top:60px;transform:translateX(-50%);width:min(560px,92vw);max-height:80vh;overflow:auto;background:#fff;color:var(--ink);border-radius:14px;padding:16px 18px;z-index:5;box-shadow:0 10px 40px rgba(0,0,0,.35);line-height:1.45}
+.schelp ol{padding-left:20px}
+.schelp li{margin-bottom:6px}
 .emptybox{text-align:center;padding:26px 14px;color:var(--muted)}
 .emptybox b{display:block;color:var(--ink);font-size:17px;margin-bottom:6px}
 </style>
@@ -262,6 +276,7 @@ body.courtmode nav,body.courtmode main{display:none}
   <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="25" r="5" fill="#fff"/><path d="M12 21 7 5l6 3 3-5 3 5 6-3-5 16" stroke="#c8f169" stroke-width="2" stroke-linejoin="round" fill="none"/></svg>
   <h1>Match<span>Maker</span><em>JAMREIBIZ Badminton Club</em></h1>
   <div class="sync" id="sync"><i></i><span>Local</span></div>
+  <button class="helpbtn" data-act="go" data-tab="help" aria-label="How to use">?</button>
 </header>
 <main id="app"></main>
 <nav id="nav">
@@ -281,7 +296,7 @@ body.courtmode nav,body.courtmode main{display:none}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=12;
+const APP_VERSION=13;
 const IS_APP=!!window.AndroidApp;
 const UPD_BASE='https://raw.githubusercontent.com/archie24bagadiong-max/matchmaker-app/main/';
 let ROLE='off', MAIN_IP='';
@@ -483,6 +498,7 @@ function render(){
   else if(tab==='players') app.innerHTML=vPlayers();
   else if(tab==='pay') app.innerHTML=vPay();
   else if(tab==='hist') app.innerHTML=vHist();
+  else if(tab==='help') app.innerHTML=vHelp();
   else app.innerHTML=vSettings();
   if(scoreOpen!==null) renderScore();
 }
@@ -699,7 +715,8 @@ function renderScore(){
   if(sc.done) msg=`<b>${esc(scTeam(sc,sc.done))} win</b> ${esc(scSummary(sc))}`;
   else if(!sc.srv) msg='Toss done? Tap <b>Serves first</b> for the team that serves. Use ⇄ to set who stands in the right court.';
   else msg=`<b>${nm(srvId)}</b> serves from the <b>${sc[sc.srv]%2?'left':'right'}</b> court to <b>${nm(rcvId)}</b>`;
-  v.innerHTML=`<div class="sbar"><b>Court ${i+1}</b><span>${sc.done?'Match finished':'Game '+(sc.g.length+1)+' of '+SC.best+' · to '+SC.pts}</span>${IS_COURT?`<button class="btn sm gear" data-act="court-exit" aria-label="Organizer">⚙</button>`:`<button class="btn sm" data-act="sc-close">Close</button>`}</div>
+  v.innerHTML=`<div class="sbar"><b>Court ${i+1}</b><span>${sc.done?'Match finished':'Game '+(sc.g.length+1)+' of '+SC.best+' · to '+SC.pts}</span><button class="btn sm gear" data-act="sc-help" aria-label="How to score">?</button>${IS_COURT?`<button class="btn sm gear" data-act="court-exit" aria-label="Organizer">⚙</button>`:`<button class="btn sm" data-act="sc-close">Close</button>`}</div>
+  ${scHelp?`<div class="schelp"><b>How to score</b><ol><li>After the toss, tap <b>Serves first</b> on the serving team. Use <b>⇄ Swap</b> so the names match where players stand (only at 0–0).</li><li>Tap the big number of the team that <b>wins the rally</b>. Every rally is a point.</li><li>The top line tells you who serves, from which side, and who receives. Even score = serve from the right, odd = from the left.</li><li>Wrong tap? Press <b>↶ Undo</b>.</li><li>Games go to 21, win by 2, maximum 30. Best of 3 games. Sides swap on screen when teams change ends.</li><li>When the match is over, tell the organizer.</li></ol><button class="btn lime sm" data-act="sc-help">Got it</button></div>`:''}
   <div class="smsg">${msg}</div>
   <div class="sboard">${side(sc.flip?'b':'a')}<div class="snet"></div>${side(sc.flip?'a':'b')}</div>
   <div class="sprev">${prev||'<span>Tap a score to add a point · rally scoring</span>'}</div>
@@ -719,6 +736,59 @@ function sheetWinner(ci){
   </div>`);
 }
 let histCourt='All', histRange='today', histView='matches';
+let scHelp=false, helpOpen='session';
+function vHelp(){
+  const sec=(id,title,body)=>`<div class="hsec ${helpOpen===id?'open':''}"><button class="hhead" data-act="help-sec" data-k="${id}"><span>${title}</span><span class="chev">${helpOpen===id?'−':'+'}</span></button>${helpOpen===id?`<div class="hbody">${body}</div>`:''}</div>`;
+  return `<div class="row" style="margin:4px 0 10px"><h2 style="margin:0;flex:1">How to use</h2><button class="btn sm" data-act="go" data-tab="courts">← Back</button></div>
+  <p class="hint" style="margin:0 0 12px">Tap a topic to open it. ${IS_DISPLAY?'This tablet is a <b>Display</b>: it shows the Main tablet live and cannot change anything.':''}</p>
+  ${sec('first','1. First time setup',`<ol>
+    <li>Install <b>MatchMaker.apk</b> on every tablet. A newer APK installs over the old one and keeps your data — don't uninstall.</li>
+    <li>Put your players in the Excel template (Players sheet: <b>Name</b>, <b>Category</b> A–D, <b>Type</b> Subscriber/Guest).</li>
+    <li>Copy the file to the Main tablet, then <b>Players → Choose file</b>.</li>
+    <li>Check <b>Settings</b>: number of courts, Doubles, skill mixing, subscriber priority and fees.</li>
+    <li>Optional: tap a player's name → <b>📷 Take photo</b>.</li></ol>`)}
+  ${sec('tablets','2. Setting up several tablets',`<ol>
+    <li>Turn on a <b>hotspot</b> and connect all tablets to it. No internet needed.</li>
+    <li><b>Main tablet</b> (organizer): Settings → Tablet sync → <b>Main tablet</b>. Note the address, e.g. 192.168.43.1.</li>
+    <li><b>Court tablets</b> (one per court): Settings → Tablet sync → <b>Court tablet</b> → address, court number, PIN → <b>Start court mode</b>.</li>
+    <li><b>Display tablet</b>: Settings → Tablet sync → <b>Display tablet</b> → address → <b>Connect</b>.</li>
+    <li>Only one tablet? Leave Tablet sync <b>Off</b> and do everything on it.</li></ol>
+    <p class="hint">Only the Main tablet makes changes. Court tablets only score; Display tablets only show.</p>`)}
+  ${sec('session','3. Running a session',`<ol>
+    <li><b>Attendance:</b> tick everyone who arrives (Check in all, or by level).</li>
+    <li><b>Courts:</b> tap <b>Auto match</b> (fair, balanced teams) or <b>Pick players</b> (choose 4 yourself). <b>Fill empty courts</b> does all courts.</li>
+    <li>Scores are kept on the court tablet, or tap <b>🏸 Keep score</b> on the court card.</li>
+    <li>Someone can't play? Tap their name → <b>Can't play</b>, or pick a substitute. Later tap <b>Back to play</b>.</li>
+    <li>Match over? Tap <b>Game done</b>. The winner is picked from the score and saved to History. The court empties.</li>
+    <li>Put the next players on and repeat.</li>
+    <li><b>Payments:</b> tap <b>Unpaid → Paid</b> as players pay.</li></ol>`)}
+  ${sec('score','4. Keeping score',`<ol>
+    <li>After the toss, tap <b>Serves first</b>. Use <b>⇄ Swap</b> so names match where players stand (only at 0–0).</li>
+    <li>Tap the big number of the team that wins the rally.</li>
+    <li>The top line shows who serves, from which side, and who receives.</li>
+    <li><b>↶ Undo</b> fixes a wrong tap.</li>
+    <li>21 points, win by 2, maximum 30, best of 3. Sides swap automatically at change of ends.</li></ol>`)}
+  ${sec('fees','5. Fees and payments',`<ul>
+    <li><b>Subscriber:</b> 2.50 SR per game.</li>
+    <li><b>Guest:</b> 25 SR minimum for up to 3 games, then 3.33 SR per extra game (6 games = 35 SR).</li>
+    <li>Fees update automatically as games are played. Change prices in Settings → Fees.</li>
+    <li><b>Copy summary</b> on Payments gives a list to paste in WhatsApp.</li></ul>`)}
+  ${sec('end','6. End of the day',`<ol>
+    <li>Payments → <b>Unpaid</b>: collect what's left.</li>
+    <li><b>Export Excel report</b> and save it — your record and backup.</li>
+    <li>Settings → <b>Start new session</b> (tap twice). Players, photos and history stay.</li></ol>`)}
+  ${sec('tasks','7. Quick answers',`<table class="htbl">
+    <tr><td>Add a player or guest</td><td>Players → name, level, type → Add</td></tr>
+    <tr><td>Change level or Sub/Guest</td><td>Players → dropdown / Sub-Guest button</td></tr>
+    <tr><td>Add a photo</td><td>Tap the name → Take photo</td></tr>
+    <tr><td>Someone went home</td><td>Waiting queue → name → Went home</td></tr>
+    <tr><td>Guests rarely play</td><td>Settings → Subscriber priority → Fair turns</td></tr>
+    <tr><td>Wrong winner saved</td><td>History → Change winner</td></tr>
+    <tr><td>Leave court mode</td><td>⚙ on the court tablet + PIN</td></tr>
+    <tr><td>Display says offline</td><td>Same hotspot? Re-enter the Main address</td></tr>
+    <tr><td>New version</td><td>Tap Update on the top bar</td></tr></table>`)}
+  <p class="hint" style="margin-top:14px">Full guide with pictures: the Match Maker documentation (ask the organizer for the link). App version ${APP_VERSION}.</p>`;
+}
 function todayRows(){
   const d=dayKey(Date.now());
   return S.players.filter(p=>S.present[p.id]||(S.games[p.id]||0)>0).map(p=>({day:d,n:p.n,c:p.c,t:p.t,g:S.games[p.id]||0,f:Math.round(fee(p)*100)/100,pd:S.paid[p.id]?1:0}));
@@ -800,7 +870,8 @@ function vHist(){
 }
 function vSettings(){
   const exp=S.players.map(p=>p.n+', '+p.c+(p.t==='G'?', Guest':'')).join('\n');
-  return `${IS_APP?`<h2>Tablet sync (local network)</h2>
+  return `<button class="btn pri" style="width:100%;margin-top:10px" data-act="go" data-tab="help">📖 How to use this app</button>
+  ${IS_APP?`<h2>Tablet sync (local network)</h2>
   <div class="card">${!CAN_SYNC?`<p class="hint" style="margin:0">Install the latest MatchMaker.apk on every tablet to use sync.</p>`:`
     <p class="hint" style="margin-top:0">Connect all tablets to the same hotspot or Wi-Fi. No internet needed. One <b>Main</b> tablet makes all changes; <b>Display</b> tablets show the same courts, scores and lists live.</p>
     <div class="seg"><button class="${ROLE==='off'?'on':''}" data-act="sync-role" data-k="off">Off</button><button class="${ROLE==='main'?'on':''}" data-act="sync-role" data-k="main">Main tablet</button><button class="${ROLE==='display'?'on':''}" data-act="sync-role" data-k="display">Display tablet</button><button class="${courtSetup?'on':''}" data-act="court-setup">Court tablet</button></div>
@@ -993,6 +1064,8 @@ document.addEventListener('click',e=>{
       const w=new Set(waiting().map(p=>p.id)); if(!pickSel.every(x=>w.has(x))){toast('Someone is no longer available');pickSel=pickSel.filter(x=>w.has(x));sheetPick();break;}
       c.p=need()===4?arrange(pickSel.slice()):pickSel.slice(); c.t=Date.now(); c.sc=null; pickSel=[]; closeSheet(); save(); render(); break;}
     case 'export': exportReport(); break;
+    case 'sc-help': scHelp=!scHelp; renderScore(); break;
+    case 'help-sec': helpOpen=helpOpen===k?'':k; render(); break;
     case 'court-exit': courtExit=true; renderScore(); break;
     case 'court-exit-no': courtExit=false; renderScore(); break;
     case 'court-exit-ok':{ const v=(document.getElementById('pin-in')||{}).value||''; if(COURT_PIN&&v!==COURT_PIN){ toast('Wrong PIN'); const i=document.getElementById('pin-in'); if(i){i.value='';i.focus();} break; } try{ localStorage.setItem('bmm_role','off'); }catch(e){} location.reload(); break;}
@@ -1183,7 +1256,7 @@ async function pollMain(){
 }
 /* ---------- court tablets ---------- */
 let courtExit=false, courtSetup=false, postPending=false, lastCourtKey='', posting=false;
-const COURT_OK=new Set(['sc-pt','sc-undo','sc-serve','sc-swap','sc-reset','court-exit','court-exit-no','court-exit-ok']);
+const COURT_OK=new Set(['sc-help','sc-pt','sc-undo','sc-serve','sc-swap','sc-reset','court-exit','court-exit-no','court-exit-ok']);
 const sameSet=(x,y)=>Array.isArray(x)&&Array.isArray(y)&&x.length===y.length&&x.every(v=>y.includes(v));
 function courtKey(){ const c=S.courts[COURT_NO]; return JSON.stringify([c&&c.p,c&&c.sc&&c.sc.seq,S.phRev]); }
 function mergeMine(mine){
@@ -1212,7 +1285,7 @@ function applyIncoming(){
   }
   if(changed){ save(); render(); }
 }
-const VIEW_OK=new Set(['go','ci-f','pl-f','h-f','h-r','h-v','pay-f','score','sc-close','sync-role','sync-ip','upd-check','upd-go','export','copypay','copy']);
+const VIEW_OK=new Set(['sc-help','go','ci-f','pl-f','h-f','h-r','h-v','pay-f','score','sc-close','sync-role','sync-ip','upd-check','upd-go','export','copypay','copy']);
 if(IS_DISPLAY) document.body.classList.add('display');
 if(IS_APP){
   if(ROLE==='main'){ try{ AndroidApp.startServer(); }catch(e){} shareState(); sharePhotos(); setInterval(applyIncoming,400); setInterval(syncHeader,3000); }
