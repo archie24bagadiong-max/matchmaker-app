@@ -53,6 +53,18 @@ Player tags: level badge A–D, SUB (blue) or GUEST (yellow), games played (e.g.
 
 Can't play: replaced by closest-level substitute and moved to Resting until Back to play; the unfinished game is not counted for them.
 
+## Scoring
+
+Each court has a **Keep score** button that opens a full-screen scoreboard, run from one tablet for all courts. Official BWF rules: rally point, games to 21, win by 2, capped at 30 (29–29: next point wins), best of 3.
+
+1. Tap **Serves first** on the team that won the toss; use **⇄ Swap left/right** to set who stands in the right court (only at 0–0).
+2. Tap a team's big score to give it the rally. The app shows who serves, from which court (even score = right, odd = left), and who receives.
+3. Serving side wins the rally: same server, switches court. Receiving side wins: they serve, from the court matching their score.
+4. Alerts: interval at 11, change ends between games and at 11 in game 3, 20–20 and 29–29.
+5. The game winner serves first in the next game. **Undo** reverses the last rally (any number of times); **Reset score** clears it.
+6. When the match ends, **Save result & clear court** records the winner and game scores in History (and the Match History sheet's Score column). **Game done** does the same if the match is finished; if not, it asks for the winner and stores the partial score.
+7. Replacing a player mid-match keeps the score; new players on a court start a fresh score.
+
 ## Fees
 
 Subscriber: 2.50 SR per game. Guest: 25 SR minimum covering 3 games, then 3.33 SR per extra game (6 games = 35 SR).
@@ -117,6 +129,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 7 Nov 2026 | Page v3 | Live badminton scoring with official serving rules |
 | 7 Nov 2026 | Page v2, APK 1.3 | Excel report export, payment ledger, Android file saving |
 | 7 Nov 2026 | Page v1, APK 1.2 | Fixed crash on opening |
 | 7 Nov 2026 | APK 1.1 | In-app updates |
