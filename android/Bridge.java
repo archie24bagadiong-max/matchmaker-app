@@ -16,7 +16,7 @@ public class Bridge {
     final MainActivity a;
     Bridge(MainActivity a) { this.a = a; }
 
-    @JavascriptInterface public int version() { return 5; }
+    @JavascriptInterface public int version() { return 6; }
 
     @JavascriptInterface
     public boolean saveUpdate(String html) {
@@ -86,6 +86,7 @@ public class Bridge {
     @JavascriptInterface public int serverPort() { return LocalServer.PORT; }
     @JavascriptInterface public void setShared(String json) { LocalServer.setState(json); }
     @JavascriptInterface public int clientCount() { return LocalServer.recentClients(); }
+    @JavascriptInterface public String takeIncoming() { return LocalServer.takeIncoming(); }
 
     /** IPv4 addresses of this tablet on Wi-Fi / hotspot, comma separated. */
     @JavascriptInterface

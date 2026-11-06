@@ -78,7 +78,17 @@ Several tablets can show the same session over a hotspot or Wi-Fi, with no inter
 - A Display tablet keeps its own data separately; switching back to **Off** brings it back.
 - The address can change when the hotspot restarts; re-enter it on the Displays if they show **Display · offline**.
 - The Main tablet keeps its screen on; keep the app open on it during the session.
-- How it works: the Main tablet runs a small server on port 8787 (`GET /state` returns the session as JSON); Displays poll it.
+**Court tablets (APK 1.7 or later).** A tablet can be locked to one court's scoreboard:
+
+1. On the court tablet: **Settings → Tablet sync → Court tablet**. Enter the Main tablet's address, choose the court, and set an organizer PIN (optional), then **Start court mode**.
+2. It shows only that court: a waiting screen until the organizer puts players on the court, then the full scoreboard. Players can choose who serves, swap sides at 0–0, score, undo and reset — nothing else.
+3. Every change is sent to the Main tablet within a second and shown on the Main and Display tablets.
+4. When the match ends, the court tablet shows "Match finished"; the organizer taps **Game done** on the Main tablet (winner picked automatically) and the court tablet returns to waiting.
+5. To leave court mode, tap ⚙ and enter the PIN.
+
+Example for 4 courts: tablets 1–4 = Court tablets, tablet 5 = Main, tablet 6 = Display.
+
+- How it works: the Main tablet runs a small server on port 8787 (`GET /state` returns the session as JSON, `POST /score` receives a court's score); Displays and Court tablets poll it. Each score carries a sequence number so the newest change wins.
 
 ## Player photos
 
@@ -156,6 +166,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 7 Nov 2026 | Page v10, APK 1.7 | Court tablets locked to one court's scoreboard |
 | 7 Nov 2026 | Page v9, APK 1.6 | Player photos from camera or gallery |
 | 7 Nov 2026 | Page v8 | Automatic change of ends on the scoreboard |
 | 7 Nov 2026 | Page v7, APK 1.5 | Tablet sync over local network; Android code now in Java (android/ folder) |

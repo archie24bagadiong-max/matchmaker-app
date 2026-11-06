@@ -219,6 +219,14 @@ body.display .spt{pointer-events:none}
 .av.big{width:84px;height:84px;font-size:26px;border:3px solid var(--border)}
 .phrow{display:flex;align-items:center;gap:14px;margin:14px 0 4px}
 .phbtns{display:flex;flex-wrap:wrap;gap:8px}
+body.courtmode nav,body.courtmode main{display:none}
+.gear{font-size:18px;padding:4px 10px}
+.cwait{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center}
+.cw-big{font-size:72px}
+.cw-t{font-family:'Barlow Condensed';font-size:34px;font-weight:800;text-transform:uppercase}
+.cw-s{opacity:.8;font-size:16px;max-width:420px}
+.pinin{width:200px;text-align:center;font-size:28px;letter-spacing:8px;color:var(--ink)}
+.cdone{flex:2;display:flex;align-items:center;justify-content:center;background:rgba(200,241,105,.2);border:1px solid var(--lime);border-radius:10px;font-weight:700;padding:8px;text-align:center}
 .emptybox{text-align:center;padding:26px 14px;color:var(--muted)}
 .emptybox b{display:block;color:var(--ink);font-size:17px;margin-bottom:6px}
 </style>
@@ -247,7 +255,7 @@ body.display .spt{pointer-events:none}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=9;
+const APP_VERSION=10;
 const IS_APP=!!window.AndroidApp;
 const UPD_BASE='https://raw.githubusercontent.com/archie24bagadiong-max/matchmaker-app/main/';
 let ROLE='off', MAIN_IP='';
@@ -255,7 +263,10 @@ try{ ROLE=localStorage.getItem('bmm_role')||'off'; MAIN_IP=localStorage.getItem(
 const CAN_SYNC=IS_APP&&typeof window.AndroidApp.startServer==='function';
 if(!CAN_SYNC) ROLE='off';
 const IS_DISPLAY=ROLE==='display';
-const LS_KEY=IS_APP?(IS_DISPLAY?'bmm_display_v1':'bmm_offline_v1'):'bmm_state_v1';
+const IS_COURT=ROLE==='court';
+let COURT_NO=0, COURT_PIN='';
+try{ COURT_NO=Math.max(0,(+localStorage.getItem('bmm_court')||1)-1); COURT_PIN=localStorage.getItem('bmm_pin')||''; }catch(e){}
+const LS_KEY=IS_APP?(IS_DISPLAY?'bmm_display_v1':IS_COURT?'bmm_court_v1':'bmm_offline_v1'):'bmm_state_v1';
 const CLIENT=Math.random().toString(36).slice(2);
 
 function fresh(){
@@ -438,6 +449,7 @@ function replace(courtIdx,outId,inId,rest){
 
 /* ---------- render ---------- */
 function render(){
+  if(IS_COURT){ renderScore(); return; }
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
   const app=$('#app');
   if(tab==='courts') app.innerHTML=vCourts();
@@ -608,7 +620,7 @@ function scPush(sc){ sc.undo.push(JSON.stringify({g:sc.g,a:sc.a,b:sc.b,srv:sc.sr
 function scPoint(i,t){
   const sc=scEnsure(i); if(!sc||sc.done) return;
   if(!sc.srv){ toast('First choose who serves'); return; }
-  scPush(sc);
+  scPush(sc); sc.seq=(sc.seq||0)+1;
   const o=t==='a'?'b':'a';
   if(sc.srv===t){ if(sc.pos[t].length>1) sc.pos[t]=[sc.pos[t][1],sc.pos[t][0]]; } // serving side wins: same server, switches service court
   else sc.srv=t;                                                                   // receiving side wins: they serve next
@@ -624,9 +636,9 @@ function scPoint(i,t){
   else if(sc.a===29&&sc.b===29){ flash('29 all — next point wins'); }
   save(); renderScore();
 }
-function scUndo(i){ const sc=S.courts[i]&&S.courts[i].sc; if(!sc||!sc.undo.length){ toast('Nothing to undo'); return; } const s=JSON.parse(sc.undo.pop()); Object.assign(sc,s); save(); renderScore(); }
-function scServe(i,t){ const sc=scEnsure(i); if(!sc||sc.a||sc.b||sc.g.length) return; sc.srv=t; save(); renderScore(); }
-function scSwap(i,t){ const sc=scEnsure(i); if(!sc||sc.a||sc.b||sc.pos[t].length<2) return; sc.pos[t]=[sc.pos[t][1],sc.pos[t][0]]; save(); renderScore(); }
+function scUndo(i){ const sc=S.courts[i]&&S.courts[i].sc; if(!sc||!sc.undo.length){ toast('Nothing to undo'); return; } const s=JSON.parse(sc.undo.pop()); const seq=(sc.seq||0)+1; Object.assign(sc,s); sc.seq=seq; save(); renderScore(); }
+function scServe(i,t){ const sc=scEnsure(i); if(!sc||sc.a||sc.b||sc.g.length) return; sc.srv=t; sc.seq=(sc.seq||0)+1; save(); renderScore(); }
+function scSwap(i,t){ const sc=scEnsure(i); if(!sc||sc.a||sc.b||sc.pos[t].length<2) return; sc.pos[t]=[sc.pos[t][1],sc.pos[t][0]]; sc.seq=(sc.seq||0)+1; save(); renderScore(); }
 function flash(m){ toast(m); const f=document.getElementById('scflash'); if(f){ f.textContent=m; f.classList.remove('on'); void f.offsetWidth; f.classList.add('on'); } }
 function scoreStrip(i){
   const sc=S.courts[i].sc;
@@ -636,6 +648,11 @@ function scoreStrip(i){
 }
 function renderScore(){
   const v=document.getElementById('scorev');
+  if(IS_COURT){
+    scoreOpen=COURT_NO;
+    if(courtExit){ v.innerHTML=`<div class="sbar"><b>Court ${COURT_NO+1}</b><span>Organizer only</span></div><div class="cwait"><div class="cw-t">${COURT_PIN?'Enter PIN to leave court mode':'Leave court mode?'}</div>${COURT_PIN?`<input type="password" id="pin-in" inputmode="numeric" maxlength="8" class="pinin" autocomplete="off">`:''}<div class="row" style="justify-content:center"><button class="btn" data-act="court-exit-no">Cancel</button><button class="btn lime" data-act="court-exit-ok">Leave</button></div></div>`; v.hidden=false; document.body.classList.add('noscroll'); setTimeout(()=>{const i=document.getElementById('pin-in'); i&&i.focus();},50); return; }
+    if(!S.courts[COURT_NO]||!S.courts[COURT_NO].p.length){ v.innerHTML=`<div class="sbar"><b>Court ${COURT_NO+1}</b><span>${syncOk&&Date.now()-syncOk<6000?'Connected to Main':'Connecting to Main…'}</span><button class="btn sm gear" data-act="court-exit" aria-label="Organizer">⚙</button></div><div class="cwait"><div class="cw-big">🏸</div><div class="cw-t">Waiting for players</div><div class="cw-s">The organizer will put the next match on Court ${COURT_NO+1}.</div></div>`; v.hidden=false; document.body.classList.add('noscroll'); return; }
+  }
   if(scoreOpen===null||!S.courts[scoreOpen]||!S.courts[scoreOpen].p.length){ v.hidden=true; v.innerHTML=''; document.body.classList.remove('noscroll'); scoreOpen=null; return; }
   const i=scoreOpen, sc=scEnsure(i), doubles=sc.pos.a.length>1;
   const srvId=scServerId(sc), rcvId=scReceiverId(sc), atStart=!sc.a&&!sc.b&&!sc.done;
@@ -656,11 +673,11 @@ function renderScore(){
   if(sc.done) msg=`<b>${esc(scTeam(sc,sc.done))} win</b> ${esc(scSummary(sc))}`;
   else if(!sc.srv) msg='Toss done? Tap <b>Serves first</b> for the team that serves. Use ⇄ to set who stands in the right court.';
   else msg=`<b>${nm(srvId)}</b> serves from the <b>${sc[sc.srv]%2?'left':'right'}</b> court to <b>${nm(rcvId)}</b>`;
-  v.innerHTML=`<div class="sbar"><b>Court ${i+1}</b><span>${sc.done?'Match finished':'Game '+(sc.g.length+1)+' of '+SC.best+' · to '+SC.pts}</span><button class="btn sm" data-act="sc-close">Close</button></div>
+  v.innerHTML=`<div class="sbar"><b>Court ${i+1}</b><span>${sc.done?'Match finished':'Game '+(sc.g.length+1)+' of '+SC.best+' · to '+SC.pts}</span>${IS_COURT?`<button class="btn sm gear" data-act="court-exit" aria-label="Organizer">⚙</button>`:`<button class="btn sm" data-act="sc-close">Close</button>`}</div>
   <div class="smsg">${msg}</div>
   <div class="sboard">${side(sc.flip?'b':'a')}<div class="snet"></div>${side(sc.flip?'a':'b')}</div>
   <div class="sprev">${prev||'<span>Tap a score to add a point · rally scoring</span>'}</div>
-  <div class="sfoot"><button class="btn" data-act="sc-undo" ${sc.undo.length?'':'disabled'}>↶ Undo</button><button class="btn warn" data-act="sc-reset">${confirmKey==='screset'?'Tap again to reset score':'Reset score'}</button>${sc.done?`<button class="btn lime big" data-act="sc-save">Save result &amp; clear court</button>`:''}</div>
+  <div class="sfoot"><button class="btn" data-act="sc-undo" ${sc.undo.length?'':'disabled'}>↶ Undo</button><button class="btn warn" data-act="sc-reset">${confirmKey==='screset'?'Tap again to reset score':'Reset score'}</button>${sc.done?(IS_COURT?`<div class="cdone">Match finished — the organizer records the result</div>`:`<button class="btn lime big" data-act="sc-save">Save result &amp; clear court</button>`):''}</div>
   <div id="scflash" class="scflash"></div>`;
   v.hidden=false; document.body.classList.add('noscroll');
 }
@@ -760,8 +777,13 @@ function vSettings(){
   return `${IS_APP?`<h2>Tablet sync (local network)</h2>
   <div class="card">${!CAN_SYNC?`<p class="hint" style="margin:0">Install the latest MatchMaker.apk on every tablet to use sync.</p>`:`
     <p class="hint" style="margin-top:0">Connect all tablets to the same hotspot or Wi-Fi. No internet needed. One <b>Main</b> tablet makes all changes; <b>Display</b> tablets show the same courts, scores and lists live.</p>
-    <div class="seg"><button class="${ROLE==='off'?'on':''}" data-act="sync-role" data-k="off">Off</button><button class="${ROLE==='main'?'on':''}" data-act="sync-role" data-k="main">Main tablet</button><button class="${ROLE==='display'?'on':''}" data-act="sync-role" data-k="display">Display tablet</button></div>
+    <div class="seg"><button class="${ROLE==='off'?'on':''}" data-act="sync-role" data-k="off">Off</button><button class="${ROLE==='main'?'on':''}" data-act="sync-role" data-k="main">Main tablet</button><button class="${ROLE==='display'?'on':''}" data-act="sync-role" data-k="display">Display tablet</button><button class="${courtSetup?'on':''}" data-act="court-setup">Court tablet</button></div>
     ${ROLE==='main'?`<div class="syncbox"><div class="hint" style="margin:0">On each Display tablet, enter this address:</div><div class="bigip">${esc(mainAddr()||'No network — join a hotspot or Wi-Fi')}</div><div class="hint" id="syncstat" style="margin:0">${syncStatusText()}</div></div>`:''}
+    ${courtSetup?`<div class="syncbox"><div class="hint" style="margin:0">This tablet will show only one court's scoreboard. Players can score, undo and choose who serves — nothing else.</div>
+      <label for="court-ip" style="font-weight:600;font-size:14px">Main tablet address</label><input type="text" id="court-ip" inputmode="decimal" placeholder="192.168.43.1" value="${esc(MAIN_IP)}">
+      <label for="court-no" style="font-weight:600;font-size:14px">Court</label><select id="court-no">${[1,2,3,4,5,6,7,8].map(n=>`<option value="${n}" ${n===COURT_NO+1?'selected':''}>Court ${n}</option>`).join('')}</select>
+      <label for="court-pin" style="font-weight:600;font-size:14px">Organizer PIN (to leave court mode)</label><input type="password" id="court-pin" inputmode="numeric" maxlength="8" placeholder="e.g. 2580 — leave blank for none" value="${esc(COURT_PIN)}">
+      <button class="btn pri" data-act="court-start">Start court mode</button></div>`:''}
     ${ROLE==='display'?`<div class="syncbox"><label for="main-ip" style="font-weight:600;font-size:14px">Main tablet address</label><div class="row"><input type="text" id="main-ip" inputmode="decimal" placeholder="192.168.43.1" value="${esc(MAIN_IP)}" style="flex:1;min-width:140px"><button class="btn pri" data-act="sync-ip">Connect</button></div><div class="hint" id="syncstat" style="margin:0">${syncStatusText()}</div><p class="hint">This tablet shows the Main tablet's data and can't change it. Its own data is kept and comes back when you switch to Off.</p></div>`:''}`}
   </div>`:''}
   <h2>Session settings</h2>
@@ -860,6 +882,7 @@ $('#scrim').addEventListener('click',closeSheet);
 document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el) return;
   const a=el.dataset.act, id=el.dataset.id, ci=el.dataset.c!==undefined?+el.dataset.c:null, k=el.dataset.k;
+  if(IS_COURT&&!COURT_OK.has(a)) return;
   if(IS_DISPLAY&&!VIEW_OK.has(a)){ toast('Display tablet — make changes on the Main tablet'); return; }
   if(!['del','reset','wipe','h-del','h-clear','sc-reset','ph-del'].includes(a)) confirmKey=null;
   switch(a){
@@ -874,7 +897,7 @@ document.addEventListener('click',e=>{
     case 'sc-serve': scServe(scoreOpen,k); break;
     case 'sc-swap': scSwap(scoreOpen,k); break;
     case 'sc-save':{ const i=scoreOpen, sc=S.courts[i].sc; if(!sc||!sc.done) break; const sum=scSummary(sc); scoreOpen=null; renderScore(); finish(i,true,sc.done); toast('Result saved: '+sum); break;}
-    case 'sc-reset':{ if(confirmKey!=='screset'){confirmKey='screset';renderScore();break;} confirmKey=null; S.courts[scoreOpen].sc=null; scEnsure(scoreOpen); save(); renderScore(); break;}
+    case 'sc-reset':{ if(confirmKey!=='screset'){confirmKey='screset';renderScore();break;} confirmKey=null; const oldSeq=(S.courts[scoreOpen].sc&&S.courts[scoreOpen].sc.seq)||0; S.courts[scoreOpen].sc=null; scEnsure(scoreOpen).seq=oldSeq+1; scEnsure(scoreOpen); save(); renderScore(); break;}
     case 'win': closeSheet(); finish(ci,true,k==='x'?'':k); toast(k==='x'?'Game saved (no result)':'Result saved'); break;
     case 'h-f': histCourt=k; render(); break;
     case 'h-r': histRange=k; render(); break;
@@ -944,6 +967,11 @@ document.addEventListener('click',e=>{
       const w=new Set(waiting().map(p=>p.id)); if(!pickSel.every(x=>w.has(x))){toast('Someone is no longer available');pickSel=pickSel.filter(x=>w.has(x));sheetPick();break;}
       c.p=need()===4?arrange(pickSel.slice()):pickSel.slice(); c.t=Date.now(); c.sc=null; pickSel=[]; closeSheet(); save(); render(); break;}
     case 'export': exportReport(); break;
+    case 'court-exit': courtExit=true; renderScore(); break;
+    case 'court-exit-no': courtExit=false; renderScore(); break;
+    case 'court-exit-ok':{ const v=(document.getElementById('pin-in')||{}).value||''; if(COURT_PIN&&v!==COURT_PIN){ toast('Wrong PIN'); const i=document.getElementById('pin-in'); if(i){i.value='';i.focus();} break; } try{ localStorage.setItem('bmm_role','off'); }catch(e){} location.reload(); break;}
+    case 'court-setup': courtSetup=true; render(); break;
+    case 'court-start':{ const ip=(($('#court-ip')||{}).value||'').trim().replace(/^https?:\/\//,'').replace(/[:\/].*$/,''); if(!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)){ toast('Type the address shown on the Main tablet'); break; } const n=+(($('#court-no')||{}).value||1), pin=(($('#court-pin')||{}).value||'').trim(); try{ localStorage.setItem('bmm_main_ip',ip); localStorage.setItem('bmm_court',String(n)); localStorage.setItem('bmm_pin',pin); localStorage.setItem('bmm_role','court'); }catch(e){} location.reload(); break;}
     case 'ph-cam': if(IS_APP&&typeof AndroidApp.takePhoto==='function') AndroidApp.takePhoto(id); else webPhoto(id,true); break;
     case 'ph-gal': if(IS_APP&&typeof AndroidApp.choosePhoto==='function') AndroidApp.choosePhoto(id); else webPhoto(id,false); break;
     case 'ph-del': if(confirmKey!=='phd'+id){ confirmKey='phd'+id; const b=el; b.textContent='Tap again'; break; } confirmKey=null; setPhoto(id,''); break;
@@ -1068,7 +1096,7 @@ let syncOk=0, syncFails=0, lastTxt='', pollTimer=null;
 function mainAddr(){ try{ return AndroidApp.localIp(); }catch(e){ return ''; } }
 /* ---------- player photos ---------- */
 let PH={}, photoDb=null, lastPhRev=-1;
-const PH_KEY=IS_APP?(IS_DISPLAY?'bmm_photos_display':'bmm_photos'):'bmm_photos_web';
+const PH_KEY=IS_APP?((IS_DISPLAY||IS_COURT)?'bmm_photos_display':'bmm_photos'):'bmm_photos_web';
 try{ PH=JSON.parse(localStorage.getItem(PH_KEY)||'{}')||{}; }catch(e){ PH={}; }
 function initials(n){ return String(n||'?').replace(/[^\p{L}\p{N} ]/gu,'').trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase()||'?'; }
 function av(id,cls,onlyPhoto){ const u=PH[id]; if(u) return `<img class="av ${cls||''}" src="${u}" alt="">`; if(onlyPhoto) return ''; const p=byId(id); return `<span class="av ini ${cls||''}">${esc(initials(p?p.n:'?'))}</span>`; }
@@ -1097,7 +1125,7 @@ async function fetchPhotos(rev){
   lastPhRev=rev;
   try{ const r=await fetch('http://'+MAIN_IP+':8787/photos?t='+Date.now(),{cache:'no-store'}); if(r.ok){ PH=await r.json()||{}; try{localStorage.setItem(PH_KEY,JSON.stringify(PH));}catch(e){} render(); } else lastPhRev=-1; }catch(e){ lastPhRev=-1; }
 }
-function shareState(){ if(ROLE==='main'&&CAN_SYNC){ try{ AndroidApp.setShared(JSON.stringify(S)); }catch(e){} } }
+function shareState(){ if(IS_COURT){ postScore(); return; } if(ROLE==='main'&&CAN_SYNC){ try{ AndroidApp.setShared(JSON.stringify(S)); }catch(e){} } }
 function syncStatusText(){
   if(ROLE==='main'){ let n=0; try{ n=AndroidApp.clientCount(); }catch(e){} return (AndroidApp.serverRunning()?'Sharing':'Not sharing — switch Off and back to Main')+' · '+n+' display'+(n===1?'':'s')+' connected'; }
   if(ROLE==='display'){ if(!MAIN_IP) return 'Enter the address shown on the Main tablet.'; if(syncOk&&Date.now()-syncOk<6000) return 'Live from '+MAIN_IP+' · updated '+Math.max(0,Math.round((Date.now()-syncOk)/1000))+'s ago'; return 'Can\'t reach '+MAIN_IP+' — check both are on the same hotspot/Wi-Fi'+(syncOk?' · showing last data':''); }
@@ -1105,20 +1133,21 @@ function syncStatusText(){
 }
 function syncHeader(){
   if(ROLE==='main') setSync(true,'Main · sharing');
+  else if(ROLE==='court') setSync(!!(syncOk&&Date.now()-syncOk<6000),'Court '+(COURT_NO+1));
   else if(ROLE==='display') setSync(!!(syncOk&&Date.now()-syncOk<6000),syncOk&&Date.now()-syncOk<6000?'Display · live':'Display · offline');
   else setSync(true,'Saved on this tablet');
   const st=document.getElementById('syncstat'); if(st) st.textContent=syncStatusText();
 }
 async function pollMain(){
   clearTimeout(pollTimer);
-  if(ROLE!=='display') return;
+  if(ROLE!=='display'&&ROLE!=='court') return;
   if(MAIN_IP){
     const ctl=new AbortController(), to=setTimeout(()=>ctl.abort(),3500);
     try{
       const r=await fetch('http://'+MAIN_IP+':8787/state?t='+Date.now(),{cache:'no-store',signal:ctl.signal});
       const txt=await r.text();
-      if(r.ok){ syncOk=Date.now(); syncFails=0;
-        if(txt!==lastTxt){ lastTxt=txt; const d=JSON.parse(txt); if(d&&Array.isArray(d.players)){ S=normalize(d); if(S.phRev!==lastPhRev) fetchPhotos(S.phRev); try{localStorage.setItem(LS_KEY,txt);}catch(e){} if(!document.querySelector('input:focus')) render(); } }
+      if(r.ok){ syncOk=Date.now(); syncFails=0; if(IS_COURT&&postPending) postScore();
+        if(txt!==lastTxt){ lastTxt=txt; const d=JSON.parse(txt); if(d&&Array.isArray(d.players)){ const mine=IS_COURT&&S.courts[COURT_NO]?S.courts[COURT_NO]:null; S=normalize(d); if(IS_COURT) mergeMine(mine); if(S.phRev!==lastPhRev) fetchPhotos(S.phRev); try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){} if(IS_COURT){ const key=courtKey(); if(key!==lastCourtKey){ lastCourtKey=key; render(); } } else if(!document.querySelector('input:focus')) render(); } }
       }
     }catch(e){ syncFails++; }
     clearTimeout(to);
@@ -1126,11 +1155,43 @@ async function pollMain(){
   syncHeader();
   pollTimer=setTimeout(pollMain, syncFails>3?4000:1500);
 }
+/* ---------- court tablets ---------- */
+let courtExit=false, courtSetup=false, postPending=false, lastCourtKey='', posting=false;
+const COURT_OK=new Set(['sc-pt','sc-undo','sc-serve','sc-swap','sc-reset','court-exit','court-exit-no','court-exit-ok']);
+const sameSet=(x,y)=>Array.isArray(x)&&Array.isArray(y)&&x.length===y.length&&x.every(v=>y.includes(v));
+function courtKey(){ const c=S.courts[COURT_NO]; return JSON.stringify([c&&c.p,c&&c.sc&&c.sc.seq,S.phRev]); }
+function mergeMine(mine){
+  const c=S.courts[COURT_NO];
+  if(!mine||!mine.sc||!c||!sameSet(c.p,mine.p)) return;
+  if(!c.sc||(mine.sc.seq||0)>(c.sc.seq||0)){ c.sc=mine.sc; postPending=true; }
+}
+async function postScore(){
+  const c=S.courts[COURT_NO]; if(!c||!c.sc||!MAIN_IP) return;
+  if(posting){ postPending=true; return; }
+  posting=true; postPending=false;
+  try{ const r=await fetch('http://'+MAIN_IP+':8787/score',{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({c:COURT_NO,p:c.p,sc:c.sc})}); if(!r.ok) postPending=true; }
+  catch(e){ postPending=true; }
+  posting=false;
+  if(postPending) setTimeout(postScore,1000);
+}
+function applyIncoming(){
+  if(ROLE!=='main'||typeof AndroidApp.takeIncoming!=='function') return;
+  let changed=false, msg;
+  for(let n=0;n<50&&(msg=AndroidApp.takeIncoming());n++){
+    try{
+      const x=JSON.parse(msg), ct=S.courts[x.c];
+      if(!ct||!x.sc||!x.sc.pos||!sameSet(ct.p,x.p)) continue;
+      if(!ct.sc||(+x.sc.seq||0)>(+ct.sc.seq||0)){ ct.sc=x.sc; changed=true; }
+    }catch(e){}
+  }
+  if(changed){ save(); render(); }
+}
 const VIEW_OK=new Set(['go','ci-f','pl-f','h-f','h-r','h-v','pay-f','score','sc-close','sync-role','sync-ip','upd-check','upd-go','export','copypay','copy']);
 if(IS_DISPLAY) document.body.classList.add('display');
 if(IS_APP){
-  if(ROLE==='main'){ try{ AndroidApp.startServer(); }catch(e){} shareState(); sharePhotos(); setInterval(syncHeader,3000); }
-  if(ROLE==='display'){ pollMain(); }
+  if(ROLE==='main'){ try{ AndroidApp.startServer(); }catch(e){} shareState(); sharePhotos(); setInterval(applyIncoming,400); setInterval(syncHeader,3000); }
+  if(ROLE==='display'||ROLE==='court'){ pollMain(); }
+  if(IS_COURT){ document.body.classList.add('courtmode'); render(); }
   syncHeader(); setTimeout(()=>checkUpdate(false),1200);
 }
 

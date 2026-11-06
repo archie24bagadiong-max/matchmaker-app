@@ -8,6 +8,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /** Tiny HTTP server: GET /state returns the Main tablet's latest data as JSON. */
 public class LocalServer extends Thread {
@@ -17,6 +18,10 @@ public class LocalServer extends Thread {
     private static volatile long rev = 0;
     private static volatile byte[] photos = "{}".getBytes();
     private static final Map<String, Long> clients = new HashMap<String, Long>();
+    private static final ConcurrentLinkedQueue<String> incoming = new ConcurrentLinkedQueue<String>();
+
+    /** Next score update sent by a court tablet, or "" when none. */
+    public static String takeIncoming() { String x = incoming.poll(); return x == null ? "" : x; }
     private volatile boolean stopped = false;
     private ServerSocket ss;
 
@@ -80,7 +85,12 @@ public class LocalServer extends Thread {
             String line = in.readLine();
             if (line == null) { c.close(); return; }
             String l;
-            while ((l = in.readLine()) != null && l.length() > 0) { /* skip headers */ }
+            int len = 0;
+            while ((l = in.readLine()) != null && l.length() > 0) {
+                if (l.toLowerCase().startsWith("content-length:")) {
+                    try { len = Integer.parseInt(l.substring(15).trim()); } catch (Exception e) {}
+                }
+            }
             synchronized (clients) { clients.put(c.getInetAddress().getHostAddress(), System.currentTimeMillis()); }
             OutputStream out = c.getOutputStream();
             String head = "Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers: *\r\nCache-Control: no-store\r\nConnection: close\r\n";
@@ -90,6 +100,18 @@ public class LocalServer extends Thread {
                 byte[] body = state;
                 out.write(("HTTP/1.1 200 OK\r\n" + head + "Content-Type: application/json; charset=utf-8\r\nX-Rev: " + rev
                         + "\r\nContent-Length: " + body.length + "\r\n\r\n").getBytes("UTF-8"));
+                out.write(body);
+            } else if (line.startsWith("POST /score")) {
+                StringBuilder sb = new StringBuilder();
+                char[] buf = new char[4096];
+                while (sb.length() < len && len < 2000000) {
+                    int n = in.read(buf, 0, Math.min(buf.length, len - sb.length()));
+                    if (n <= 0) break;
+                    sb.append(buf, 0, n);
+                }
+                if (sb.length() > 0) incoming.add(sb.toString());
+                byte[] body = "{\"ok\":true}".getBytes("UTF-8");
+                out.write(("HTTP/1.1 200 OK\r\n" + head + "Content-Type: application/json\r\nContent-Length: " + body.length + "\r\n\r\n").getBytes("UTF-8"));
                 out.write(body);
             } else if (line.startsWith("GET /photos")) {
                 byte[] body = photos;
