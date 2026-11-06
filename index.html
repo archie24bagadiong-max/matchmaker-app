@@ -187,7 +187,7 @@ select.mini{width:auto;padding:6px 8px;border-radius:8px}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=1;
+const APP_VERSION=2;
 const IS_APP=!!window.AndroidApp;
 const UPD_BASE='https://raw.githubusercontent.com/archie24bagadiong-max/matchmaker-app/main/';
 const LS_KEY=IS_APP?'bmm_offline_v1':'bmm_state_v1';
@@ -196,7 +196,7 @@ const CLIENT=Math.random().toString(36).slice(2);
 function fresh(){
   return {players:[],present:{},resting:{},games:{},lastEnd:{},partners:{},
     courts:[0,1,2].map(()=>({lv:CATS.slice(),p:[],t:0})),
-    mode:'doubles',mix:'adjacent',autoNext:true,prio:'strong',paid:{},hist:[],fee:{gp:25,gn:3,gx:10,sp:2.5}};
+    mode:'doubles',mix:'adjacent',autoNext:true,prio:'strong',paid:{},hist:[],ledger:[],fee:{gp:25,gn:3,gx:10,sp:2.5}};
 }
 function normalize(s){
   const d=fresh();
@@ -207,6 +207,8 @@ function normalize(s){
   if(!Array.isArray(s.courts)||!s.courts.length) s.courts=d.courts;
   s.courts=s.courts.map(c=>({lv:Array.isArray(c&&c.lv)?c.lv.filter(x=>CATS.includes(x)):CATS.slice(),p:Array.isArray(c&&c.p)?c.p.map(String):[],t:+(c&&c.t)||0}));
   if(!Array.isArray(s.hist)) s.hist=[];
+  if(!Array.isArray(s.ledger)) s.ledger=[];
+  s.ledger=s.ledger.slice(-4000);
   s.hist=s.hist.filter(x=>x&&Array.isArray(x.a)&&Array.isArray(x.b)).slice(-1000);
   ['present','resting','games','lastEnd','partners'].forEach(k=>{if(typeof s[k]!=='object'||!s[k]||Array.isArray(s[k]))s[k]={};});
   if(!['doubles','singles'].includes(s.mode)) s.mode='doubles';
@@ -496,6 +498,9 @@ function vPay(){
     :`<div class="emptybox"><b>No players to show</b>Only players checked in today appear here.<div style="margin-top:12px"><button class="btn pri" data-act="go" data-tab="checkin">Take attendance</button></div></div>`}
     <p class="hint">Games are counted automatically when you tap “Game done” on a court.</p>
   </div>
+  <h2>Excel report</h2>
+  <div class="card"><p class="hint" style="margin-top:0">One Excel file with sheets: Players, Payments (all days), Match History, Win Statistics and Daily Summary.</p>
+  <button class="btn pri" data-act="export">Export Excel report</button></div>
   <h2>Summary to share</h2>
   <div class="card"><textarea readonly id="paytxt">${esc(rows.slice().sort((a,b)=>a.n.localeCompare(b.n)).map(p=>`${p.n}${p.t==='G'?' (Guest)':''} – ${S.games[p.id]||0} games – ${fee(p)?sr(fee(p)):'0 SR'}${S.paid[p.id]?' ✓ paid':''}`).join('\n')+(rows.length?`\n\nTotal: ${sr(tot(rows))}`:''))}</textarea>
   <div class="row" style="margin-top:8px"><button class="btn" data-act="copypay">Copy summary</button></div></div>`;
@@ -512,6 +517,53 @@ function sheetWinner(ci){
   </div>`);
 }
 let histCourt='All', histRange='today', histView='matches';
+function todayRows(){
+  const d=dayKey(Date.now());
+  return S.players.filter(p=>S.present[p.id]||(S.games[p.id]||0)>0).map(p=>({day:d,n:p.n,c:p.c,t:p.t,g:S.games[p.id]||0,f:Math.round(fee(p)*100)/100,pd:S.paid[p.id]?1:0}));
+}
+function archiveDay(){
+  const rows=todayRows().filter(r=>r.g>0||r.pd);
+  if(!rows.length) return;
+  const d=rows[0].day; S.ledger=S.ledger.filter(x=>x.day!==d).concat(rows).slice(-4000);
+}
+function dayDate(k){const [y,m,d]=k.split('-').map(Number);return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');}
+function buildReport(){
+  const today=dayKey(Date.now());
+  const pay=S.ledger.filter(x=>x.day!==today).concat(todayRows());
+  const T=t=>t==='G'?'Guest':'Subscriber';
+  const wb=XLSX.utils.book_new();
+  const add=(name,aoa,widths)=>{const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=widths.map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws,name);};
+  add('Players',[['Name','Category','Type']].concat(S.players.slice().sort((a,b)=>a.c.localeCompare(b.c)||a.n.localeCompare(b.n)).map(p=>[p.n,p.c,T(p.t)])),[26,10,12]);
+  add('Payments',[['Date','Player','Category','Type','Games','Fee (SR)','Paid']].concat(pay.map(r=>[dayDate(r.day),r.n,r.c,T(r.t),r.g,r.f,r.pd?'Yes':'No'])),[13,24,10,12,8,10,7]);
+  add('Match History',[['Date','Time','Court','Team 1 – Player 1','Team 1 – Player 2','Team 2 – Player 1','Team 2 – Player 2','Winner','Minutes']].concat(S.hist.map(x=>{const nm=(ids,ns,i)=>ids[i]?((byId(ids[i])||{}).n||ns[i]):'';
+    return [dayDate(dayKey(x.d)),fmtTime(x.d),x.c,nm(x.a,x.an,0),nm(x.a,x.an,1),nm(x.b,x.bn,0),nm(x.b,x.bn,1),x.w==='a'?'Team 1':x.w==='b'?'Team 2':'',Math.max(1,Math.round((x.d-x.s)/60000))];})),[13,10,7,20,20,20,20,9,9]);
+  const st={};
+  S.hist.forEach(x=>{[['a',x.a,x.an],['b',x.b,x.bn]].forEach(([s,ids,ns])=>ids.forEach((id,j)=>{const p=byId(id);const r=st[id]||(st[id]={n:p?p.n:ns[j],c:p?p.c:'',t:p?T(p.t):'',p:0,w:0,l:0});r.p++;if(x.w===s)r.w++;else if(x.w)r.l++;}));});
+  const ws=Object.values(st).sort((a,b)=>b.w-a.w||b.p-a.p);
+  add('Win Statistics',[['Player','Category','Type','Played','Won','Lost','Win %']].concat(ws.map(r=>[r.n,r.c,r.t,r.p,r.w,r.l,r.w+r.l?Math.round(r.w*1000/(r.w+r.l))/10+'%':'-'])),[24,10,12,8,8,8,8]);
+  const days={}; pay.forEach(r=>{const d=days[r.day]||(days[r.day]={pl:0,g:0,due:0,col:0,sub:0,gst:0});d.pl++;d.g+=r.g;d.due+=r.f;if(r.pd)d.col+=r.f;if(r.t==='G')d.gst+=r.f;else d.sub+=r.f;});
+  const mt={}; S.hist.forEach(x=>{const k=dayKey(x.d);mt[k]=(mt[k]||0)+1;});
+  const dk=[...new Set(Object.keys(days).concat(Object.keys(mt)))].sort((a,b)=>dayDate(a).localeCompare(dayDate(b)));
+  const r2=v=>Math.round(v*100)/100;
+  add('Daily Summary',[['Date','Players','Matches','Total due (SR)','Collected (SR)','Outstanding (SR)','Subscribers (SR)','Guests (SR)']].concat(dk.map(k=>{const d=days[k]||{pl:0,due:0,col:0,sub:0,gst:0};return [dayDate(k),d.pl,mt[k]||0,r2(d.due),r2(d.col),r2(d.due-d.col),r2(d.sub),r2(d.gst)];})),[13,9,9,14,14,15,15,12]);
+  return XLSX.write(wb,{bookType:'xlsx',type:'base64'});
+}
+async function exportReport(){
+  toast('Preparing report…');
+  try{ await loadXLSX(); }catch(e){ toast('Could not load the Excel tool — check internet'); return; }
+  let b64; try{ b64=buildReport(); }catch(e){ toast('Could not build the report'); return; }
+  const name='MatchMaker_Report_'+dayDate(dayKey(Date.now()))+'.xlsx';
+  if(IS_APP){
+    if(typeof window.AndroidApp.saveFile!=='function'){ toast('Install the latest MatchMaker.apk to export'); return; }
+    window.AndroidApp.saveFile(b64,name); return;
+  }
+  try{
+    const dl=window.claude&&window.claude.use?await window.claude.use('downloads'):null;
+    if(!dl){ toast('Export is not available here'); return; }
+    const bin=atob(b64), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
+    await dl.save({filename:name,data:u}); toast('Report saved');
+  }catch(e){ if(!e||e.code!=='declined') toast('Could not save the report'); }
+}
 function dayKey(t){const d=new Date(t);return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
 function fmtTime(t){try{return new Date(t).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});}catch(e){return '';}}
 function fmtDay(t){try{return new Date(t).toLocaleDateString([], {weekday:'short',day:'numeric',month:'short',year:'numeric'});}catch(e){return '';}}
@@ -520,7 +572,7 @@ function vHist(){
   let H=S.hist.filter(x=>histRange==='all'||dayKey(x.d)===today);
   const courtsUsed=[...new Set(S.hist.map(x=>x.c))].sort((a,b)=>a-b);
   const tabs=`<div class="seg" style="margin-bottom:10px"><button class="${histView==='matches'?'on':''}" data-act="h-v" data-k="matches">Matches</button><button class="${histView==='board'?'on':''}" data-act="h-v" data-k="board">Wins leaderboard</button></div>
-  <div class="chips" style="margin-bottom:8px"><button class="chip ${histRange==='today'?'on':''}" data-act="h-r" data-k="today">Today</button><button class="chip ${histRange==='all'?'on':''}" data-act="h-r" data-k="all">All dates</button></div>`;
+  <div class="chips" style="margin-bottom:8px"><button class="chip ${histRange==='today'?'on':''}" data-act="h-r" data-k="today">Today</button><button class="chip ${histRange==='all'?'on':''}" data-act="h-r" data-k="all">All dates</button><span class="grow"></span><button class="btn sm pri" data-act="export">Export Excel</button></div>`;
   if(histView==='board'){
     const st={};
     H.forEach(x=>{[['a',x.a,x.an],['b',x.b,x.bn]].forEach(([s,ids,ns])=>ids.forEach((id,j)=>{const r=st[id]||(st[id]={id,n:(byId(id)||{}).n||ns[j],p:0,w:0,l:0});r.p++; if(x.w===s)r.w++; else if(x.w)r.l++;}));});
@@ -703,7 +755,7 @@ document.addEventListener('click',e=>{
     case 'auto': S.autoNext=k==='1'; save(); render(); break;
     case 'reset':
       if(confirmKey!=='reset'){confirmKey='reset';render();break;}
-      confirmKey=null; S.present={};S.resting={};S.games={};S.lastEnd={};S.partners={};S.paid={}; S.courts.forEach(c=>{c.p=[];c.t=0;}); save(); render(); toast('New session started'); break;
+      confirmKey=null; archiveDay(); S.present={};S.resting={};S.games={};S.lastEnd={};S.partners={};S.paid={}; S.courts.forEach(c=>{c.p=[];c.t=0;}); save(); render(); toast('New session started'); break;
     case 'wipe':
       if(confirmKey!=='wipe'){confirmKey='wipe';render();break;}
       confirmKey=null; const keep=S.courts.length; S=fresh(); S.courts=Array.from({length:keep},()=>({lv:CATS.slice(),p:[],t:0})); save(); render(); break;
@@ -713,6 +765,7 @@ document.addEventListener('click',e=>{
     case 'pick-go':{ const c=S.courts[pickCourt]; if(c.p.length||pickSel.length!==need()) break;
       const w=new Set(waiting().map(p=>p.id)); if(!pickSel.every(x=>w.has(x))){toast('Someone is no longer available');pickSel=pickSel.filter(x=>w.has(x));sheetPick();break;}
       c.p=need()===4?arrange(pickSel.slice()):pickSel.slice(); c.t=Date.now(); pickSel=[]; closeSheet(); save(); render(); break;}
+    case 'export': exportReport(); break;
     case 'upd-check': toast('Checking…'); checkUpdate(true); break;
     case 'upd-go': doUpdate(); break;
     case 'settype':{ const p=byId(id); if(p){p.t=p.t==='G'?'S':'G'; save(); render();} break;}
