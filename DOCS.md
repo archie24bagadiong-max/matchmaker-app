@@ -166,6 +166,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 7 Nov 2026 | Page v12 | Court tablets update themselves while their court is waiting; all tablets re-check for updates every 15 min (court: 3 min) |
 | 7 Nov 2026 | Page v11 | Scoreboard layout fixed for landscape / short screens |
 | 7 Nov 2026 | Page v10, APK 1.7 | Court tablets locked to one court's scoreboard |
 | 7 Nov 2026 | Page v9, APK 1.6 | Player photos from camera or gallery |

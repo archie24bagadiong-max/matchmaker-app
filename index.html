@@ -281,7 +281,7 @@ body.courtmode nav,body.courtmode main{display:none}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=11;
+const APP_VERSION=12;
 const IS_APP=!!window.AndroidApp;
 const UPD_BASE='https://raw.githubusercontent.com/archie24bagadiong-max/matchmaker-app/main/';
 let ROLE='off', MAIN_IP='';
@@ -1100,7 +1100,7 @@ async function checkUpdate(manual){
   try{
     const r=await fetch(UPD_BASE+'version.json?t='+Date.now(),{cache:'no-store'});
     const j=await r.json();
-    if(+j.version>APP_VERSION){ updInfo=j; } else { updInfo=null; if(manual) toast('You have the latest version'); }
+    if(+j.version>APP_VERSION){ updInfo=j; if(IS_COURT&&(!S.courts[COURT_NO]||!S.courts[COURT_NO].p.length)){ doUpdate(); return; } } else { updInfo=null; if(manual) toast('You have the latest version'); }
   }catch(e){ if(manual) toast('No internet — could not check for updates'); }
   showUpdBanner(); if(tab==='settings') render();
 }
@@ -1218,7 +1218,7 @@ if(IS_APP){
   if(ROLE==='main'){ try{ AndroidApp.startServer(); }catch(e){} shareState(); sharePhotos(); setInterval(applyIncoming,400); setInterval(syncHeader,3000); }
   if(ROLE==='display'||ROLE==='court'){ pollMain(); }
   if(IS_COURT){ document.body.classList.add('courtmode'); render(); }
-  syncHeader(); setTimeout(()=>checkUpdate(false),1200);
+  syncHeader(); setTimeout(()=>checkUpdate(false),1200); setInterval(()=>checkUpdate(false),IS_COURT?3*60*1000:15*60*1000);
 }
 
 render();
