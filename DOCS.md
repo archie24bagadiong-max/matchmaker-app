@@ -65,6 +65,21 @@ Each court has a **Keep score** button that opens a full-screen scoreboard, run 
 6. When the match ends, **Save result & clear court** records the winner and game scores in History (and the Match History sheet's Score column). **Game done** picks the winner automatically from the score: the team with more games won, or if games are level, the higher current score. It asks only when nothing separates the teams (no score kept, or a tied score).
 7. Replacing a player mid-match keeps the score; new players on a court start a fresh score.
 
+## Tablet sync (local network)
+
+Several tablets can show the same session over a hotspot or Wi-Fi, with no internet and no outside service. Needs APK 1.5 or later on every tablet.
+
+1. Turn on a hotspot (on the Main tablet or a phone) and connect all tablets to it.
+2. On the Main tablet: **Settings → Tablet sync → Main tablet**. It shows an address such as `192.168.43.1`.
+3. On each other tablet: **Settings → Tablet sync → Display tablet**, type that address, tap **Connect**.
+4. The header shows **Main · sharing** or **Display · live**. Displays update about every 1.5 seconds.
+
+- Only the Main tablet makes changes (attendance, courts, scores, payments). Display tablets are read-only and dim the editing buttons.
+- A Display tablet keeps its own data separately; switching back to **Off** brings it back.
+- The address can change when the hotspot restarts; re-enter it on the Displays if they show **Display · offline**.
+- The Main tablet keeps its screen on; keep the app open on it during the session.
+- How it works: the Main tablet runs a small server on port 8787 (`GET /state` returns the session as JSON); Displays poll it.
+
 ## Fees
 
 Subscriber: 2.50 SR per game. Guest: 25 SR minimum covering 3 games, then 3.33 SR per extra game (6 games = 35 SR).
@@ -129,6 +144,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 7 Nov 2026 | Page v7, APK 1.5 | Tablet sync over local network; Android code now in Java (android/ folder) |
 | 7 Nov 2026 | Page v6 | Game done picks the winner from the score |
 | 7 Nov 2026 | Page v5 | Title adds Badminton Club |
 | 7 Nov 2026 | Page v4 | App title: Match Maker - JAMREIBIZ |

@@ -207,6 +207,10 @@ body.noscroll{overflow:hidden}
 .scflash{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%) scale(.9);background:var(--lime);color:var(--court);font-weight:800;font-size:22px;padding:14px 22px;border-radius:14px;opacity:0;pointer-events:none;text-align:center;max-width:86vw}
 .scflash.on{animation:fl 2.2s ease}
 @keyframes fl{0%{opacity:0;transform:translate(-50%,-50%) scale(.9)}10%{opacity:1;transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0}}
+.syncbox{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.bigip{font-family:'Barlow Condensed';font-size:34px;font-weight:800;color:var(--court2);letter-spacing:.5px;word-break:break-all}
+body.display .court-f,body.display .lv button,body.display .sfoot,body.display .sctl,body.display [data-act=fill-all]{pointer-events:none;opacity:.35}
+body.display .spt{pointer-events:none}
 .emptybox{text-align:center;padding:26px 14px;color:var(--muted)}
 .emptybox b{display:block;color:var(--ink);font-size:17px;margin-bottom:6px}
 </style>
@@ -235,10 +239,15 @@ body.noscroll{overflow:hidden}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=6;
+const APP_VERSION=7;
 const IS_APP=!!window.AndroidApp;
 const UPD_BASE='https://raw.githubusercontent.com/archie24bagadiong-max/matchmaker-app/main/';
-const LS_KEY=IS_APP?'bmm_offline_v1':'bmm_state_v1';
+let ROLE='off', MAIN_IP='';
+try{ ROLE=localStorage.getItem('bmm_role')||'off'; MAIN_IP=localStorage.getItem('bmm_main_ip')||''; }catch(e){}
+const CAN_SYNC=IS_APP&&typeof window.AndroidApp.startServer==='function';
+if(!CAN_SYNC) ROLE='off';
+const IS_DISPLAY=ROLE==='display';
+const LS_KEY=IS_APP?(IS_DISPLAY?'bmm_display_v1':'bmm_offline_v1'):'bmm_state_v1';
 const CLIENT=Math.random().toString(36).slice(2);
 
 function fresh(){
@@ -279,6 +288,7 @@ let dbRef=null, writing=false, dirty=false, saveTimer=null, lastTs=0;
 function setSync(ok,label){const el=document.getElementById('sync');el.className='sync'+(ok?' ok':'');el.querySelector('span').textContent=label;}
 function save(){
   try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){}
+  shareState();
   if(!dbRef) return;
   dirty=true; clearTimeout(saveTimer); saveTimer=setTimeout(flush,600);
 }
@@ -737,7 +747,14 @@ function vHist(){
 }
 function vSettings(){
   const exp=S.players.map(p=>p.n+', '+p.c+(p.t==='G'?', Guest':'')).join('\n');
-  return `<h2>Session settings</h2>
+  return `${IS_APP?`<h2>Tablet sync (local network)</h2>
+  <div class="card">${!CAN_SYNC?`<p class="hint" style="margin:0">Install the latest MatchMaker.apk on every tablet to use sync.</p>`:`
+    <p class="hint" style="margin-top:0">Connect all tablets to the same hotspot or Wi-Fi. No internet needed. One <b>Main</b> tablet makes all changes; <b>Display</b> tablets show the same courts, scores and lists live.</p>
+    <div class="seg"><button class="${ROLE==='off'?'on':''}" data-act="sync-role" data-k="off">Off</button><button class="${ROLE==='main'?'on':''}" data-act="sync-role" data-k="main">Main tablet</button><button class="${ROLE==='display'?'on':''}" data-act="sync-role" data-k="display">Display tablet</button></div>
+    ${ROLE==='main'?`<div class="syncbox"><div class="hint" style="margin:0">On each Display tablet, enter this address:</div><div class="bigip">${esc(mainAddr()||'No network — join a hotspot or Wi-Fi')}</div><div class="hint" id="syncstat" style="margin:0">${syncStatusText()}</div></div>`:''}
+    ${ROLE==='display'?`<div class="syncbox"><label for="main-ip" style="font-weight:600;font-size:14px">Main tablet address</label><div class="row"><input type="text" id="main-ip" inputmode="decimal" placeholder="192.168.43.1" value="${esc(MAIN_IP)}" style="flex:1;min-width:140px"><button class="btn pri" data-act="sync-ip">Connect</button></div><div class="hint" id="syncstat" style="margin:0">${syncStatusText()}</div><p class="hint">This tablet shows the Main tablet's data and can't change it. Its own data is kept and comes back when you switch to Off.</p></div>`:''}`}
+  </div>`:''}
+  <h2>Session settings</h2>
   <div class="card set">
     <div><label>Number of courts</label><div class="stepper"><button class="btn sm" data-act="courts-" ${S.courts.length<=1?'disabled':''}>−</button><b>${S.courts.length}</b><button class="btn sm" data-act="courts+" ${S.courts.length>=8?'disabled':''}>+</button></div></div>
     <div><label>Game type</label><div class="seg"><button class="${S.mode==='doubles'?'on':''}" data-act="mode" data-k="doubles">Doubles (4)</button><button class="${S.mode==='singles'?'on':''}" data-act="mode" data-k="singles">Singles (2)</button></div></div>
@@ -831,6 +848,7 @@ $('#scrim').addEventListener('click',closeSheet);
 document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el) return;
   const a=el.dataset.act, id=el.dataset.id, ci=el.dataset.c!==undefined?+el.dataset.c:null, k=el.dataset.k;
+  if(IS_DISPLAY&&!VIEW_OK.has(a)){ toast('Display tablet — make changes on the Main tablet'); return; }
   if(!['del','reset','wipe','h-del','h-clear','sc-reset'].includes(a)) confirmKey=null;
   switch(a){
     case 'go': tab=el.dataset.tab; render(); break;
@@ -914,6 +932,8 @@ document.addEventListener('click',e=>{
       const w=new Set(waiting().map(p=>p.id)); if(!pickSel.every(x=>w.has(x))){toast('Someone is no longer available');pickSel=pickSel.filter(x=>w.has(x));sheetPick();break;}
       c.p=need()===4?arrange(pickSel.slice()):pickSel.slice(); c.t=Date.now(); c.sc=null; pickSel=[]; closeSheet(); save(); render(); break;}
     case 'export': exportReport(); break;
+    case 'sync-role':{ if(!CAN_SYNC) break; if(k===ROLE) break; try{ localStorage.setItem('bmm_role',k); }catch(e){} if(ROLE==='main') try{AndroidApp.stopServer();}catch(e){} location.reload(); break;}
+    case 'sync-ip':{ const v=($('#main-ip')||{}).value||''; const ip=v.trim().replace(/^https?:\/\//,'').replace(/[:\/].*$/,''); if(!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)){ toast('Type the address shown on the Main tablet, e.g. 192.168.43.1'); break; } MAIN_IP=ip; try{localStorage.setItem('bmm_main_ip',ip);}catch(e){} syncFails=0; toast('Connecting to '+ip+'…'); pollMain(); break;}
     case 'upd-check': toast('Checking…'); checkUpdate(true); break;
     case 'upd-go': doUpdate(); break;
     case 'settype':{ const p=byId(id); if(p){p.t=p.t==='G'?'S':'G'; save(); render();} break;}
@@ -927,7 +947,9 @@ document.addEventListener('click',e=>{
   }
 });
 document.addEventListener('change',e=>{
-  const el=e.target; if(el.dataset.act==='setcat'){ const p=byId(el.dataset.id); if(p){p.c=el.value; save(); render();} }
+  const el=e.target;
+  if(IS_DISPLAY&&(el.dataset.act==='setcat'||el.id==='file-in'||el.dataset.fee)){ toast('Display tablet — make changes on the Main tablet'); render(); return; }
+  if(el.dataset.act==='setcat'){ const p=byId(el.dataset.id); if(p){p.c=el.value; save(); render();} }
   if(el.id==='file-in'&&el.files&&el.files[0]) importFile(el.files[0]);
   if(el.dataset.fee){ const v=parseFloat(String(el.value).replace(',','.')); const k=el.dataset.fee;
     if(isFinite(v)&&v>=0&&(k!=='gn'||v>=1)){ S.fee[k]=k==='gn'?Math.round(v):v; save(); toast('Fee updated'); } render(); }
@@ -991,6 +1013,7 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('submit',e=>{
   e.preventDefault();
+  if(IS_DISPLAY){ toast('Display tablet — make changes on the Main tablet'); return; }
   if(e.target.id==='addf'){ const n=$('#add-n').value.trim(); if(!n) return; S.players.push({id:uid(),n:n.slice(0,40),c:$('#add-c').value,t:$('#add-t').value}); save(); render(); toast('Added '+n); setTimeout(()=>{const i=$('#add-n');i&&i.focus();},0); }
   if(e.target.id==='renf'){ const p=byId(e.target.dataset.id); const n=$('#ren-n').value.trim(); if(p&&n){p.n=n.slice(0,40); save();} closeSheet(); render(); }
 });
@@ -1025,7 +1048,45 @@ async function doUpdate(){
   }catch(e){ toast('No internet — could not update'); }
   updBusy=false;
 }
-if(IS_APP){ setSync(true,'Saved on this tablet'); setTimeout(()=>checkUpdate(false),1200); }
+/* ---------- local network sync ---------- */
+let syncOk=0, syncFails=0, lastTxt='', pollTimer=null;
+function mainAddr(){ try{ return AndroidApp.localIp(); }catch(e){ return ''; } }
+function shareState(){ if(ROLE==='main'&&CAN_SYNC){ try{ AndroidApp.setShared(JSON.stringify(S)); }catch(e){} } }
+function syncStatusText(){
+  if(ROLE==='main'){ let n=0; try{ n=AndroidApp.clientCount(); }catch(e){} return (AndroidApp.serverRunning()?'Sharing':'Not sharing — switch Off and back to Main')+' · '+n+' display'+(n===1?'':'s')+' connected'; }
+  if(ROLE==='display'){ if(!MAIN_IP) return 'Enter the address shown on the Main tablet.'; if(syncOk&&Date.now()-syncOk<6000) return 'Live from '+MAIN_IP+' · updated '+Math.max(0,Math.round((Date.now()-syncOk)/1000))+'s ago'; return 'Can\'t reach '+MAIN_IP+' — check both are on the same hotspot/Wi-Fi'+(syncOk?' · showing last data':''); }
+  return '';
+}
+function syncHeader(){
+  if(ROLE==='main') setSync(true,'Main · sharing');
+  else if(ROLE==='display') setSync(!!(syncOk&&Date.now()-syncOk<6000),syncOk&&Date.now()-syncOk<6000?'Display · live':'Display · offline');
+  else setSync(true,'Saved on this tablet');
+  const st=document.getElementById('syncstat'); if(st) st.textContent=syncStatusText();
+}
+async function pollMain(){
+  clearTimeout(pollTimer);
+  if(ROLE!=='display') return;
+  if(MAIN_IP){
+    const ctl=new AbortController(), to=setTimeout(()=>ctl.abort(),3500);
+    try{
+      const r=await fetch('http://'+MAIN_IP+':8787/state?t='+Date.now(),{cache:'no-store',signal:ctl.signal});
+      const txt=await r.text();
+      if(r.ok){ syncOk=Date.now(); syncFails=0;
+        if(txt!==lastTxt){ lastTxt=txt; const d=JSON.parse(txt); if(d&&Array.isArray(d.players)){ S=normalize(d); try{localStorage.setItem(LS_KEY,txt);}catch(e){} if(!document.querySelector('input:focus')) render(); } }
+      }
+    }catch(e){ syncFails++; }
+    clearTimeout(to);
+  }
+  syncHeader();
+  pollTimer=setTimeout(pollMain, syncFails>3?4000:1500);
+}
+const VIEW_OK=new Set(['go','ci-f','pl-f','h-f','h-r','h-v','pay-f','score','sc-close','sync-role','sync-ip','upd-check','upd-go','export','copypay','copy']);
+if(IS_DISPLAY) document.body.classList.add('display');
+if(IS_APP){
+  if(ROLE==='main'){ try{ AndroidApp.startServer(); }catch(e){} shareState(); setInterval(syncHeader,3000); }
+  if(ROLE==='display'){ pollMain(); }
+  syncHeader(); setTimeout(()=>checkUpdate(false),1200);
+}
 
 render();
 })();
