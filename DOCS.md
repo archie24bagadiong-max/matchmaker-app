@@ -1,4 +1,4 @@
-# Match Maker - JAMREIBIZ — App Documentation
+# Match Maker - JAMREIBIZ Badminton Club — App Documentation
 
 As of 7 Nov 2026. Full formatted version: https://claude.ai/artifact/2rCTvyBGck3BVPcYq5Q1yL
 
@@ -129,6 +129,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 7 Nov 2026 | Page v5 | Title adds Badminton Club |
 | 7 Nov 2026 | Page v4 | App title: Match Maker - JAMREIBIZ |
 | 7 Nov 2026 | Page v3 | Live badminton scoring with official serving rules |
 | 7 Nov 2026 | Page v2, APK 1.3 | Excel report export, payment ledger, Android file saving |
