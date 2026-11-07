@@ -401,7 +401,7 @@ input.stsel{padding-right:40px}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=21;
+const APP_VERSION=22;
 const IS_APP=!!window.AndroidApp;
 const UPD_BASE='https://raw.githubusercontent.com/archie24bagadiong-max/matchmaker-app/main/';
 let ROLE='off', MAIN_IP='';
@@ -782,7 +782,10 @@ function scLeader(sc){
   return '';
 }
 const scWon=(sc,t)=>sc.g.filter(x=>t==='a'?x[0]>x[1]:x[1]>x[0]).length;
-const scGameOver=(sc,a,b)=>{const r=RU(sc),m=Math.max(a,b);return (m>=r.pts&&Math.abs(a-b)>=2)||m>=r.cap;};
+const DEC_PTS=11;
+const inDecider=sc=>!!(sc&&sc.dec&&sc.g.length>=RU(sc).n);
+const scPts=sc=>inDecider(sc)?{pts:DEC_PTS,cap:capFor(DEC_PTS)}:RU(sc);
+const scGameOver=(sc,a,b)=>{const r=scPts(sc),m=Math.max(a,b);return (m>=r.pts&&Math.abs(a-b)>=2)||m>=r.cap;};
 function scSummary(sc){
   if(!sc) return '';
   const parts=sc.g.map(x=>x[0]+'–'+x[1]);
@@ -791,7 +794,7 @@ function scSummary(sc){
 }
 function scServerId(sc){ if(!sc.srv) return ''; const pos=sc.pos[sc.srv]; return pos.length>1?pos[sc[sc.srv]%2]:pos[0]; }
 function scReceiverId(sc){ if(!sc.srv) return ''; const o=sc.srv==='a'?'b':'a', pos=sc.pos[o]; return pos.length>1?pos[sc[sc.srv]%2]:pos[0]; }
-function scPush(sc){ sc.undo.push(JSON.stringify({g:sc.g,a:sc.a,b:sc.b,srv:sc.srv,pos:sc.pos,done:sc.done,flip:!!sc.flip})); if(sc.undo.length>80) sc.undo.shift(); }
+function scPush(sc){ sc.undo.push(JSON.stringify({g:sc.g,a:sc.a,b:sc.b,srv:sc.srv,pos:sc.pos,done:sc.done,flip:!!sc.flip,tie:!!sc.tie,dec:!!sc.dec})); if(sc.undo.length>80) sc.undo.shift(); }
 function scPoint(i,t){
   const sc=scEnsure(i); if(!sc||sc.done) return;
   if(!sc.srv){ toast('First choose who serves'); return; }
@@ -800,22 +803,25 @@ function scPoint(i,t){
   if(sc.srv===t){ if(sc.pos[t].length>1) sc.pos[t]=[sc.pos[t][1],sc.pos[t][0]]; } // serving side wins: same server, switches service court
   else sc.srv=t;                                                                   // receiving side wins: they serve next
   sc[t]++;
-  const r=RU(sc), gi=sc.g.length+1, deciding=gi===r.n, mid=Math.ceil(r.pts/2);
+  const r=RU(sc), gi=sc.g.length+1, dec=inDecider(sc), deciding=dec||gi===r.n, mid=Math.ceil(scPts(sc).pts/2);
   if(scGameOver(sc,sc.a,sc.b)){
     sc.g.push([sc.a,sc.b]);
     const w=sc.a>sc.b?'a':'b';
     let over=false;
-    if(r.mode==='best'){ if(scWon(sc,w)>=needWins(r)||sc.g.length>=r.n){ over=true; sc.done=w; } }
+    if(dec){ over=true; sc.done=w; sc.tie=false; }
+    else if(r.mode==='best'){ if(scWon(sc,w)>=needWins(r)||sc.g.length>=r.n){ over=true; sc.done=w; } }
     else if(sc.g.length>=r.n){ over=true; const ga=scWon(sc,'a'), gb=scWon(sc,'b');
       if(ga!==gb) sc.done=ga>gb?'a':'b';
-      else { const pa=sc.g.reduce((s,x)=>s+x[0],0), pb=sc.g.reduce((s,x)=>s+x[1],0); sc.done=pa===pb?'d':(pa>pb?'a':'b'); } }
-    if(over){ flash(sc.done==='d'?'Match drawn — '+scWon(sc,'a')+'–'+scWon(sc,'b')+' in games':'🏆 '+scWho(sc,sc.done)+' win the match!'); }
+      else { const pa=sc.g.reduce((s,x)=>s+x[0],0), pb=sc.g.reduce((s,x)=>s+x[1],0); sc.done=pa===pb?'d':(pa>pb?'a':'b'); sc.tie=true; } }
+    if(over&&sc.tie){ flash('Games tied '+scWon(sc,'a')+'–'+scWon(sc,'b')+' — play a decider to '+DEC_PTS+'?'); }
+    else if(over){ flash(sc.done==='d'?'Match drawn — '+scWon(sc,'a')+'–'+scWon(sc,'b')+' in games':'🏆 '+scWho(sc,sc.done)+' win the match!'); }
     else { sc.a=0; sc.b=0; sc.srv=w; sc.flip=!sc.flip; flash('Game '+gi+' to '+(scTN(sc,w)||scTeam(sc,w))+' — teams change ends ⇄'); }
   } else if(sc[t]===mid&&sc[o]<mid){ if(deciding&&r.n>1){ sc.flip=!sc.flip; flash('Interval — teams change ends ⇄'); } else flash('Interval ('+mid+' points)'); }
-  else if(sc.a===r.pts-1&&sc.b===r.pts-1){ flash((r.pts-1)+' all — win by 2 (max '+r.cap+')'); }
+  else if(sc.a===scPts(sc).pts-1&&sc.b===scPts(sc).pts-1){ flash((scPts(sc).pts-1)+' all — win by 2 (max '+scPts(sc).cap+')'); }
   else if(sc.a===r.cap-1&&sc.b===r.cap-1){ flash((r.cap-1)+' all — next point wins'); }
   save(); renderScore();
 }
+function scDecider(i){ const sc=scEnsure(i); if(!sc||!sc.done||!sc.tie||sc.dec) return; scPush(sc); sc.seq=(sc.seq||0)+1; const last=sc.g[sc.g.length-1]; sc.dec=true; sc.tie=false; sc.done=''; sc.a=0; sc.b=0; sc.srv=last&&last[0]>last[1]?'a':'b'; sc.flip=!sc.flip; save(); renderScore(); flash('Decider game to '+DEC_PTS+' — teams change ends ⇄'); }
 function scUndo(i){ const sc=S.courts[i]&&S.courts[i].sc; if(!sc||!sc.undo.length){ toast('Nothing to undo'); return; } const s=JSON.parse(sc.undo.pop()); const seq=(sc.seq||0)+1; Object.assign(sc,s); sc.seq=seq; save(); renderScore(); }
 function scServe(i,t){ const sc=scEnsure(i); if(!sc||sc.a||sc.b||sc.g.length) return; sc.srv=t; sc.seq=(sc.seq||0)+1; save(); renderScore(); }
 function scSwap(i,t){ const sc=scEnsure(i); if(!sc||sc.a||sc.b||sc.pos[t].length<2) return; sc.pos[t]=[sc.pos[t][1],sc.pos[t][0]]; sc.seq=(sc.seq||0)+1; save(); renderScore(); }
@@ -852,11 +858,12 @@ function renderScore(){
   };
   const prev=sc.g.map((x,k)=>`<span>G${k+1} ${x[0]}–${x[1]}</span>`).join('');
   let msg;
-  if(sc.done==='d') msg=`🤝 <b>Draw</b> — ${scWon(sc,'a')}–${scWon(sc,'b')} in games · ${esc(scSummary(sc))}`;
+  if(sc.done&&sc.tie) msg=`🤝 <b>Games tied ${scWon(sc,'a')}–${scWon(sc,'b')}</b> · ${esc(scSummary(sc))} — tap <b>Play decider</b> (one game to ${DEC_PTS}), or keep the result: ${sc.done==='d'?'a draw (equal points)':'<b>'+esc(scWho(sc,sc.done))+'</b> win on total points'}.`;
+  else if(sc.done==='d') msg=`🤝 <b>Draw</b> — ${scWon(sc,'a')}–${scWon(sc,'b')} in games · ${esc(scSummary(sc))}`;
   else if(sc.done) msg=`🏆 <b>${esc(scWho(sc,sc.done))} win</b> ${esc(scSummary(sc))}`;
   else if(!sc.srv) msg='Toss done? Tap <b>Serves first</b> for the team that serves. Use ⇄ to set who stands in the right court.';
   else msg=`<b>${nm(srvId)}</b> serves from the <b>${sc[sc.srv]%2?'left':'right'}</b> court to <b class="rcvn">${nm(rcvId)}</b>`;
-  v.innerHTML=`<div class="sbar"><b>Court ${i+1}</b><span>${sc.done?'Match finished · '+esc(fmtLabel(RU(sc))):'Game '+(sc.g.length+1)+' of '+(RU(sc).mode==='best'&&RU(sc).n>1?'up to ':'')+RU(sc).n+' · to '+RU(sc).pts}</span><button class="btn sm gear" data-act="sc-help" aria-label="How to score">?</button>${IS_COURT?`<button class="btn sm gear" data-act="court-exit" aria-label="Organizer">⚙</button>`:`<button class="btn sm" data-act="sc-close">Close</button>`}</div>
+  v.innerHTML=`<div class="sbar"><b>Court ${i+1}</b><span>${sc.done?'Match finished · '+esc(fmtLabel(RU(sc)))+(sc.dec?' + decider':''):inDecider(sc)?'Decider game · to '+DEC_PTS:'Game '+(sc.g.length+1)+' of '+(RU(sc).mode==='best'&&RU(sc).n>1?'up to ':'')+RU(sc).n+' · to '+RU(sc).pts}</span><button class="btn sm gear" data-act="sc-help" aria-label="How to score">?</button>${IS_COURT?`<button class="btn sm gear" data-act="court-exit" aria-label="Organizer">⚙</button>`:`<button class="btn sm" data-act="sc-close">Close</button>`}</div>
   ${teamPick?`<div class="schelp tpick"><b>Team name — ${(sc.flip?(teamPick==='a'?'right':'left'):(teamPick==='a'?'left':'right'))} side (${esc(scTeam(sc,teamPick))})</b>
     <div class="tpgrid">${allTeamNames().map(n=>`<button class="btn ${n===scTN(sc,teamPick)?'pri':''}" data-act="sc-tpick" data-k="${teamPick}" data-v="${esc(n)}">${esc(n)}</button>`).join('')||'<span class="hint">No saved teams yet — type one below, or add them on the Players tab.</span>'}</div>
     <div class="row" style="margin-top:12px"><input type="text" id="tp-in" maxlength="40" placeholder="Type a new team name" style="flex:1;min-width:160px" autocomplete="off"><button class="btn lime" data-act="sc-tuse">Use</button></div>
@@ -866,7 +873,7 @@ function renderScore(){
   <datalist id="sc-teams">${allTeamNames().map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
   <div class="sboard">${side(sc.flip?'b':'a')}<div class="snet"></div>${side(sc.flip?'a':'b')}</div>
   <div class="sprev">${prev||'<span>Tap a score to add a point · rally scoring</span>'}</div>
-  <div class="sfoot"><button class="btn" data-act="sc-undo" ${sc.undo.length?'':'disabled'}>↶ Undo</button><button class="btn warn" data-act="sc-reset">${confirmKey==='screset'?'Tap again to reset score':'Reset score'}</button>${sc.done?(IS_COURT?`<div class="cdone">Match finished — the organizer records the result</div>`:`<button class="btn lime big" data-act="sc-save">Save result &amp; clear court</button>`):''}</div>
+  <div class="sfoot"><button class="btn" data-act="sc-undo" ${sc.undo.length?'':'disabled'}>↶ Undo</button><button class="btn warn" data-act="sc-reset">${confirmKey==='screset'?'Tap again to reset score':'Reset score'}</button>${sc.done&&sc.tie?`<button class="btn lime big" data-act="sc-dec">⚡ Play decider (to ${DEC_PTS})</button>`:''}${sc.done?(IS_COURT?`<div class="cdone">Match finished — the organizer records the result</div>`:`<button class="btn lime big" data-act="sc-save">${sc.tie?'Keep result &amp; clear court':'Save result &amp; clear court'}</button>`):''}</div>
   <div id="scflash" class="scflash"></div>`;
   v.hidden=false; document.body.classList.add('noscroll');
   fitScore();
@@ -923,6 +930,7 @@ function vHelp(){
     <li>The top line shows who serves, from which side, and who receives.</li>
     <li><b>↶ Undo</b> fixes a wrong tap.</li>
     <li>Standard: best of 3 games to 21, win by 2, maximum 30. Change it in <b>Settings → Match format</b> (1–5 games, 11/15/21 points, best of or play all). Sides swap automatically at change of ends.</li>
+    <li>Even number of games and it ends level (e.g. 1–1)? Tap <b>⚡ Play decider</b> for one extra game to 11, or keep the result (more total points wins; equal points = draw).</li>
     <li><b>Team names:</b> tap <b>+ Team name</b> at the top of each side and type any name for this match (or pick one used before). It's filled in automatically when both players share a team. ✕ clears it.</li></ol>`)}
   ${sec('fees','5. Fees and payments',`<ul>
     <li><b>Subscriber:</b> 2.50 SR per game.</li>
@@ -1169,6 +1177,7 @@ document.addEventListener('click',e=>{
     case 'sc-close': teamPick=null; scoreOpen=null; renderScore(); render(); break;
     case 'sc-pt': scPoint(scoreOpen,k); break;
     case 'sc-undo': scUndo(scoreOpen); break;
+    case 'sc-dec': scDecider(scoreOpen); break;
     case 'sc-serve': scServe(scoreOpen,k); break;
     case 'sc-swap': scSwap(scoreOpen,k); break;
     case 'sc-save':{ const i=scoreOpen, sc=S.courts[i].sc; if(!sc||!sc.done) break; if(sc.done==='d'){ const sum=scSummary(sc); scoreOpen=null; renderScore(); finish(i,true,''); toast('🤝 Draw · '+sum); break; } const sum=scSummary(sc), who=scWho(sc,sc.done); scoreOpen=null; renderScore(); finish(i,true,sc.done); toast('🏆 '+who+' win · '+sum); break;}
@@ -1462,7 +1471,7 @@ async function pollMain(){
 }
 /* ---------- court tablets ---------- */
 let courtExit=false, courtSetup=false, postPending=false, lastCourtKey='', posting=false;
-const COURT_OK=new Set(['sc-topen','sc-tcancel','sc-tpick','sc-tuse','sc-tclear','sc-help','sc-pt','sc-undo','sc-serve','sc-swap','sc-reset','court-exit','court-exit-no','court-exit-ok']);
+const COURT_OK=new Set(['sc-topen','sc-tcancel','sc-tpick','sc-tuse','sc-tclear','sc-help','sc-pt','sc-undo','sc-dec','sc-serve','sc-swap','sc-reset','court-exit','court-exit-no','court-exit-ok']);
 const sameSet=(x,y)=>Array.isArray(x)&&Array.isArray(y)&&x.length===y.length&&x.every(v=>y.includes(v));
 function courtKey(){ const c=S.courts[COURT_NO]; return JSON.stringify([c&&c.p,c&&c.sc&&c.sc.seq,S.phRev]); }
 function mergeMine(mine){
