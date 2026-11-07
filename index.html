@@ -165,12 +165,16 @@ select.mini{width:auto;padding:6px 8px;border-radius:8px}
 .phead .pfee{text-align:right;display:block}
 .pg{width:56px;text-align:center;flex:none}
 .pg b{font-family:'Barlow Condensed';font-size:22px}
-.pfee{display:flex;flex-direction:column;align-items:flex-end;gap:4px;min-width:74px;font-size:14px}
+.pfee{display:flex;flex-direction:column;align-items:flex-end;gap:4px;min-width:74px;font-size:14px;flex:none}
 .gadj{display:inline-flex;align-items:center;gap:6px;flex:none}
 .gadj b{min-width:20px;text-align:center;font-family:'Barlow Condensed';font-size:20px}
 .gadj button{width:34px;height:34px;border-radius:9px;border:1px solid var(--border);background:#f3f6f2;padding:0;font-weight:700;font-size:20px;line-height:1;color:var(--court)}
 .paidb{border:1px solid var(--border);border-radius:8px;padding:5px 8px;font-size:12px;font-weight:700;background:#fff;color:var(--muted)}
 .paidb.on{background:var(--C);border-color:var(--C);color:#fff}
+.paidb.stc.on{background:#4f2d7f;border-color:#4f2d7f}
+.pmb{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.pmsplit{display:block;font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4}
+.unpaid{font-size:11px;color:#c0392b;font-weight:700}
 .money{font-family:'Barlow Condensed';font-size:22px}
 .gpill{flex:none;font-size:12px;font-weight:700;padding:3px 8px;border-radius:999px;background:#e7f0ea;color:var(--court2);white-space:nowrap}
 .gpill.z{background:#eaf7d0;color:#3d6b00}
@@ -440,7 +444,7 @@ input.stsel{padding-right:40px}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=29;
+const APP_VERSION=30;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -781,17 +785,21 @@ function vPlayers(){
   </div>`;
 }
 let payFilter='All';
+/* payment method: S.paid[id] = 'cash' | 'stc' (old value 1 counts as cash) */
+const PM={cash:'Cash',stc:'STC Pay'};
+const payM=id=>{ const v=S.paid[id]; return !v?'':(v==='stc'?'stc':'cash'); };
 function vPay(){
   const rows=S.players.filter(p=>S.present[p.id]||(S.games[p.id]||0)>0);
   const subs=rows.filter(p=>p.t!=='G'), gs=rows.filter(p=>p.t==='G');
   const tot=l=>l.reduce((a,p)=>a+fee(p),0);
   const got=rows.filter(p=>S.paid[p.id]).reduce((a,p)=>a+fee(p),0);
+  const gotM=m=>rows.filter(p=>payM(p.id)===m).reduce((a,p)=>a+fee(p),0);
   const games=S.players.reduce((a,p)=>a+(S.games[p.id]||0),0)/(need());
   let list=rows.filter(p=>payFilter==='All'||(payFilter==='Guests'?p.t==='G':payFilter==='Unpaid'?!S.paid[p.id]&&fee(p)>0:p.t!=='G'));
   list.sort((a,b)=>((S.games[b.id]||0)-(S.games[a.id]||0))||a.n.localeCompare(b.n));
   return `<div class="stats" style="grid-template-columns:repeat(2,1fr)">
     <div class="stat"><b class="money">${sr(tot(rows))}</b><span>Total due today</span></div>
-    <div class="stat"><b class="money">${sr(got)}</b><span>Collected</span></div>
+    <div class="stat"><b class="money">${sr(got)}</b><span>Collected</span><span class="pmsplit">💵 Cash ${sr(gotM('cash'))}<br>📱 STC Pay ${sr(gotM('stc'))}</span></div>
     <div class="stat"><b class="money">${sr(tot(subs))}</b><span>${subs.length} subscribers</span></div>
     <div class="stat"><b class="money">${sr(tot(gs))}</b><span>${gs.length} guests</span></div></div>
   <p class="hint">${Math.round(games)} games played today · Subscriber ${sr(S.fee.sp)}/game · Guest ${sr(S.fee.gp)} for ${S.fee.gn} games, ${sr(S.fee.gp+S.fee.gx)} for ${S.fee.gn*2}</p>
@@ -803,7 +811,7 @@ function vPay(){
       return `<div class="prow">
         <div class="pinfo"><div class="nmc">${catBadge(p.c)}<span class="pn">${esc(p.n)}</span>${typeBadge(p)}</div><div class="pnote">${note}</div></div>
         <div class="pg"><b>${g}</b></div>
-        <div class="pfee"><b>${f?sr(f):'0 SR'}</b><button class="paidb ${S.paid[p.id]?'on':''}" data-act="paid" data-id="${p.id}" ${f?'':'disabled'}>${S.paid[p.id]?'Paid':'Unpaid'}</button></div>
+        <div class="pfee"><b>${f?sr(f):'0 SR'}</b><div class="pmb">${Object.keys(PM).map(m=>`<button class="paidb ${m} ${payM(p.id)===m?'on':''}" data-act="paid" data-id="${p.id}" data-k="${m}" ${f?'':'disabled'}>${m==='cash'?'💵':'📱'} ${PM[m]}</button>`).join('')}</div>${f&&!S.paid[p.id]?'<span class="unpaid">Unpaid</span>':''}</div>
       </div>`;}).join('')}</div>`
     :`<div class="emptybox"><b>No players to show</b>Only players checked in today appear here.<div style="margin-top:12px"><button class="btn pri" data-act="go" data-tab="checkin">Take attendance</button></div></div>`}
     <p class="hint">Games are counted automatically when you tap “Game done” on a court.</p>
@@ -812,7 +820,7 @@ function vPay(){
   <div class="card"><p class="hint" style="margin-top:0">One Excel file with sheets: Players, Payments (all days), Match History, Win Statistics and Daily Summary.</p>
   <button class="btn pri" data-act="export">Export Excel report</button></div>
   <h2>Summary to share</h2>
-  <div class="card"><textarea readonly id="paytxt">${esc(rows.slice().sort((a,b)=>a.n.localeCompare(b.n)).map(p=>`${p.n}${p.t==='G'?' (Guest)':''} – ${S.games[p.id]||0} games – ${fee(p)?sr(fee(p)):'0 SR'}${S.paid[p.id]?' ✓ paid':''}`).join('\n')+(rows.length?`\n\nTotal: ${sr(tot(rows))}`:''))}</textarea>
+  <div class="card"><textarea readonly id="paytxt">${esc(rows.slice().sort((a,b)=>a.n.localeCompare(b.n)).map(p=>`${p.n}${p.t==='G'?' (Guest)':''} – ${S.games[p.id]||0} games – ${fee(p)?sr(fee(p)):'0 SR'}${S.paid[p.id]?' ✓ paid ('+PM[payM(p.id)]+')':''}`).join('\n')+(rows.length?`\n\nTotal: ${sr(tot(rows))}`:''))}</textarea>
   <div class="row" style="margin-top:8px"><button class="btn" data-act="copypay">Copy summary</button></div></div>`;
 }
 /* ---------- scoring (BWF: 21 pts, win by 2, cap 30, best of 3) ---------- */
@@ -1054,7 +1062,7 @@ function vHelp(){
 }
 function todayRows(){
   const d=dayKey(Date.now());
-  return S.players.filter(p=>S.present[p.id]||(S.games[p.id]||0)>0).map(p=>({day:d,n:p.n,tm:p.tm||'',c:p.c,t:p.t,g:S.games[p.id]||0,f:Math.round(fee(p)*100)/100,pd:S.paid[p.id]?1:0}));
+  return S.players.filter(p=>S.present[p.id]||(S.games[p.id]||0)>0).map(p=>({day:d,n:p.n,tm:p.tm||'',c:p.c,t:p.t,g:S.games[p.id]||0,f:Math.round(fee(p)*100)/100,pd:S.paid[p.id]?1:0,pm:S.paid[p.id]?PM[payM(p.id)]:''}));
 }
 function archiveDay(){
   const rows=todayRows().filter(r=>r.g>0||r.pd);
@@ -1069,7 +1077,7 @@ function buildReport(){
   const wb=XLSX.utils.book_new();
   const add=(name,aoa,widths)=>{const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=widths.map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws,name);};
   add('Players',[['Name','Category','Type','Team']].concat(S.players.slice().sort((a,b)=>a.c.localeCompare(b.c)||a.n.localeCompare(b.n)).map(p=>[p.n,p.c,T(p.t),p.tm||''])),[26,10,12,20]);
-  add('Payments',[['Date','Player','Team','Category','Type','Games','Fee (SR)','Paid']].concat(pay.map(r=>[dayDate(r.day),r.n,r.tm||((S.players.find(p=>p.n===r.n)||{}).tm||''),r.c,T(r.t),r.g,r.f,r.pd?'Yes':'No'])),[13,24,18,10,12,8,10,7]);
+  add('Payments',[['Date','Player','Team','Category','Type','Games','Fee (SR)','Paid','Method']].concat(pay.map(r=>[dayDate(r.day),r.n,r.tm||((S.players.find(p=>p.n===r.n)||{}).tm||''),r.c,T(r.t),r.g,r.f,r.pd?'Yes':'No',r.pd?(r.pm||'Cash'):''])),[13,24,18,10,12,8,10,7,10]);
   add('Match History',[['Date','Time','Court','Team 1 – Player 1','Team 1 – Player 2','Team 2 – Player 1','Team 2 – Player 2','Team 1 name','Team 2 name','Winner','Winning team','Score','Minutes']].concat(S.hist.map(x=>{const nm=(ids,ns,i)=>ids[i]?((byId(ids[i])||{}).n||ns[i]):'';
     return [dayDate(dayKey(x.d)),fmtTime(x.d),x.c,nm(x.a,x.an,0),nm(x.a,x.an,1),nm(x.b,x.bn,0),nm(x.b,x.bn,1),x.ta||'',x.tb||'',x.w==='a'?'Team 1':x.w==='b'?'Team 2':'',x.w==='a'?(x.ta||nm(x.a,x.an,0)+(x.a[1]?' & '+nm(x.a,x.an,1):'')):x.w==='b'?(x.tb||nm(x.b,x.bn,0)+(x.b[1]?' & '+nm(x.b,x.bn,1):'')):'',x.sc||'',Math.max(1,Math.round((x.d-x.s)/60000))];})),[13,10,7,20,20,20,20,18,18,9,26,20,9]);
   const st={};
@@ -1078,11 +1086,11 @@ function buildReport(){
   const tstat=teamStats(S.hist);
   add('Team Statistics',[['Team','Played','Won','Lost','Win %','Players']].concat(tstat.map(r=>[r.n,r.p,r.w,r.l,r.w+r.l?Math.round(r.w*1000/(r.w+r.l))/10+'%':'-',S.players.filter(p=>p.tm===r.n).map(p=>p.n).join(', ')]).concat(tstat.length?[]:[['No team results yet','','','','','']])),[24,8,8,8,8,50]);
   add('Win Statistics',[['Player','Team','Category','Type','Played','Won','Lost','Win %']].concat(ws.map(r=>[r.n,(S.players.find(p=>p.n===r.n)||{}).tm||'',r.c,r.t,r.p,r.w,r.l,r.w+r.l?Math.round(r.w*1000/(r.w+r.l))/10+'%':'-'])),[24,18,10,12,8,8,8,8]);
-  const days={}; pay.forEach(r=>{const d=days[r.day]||(days[r.day]={pl:0,g:0,due:0,col:0,sub:0,gst:0});d.pl++;d.g+=r.g;d.due+=r.f;if(r.pd)d.col+=r.f;if(r.t==='G')d.gst+=r.f;else d.sub+=r.f;});
+  const days={}; pay.forEach(r=>{const d=days[r.day]||(days[r.day]={pl:0,g:0,due:0,col:0,cash:0,stc:0,sub:0,gst:0});d.pl++;d.g+=r.g;d.due+=r.f;if(r.pd){d.col+=r.f;if(r.pm==='STC Pay')d.stc+=r.f;else d.cash+=r.f;}if(r.t==='G')d.gst+=r.f;else d.sub+=r.f;});
   const mt={}; S.hist.forEach(x=>{const k=dayKey(x.d);mt[k]=(mt[k]||0)+1;});
   const dk=[...new Set(Object.keys(days).concat(Object.keys(mt)))].sort((a,b)=>dayDate(a).localeCompare(dayDate(b)));
   const r2=v=>Math.round(v*100)/100;
-  add('Daily Summary',[['Date','Players','Matches','Total due (SR)','Collected (SR)','Outstanding (SR)','Subscribers (SR)','Guests (SR)']].concat(dk.map(k=>{const d=days[k]||{pl:0,due:0,col:0,sub:0,gst:0};return [dayDate(k),d.pl,mt[k]||0,r2(d.due),r2(d.col),r2(d.due-d.col),r2(d.sub),r2(d.gst)];})),[13,9,9,14,14,15,15,12]);
+  add('Daily Summary',[['Date','Players','Matches','Total due (SR)','Collected (SR)','Cash (SR)','STC Pay (SR)','Outstanding (SR)','Subscribers (SR)','Guests (SR)']].concat(dk.map(k=>{const d=days[k]||{pl:0,due:0,col:0,cash:0,stc:0,sub:0,gst:0};return [dayDate(k),d.pl,mt[k]||0,r2(d.due),r2(d.col),r2(d.cash),r2(d.stc),r2(d.due-d.col),r2(d.sub),r2(d.gst)];})),[13,9,9,14,14,11,13,15,15,12]);
   return XLSX.write(wb,{bookType:'xlsx',type:'base64'});
 }
 async function exportReport(){
@@ -1382,7 +1390,7 @@ document.addEventListener('click',e=>{
     case 'settype':{ const p=byId(id); if(p){p.t=p.t==='G'?'S':'G'; save(); render();} break;}
     case 'prio': S.prio=k; save(); render(); break;
     case 'pay-f': payFilter=k; render(); break;
-    case 'paid': if(S.paid[id]) delete S.paid[id]; else S.paid[id]=1; save(); render(); break;
+    case 'paid': { const m=k||'cash'; if(payM(id)===m) delete S.paid[id]; else S.paid[id]=m; save(); render(); break; }
     case 'g+': S.games[id]=(S.games[id]||0)+1; S.present[id]=1; save(); render(); break;
     case 'g-': if((S.games[id]||0)>0){ S.games[id]--; save(); render(); } break;
     case 'copypay': try{ navigator.clipboard.writeText($('#paytxt').value).then(()=>toast('Copied'),()=>{$('#paytxt').select();toast('Select & copy manually');}); }catch(err){ $('#paytxt').select(); toast('Select & copy manually'); } break;
