@@ -271,6 +271,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 | 7 Nov 2026 | Page v21 | Scoreboard auto-fits short screens and phones (big score boxes always visible) |
 | 7 Nov 2026 | Page v22 | Tied match (e.g. 1–1 in a 2-game match): Play decider (one game to 11, change ends at 6) or keep result (total points, else draw) |
 | 7 Nov 2026 | Page v23 | Main tablet: Game done blinks red and plays a ting-ting chime when a court’s match is finished |
+| 7 Nov 2026 | Page v24 | Landscape Courts tab uses the full width: 1 court fills it, 2 split it, 3 in thirds, 4 in quarters (5–8 wrap) |
 | 7 Nov 2026 | Page v17 | Custom teams list on Players (and Teams sheet in Excel); team picker on the scoreboard |
 | 7 Nov 2026 | Page v16 | Custom team name typed on the scoreboard per match |
 | 7 Nov 2026 | Page v15 | Team names: players, scoreboard, history, team standings, Excel |

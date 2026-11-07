@@ -57,6 +57,21 @@ h2 small{font-family:Barlow;font-size:13px;color:var(--muted);text-transform:non
 /* courts */
 .courts{display:grid;gap:12px}
 @media(min-width:720px){.courts{grid-template-columns:1fr 1fr}}
+.courts.n1{grid-template-columns:1fr}
+/* landscape: courts share the full width — 1 court fills it, 2 split it, 3 in thirds, 4 in quarters, more wrap */
+@media(orientation:landscape) and (min-width:720px){
+  main.wide{max-width:none}
+  .courts.n3{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .courts.n4{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .courts.n5,.courts.n6{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .courts.n7,.courts.n8{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .courts.n4 .court-f,.courts.n7 .court-f,.courts.n8 .court-f{flex-wrap:wrap}
+  .courts.n4 .pl,.courts.n7 .pl,.courts.n8 .pl{flex-wrap:wrap;row-gap:3px}
+  .courts.n4 .pl .nm,.courts.n7 .pl .nm,.courts.n8 .pl .nm{flex:1 1 55%}
+  .courts.n4 .pl .gb,.courts.n7 .pl .gb,.courts.n8 .pl .gb{margin-left:auto}
+  .courts.n4 .pitch,.courts.n7 .pitch,.courts.n8 .pitch{margin:0 8px}
+  .courts.n4 .side,.courts.n7 .side,.courts.n8 .side{padding:6px 4px}
+}
 .court{background:var(--court);border-radius:var(--radius);color:#fff;overflow:hidden}
 .court-h{display:flex;align-items:center;gap:8px;padding:10px 12px}
 .court-h b{font-family:"Barlow Condensed";font-size:20px;text-transform:uppercase;letter-spacing:.5px}
@@ -403,7 +418,7 @@ input.stsel{padding-right:40px}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=23;
+const APP_VERSION=24;
 const IS_APP=!!window.AndroidApp;
 const UPD_BASE='https://raw.githubusercontent.com/archie24bagadiong-max/matchmaker-app/main/';
 let ROLE='off', MAIN_IP='';
@@ -627,6 +642,7 @@ document.addEventListener('pointerdown',()=>{ try{ audioCtx=audioCtx||new (windo
 function render(){
   if(IS_COURT){ renderScore(); return; }
   checkDone();
+  { const m=document.getElementById('app'); if(m) m.classList.toggle('wide',tab==='courts'); }
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
   const app=$('#app');
   if(tab==='courts') app.innerHTML=vCourts();
@@ -654,7 +670,7 @@ function vCourts(){
   if(!present.length){
     h+=`<div class="card emptybox" style="margin-top:14px"><b>No one checked in yet</b>${S.players.length?'Mark today\'s attendees first.':'Add your players, then mark attendance.'}<div style="margin-top:12px"><button class="btn pri" data-act="go" data-tab="${S.players.length?'checkin':'players'}">${S.players.length?'Take attendance':'Add players'}</button></div></div>`;
   }
-  h+=`<h2>Courts <small>${S.mode==='doubles'?'Doubles':'Singles'}</small><span class="grow"></span><button class="btn lime sm" data-act="fill-all">Fill empty courts</button></h2><div class="courts">`;
+  h+=`<h2>Courts <small>${S.mode==='doubles'?'Doubles':'Singles'}</small><span class="grow"></span><button class="btn lime sm" data-act="fill-all">Fill empty courts</button></h2><div class="courts n${S.courts.length}">`;
   S.courts.forEach((c,i)=>{
     const lv=CATS.map(k=>`<button class="${c.lv.includes(k)?'on':''}" data-act="lv" data-c="${i}" data-k="${k}">${k}</button>`).join('');
     let pitch;
