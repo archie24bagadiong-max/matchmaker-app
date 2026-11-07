@@ -221,6 +221,9 @@ body.noscroll{overflow:hidden}
 .steam{display:flex;flex-direction:column;gap:6px}
 .spl{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);border-radius:10px;padding:8px 10px;min-width:0}
 .spl.srv{background:var(--lime);color:var(--court)}
+button.spl{color:#fff;background-color:rgba(255,255,255,.1)}
+.spl.spick{border:2px dashed rgba(255,255,255,.35);font:inherit;text-align:left;cursor:pointer;width:100%}
+.spl.spick:active{transform:scale(.98)}
 .spl.rcv{background:#ff9f1c;color:#3a1d00}
 .spl.rcv .sct{opacity:.8}
 .spl.rcv .av{border-color:#fff}
@@ -437,7 +440,7 @@ input.stsel{padding-right:40px}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=28;
+const APP_VERSION=29;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -881,6 +884,12 @@ function scPoint(i,t){
 function scDecider(i){ const sc=scEnsure(i); if(!sc||!sc.done||!sc.tie||sc.dec) return; scPush(sc); sc.seq=(sc.seq||0)+1; const last=sc.g[sc.g.length-1]; sc.dec=true; sc.tie=false; sc.done=''; sc.a=0; sc.b=0; sc.srv=last&&last[0]>last[1]?'a':'b'; sc.flip=!sc.flip; save(); renderScore(); flash('Decider game to '+DEC_PTS+' — teams change ends ⇄'); }
 function scUndo(i){ const sc=S.courts[i]&&S.courts[i].sc; if(!sc||!sc.undo.length){ toast('Nothing to undo'); return; } const s=JSON.parse(sc.undo.pop()); const seq=(sc.seq||0)+1; Object.assign(sc,s); sc.seq=seq; save(); renderScore(); }
 function scServe(i,t){ const sc=scEnsure(i); if(!sc||sc.a||sc.b||sc.g.length) return; sc.srv=t; sc.seq=(sc.seq||0)+1; save(); renderScore(); }
+function scPick(i,t,id){
+  const sc=scEnsure(i); if(!sc||sc.a||sc.b||sc.g.length||sc.done) return;
+  const put=(team)=>{ const p=sc.pos[team]; if(p.length>1&&p[0]!==id&&p.includes(id)) sc.pos[team]=[id,...p.filter(x=>x!==id)]; };
+  if(!sc.srv||sc.srv===t){ sc.srv=t; put(t); } else put(t);
+  sc.seq=(sc.seq||0)+1; save(); renderScore();
+}
 function scSwap(i,t){ const sc=scEnsure(i); if(!sc||sc.a||sc.b||sc.pos[t].length<2) return; sc.pos[t]=[sc.pos[t][1],sc.pos[t][0]]; sc.seq=(sc.seq||0)+1; save(); renderScore(); }
 function flash(m){ toast(m); const f=document.getElementById('scflash'); if(f){ f.textContent=m; f.classList.remove('on'); void f.offsetWidth; f.classList.add('on'); } }
 function scoreStrip(i){
@@ -903,14 +912,15 @@ function renderScore(){
   const nm=id=>{const p=byId(id);return p?esc(p.n):'?';};
   const side=t=>{
     const pos=sc.pos[t], serving=sc.srv===t&&!sc.done, won=sc.done===t;
-    const court=(id,label)=>`<div class="spl ${id===srvId&&!sc.done?'srv':''} ${id===rcvId&&!sc.done?'rcv':''}">${doubles?`<span class="sct">${label}</span>`:''}${av(id)}<span class="spn">${nm(id)}</span>${id===srvId&&!sc.done?'<span class="stag">SERVING</span>':id===rcvId&&!sc.done?'<span class="stag r">RECEIVING</span>':''}</div>`;
+    const setup=atStart&&!sc.g.length&&!IS_DISPLAY;
+    const court=(id,label)=>`<${setup?'button':'div'} class="spl ${setup?'spick':''} ${id===srvId&&!sc.done?'srv':''} ${id===rcvId&&!sc.done?'rcv':''}" ${setup?`data-act="sc-pick" data-k="${t}" data-id="${id}"`:''}>${doubles?`<span class="sct">${label}</span>`:''}${av(id)}<span class="spn">${nm(id)}</span>${id===srvId&&!sc.done?'<span class="stag">SERVING</span>':id===rcvId&&!sc.done?'<span class="stag r">RECEIVING</span>':''}</${setup?'button':'div'}>`;
     const dots=Array.from({length:RU(sc).mode==='all'?RU(sc).n:needWins(RU(sc))},(_,k)=>`<i class="${k<scWon(sc,t)?'on':''}"></i>`).join('');
     return `<div class="sside ${serving?'serving':''} ${won?'won':''}">
       ${IS_DISPLAY?(scTN(sc,t)?`<div class="stn"><div class="stsel ro">${esc(scTN(sc,t))}</div></div>`:''):`<div class="stn"><button class="stsel stbtn ${scTN(sc,t)?'':'empty'}" data-act="sc-topen" data-k="${t}" aria-label="Choose team name">${scTN(sc,t)?esc(scTN(sc,t)):'+ Team name'}</button>${scTN(sc,t)?`<button class="stclr" data-act="sc-tclear" data-k="${t}" aria-label="Clear team name">✕</button>`:''}</div>`}
       <div class="steam">${doubles?court(pos[1],'Left')+court(pos[0],'Right'):court(pos[0],'')}</div>
       <div class="sgw ${scWon(sc,t)?'has':''}"><div class="sgw-l"><span>Games won</span><div class="sdots">${dots}</div></div><b>${scWon(sc,t)}</b><div class="sgw-g">${sc.g.map((x,k)=>{const mine=t==='a'?x[0]:x[1], their=t==='a'?x[1]:x[0];return `<i class="${mine>their?'w':'l'}">G${k+1} ${mine}</i>`;}).join('')||'<i class="n">No games yet</i>'}</div></div>
       <button class="spt" data-act="sc-pt" data-k="${t}" ${sc.done||!sc.srv?'disabled':''}><span>${sc[t]}</span></button>
-      <div class="sctl">${atStart&&!sc.g.length&&!sc.srv?`<button class="btn lime" data-act="sc-serve" data-k="${t}">Serves first</button>`:''}${atStart&&doubles&&!sc.done?`<button class="btn ghost" data-act="sc-swap" data-k="${t}">⇄ Swap left/right</button>`:''}</div>
+      <div class="sctl">${atStart&&!sc.g.length?(sc.srv===t?`<button class="btn lime" disabled>✓ Serving first</button>`:`<button class="btn ${sc.srv?'ghost':'lime'}" data-act="sc-serve" data-k="${t}">Serves first</button>`):''}${atStart&&doubles&&!sc.done?`<button class="btn ghost" data-act="sc-swap" data-k="${t}">⇄ Swap left/right</button>`:''}</div>
     </div>`;
   };
   const prev=sc.g.map((x,k)=>`<span>G${k+1} ${x[0]}–${x[1]}</span>`).join('');
@@ -918,7 +928,8 @@ function renderScore(){
   if(sc.done&&sc.tie) msg=`🤝 <b>Games tied ${scWon(sc,'a')}–${scWon(sc,'b')}</b> · ${esc(scSummary(sc))} — tap <b>Play decider</b> (one game to ${DEC_PTS}), or keep the result: ${sc.done==='d'?'a draw (equal points)':'<b>'+esc(scWho(sc,sc.done))+'</b> win on total points'}.`;
   else if(sc.done==='d') msg=`🤝 <b>Draw</b> — ${scWon(sc,'a')}–${scWon(sc,'b')} in games · ${esc(scSummary(sc))}`;
   else if(sc.done) msg=`🏆 <b>${esc(scWho(sc,sc.done))} win</b> ${esc(scSummary(sc))}`;
-  else if(!sc.srv) msg='Toss done? Tap <b>Serves first</b> for the team that serves. Use ⇄ to set who stands in the right court.';
+  else if(!sc.srv) msg='Set the serve: tap the <b>player who serves first</b> (or tap <b>Serves first</b> under the team).';
+  else if(atStart&&!sc.g.length&&doubles) msg=`<b>${nm(srvId)}</b> serves to <b class="rcvn">${nm(rcvId)}</b> · tap another player to change the server or receiver, then tap a score to start.`;
   else msg=`<b>${nm(srvId)}</b> serves from the <b>${sc[sc.srv]%2?'left':'right'}</b> court to <b class="rcvn">${nm(rcvId)}</b>`;
   v.innerHTML=`<div class="sbar"><b>Court ${i+1}</b><span>${sc.done?'Match finished · '+esc(fmtLabel(RU(sc)))+(sc.dec?' + decider':''):inDecider(sc)?'Decider game · to '+DEC_PTS:'Game '+(sc.g.length+1)+' of '+(RU(sc).mode==='best'&&RU(sc).n>1?'up to ':'')+RU(sc).n+' · to '+RU(sc).pts}</span><button class="btn sm gear" data-act="sc-help" aria-label="How to score">?</button>${IS_COURT?`<button class="btn sm gear" data-act="court-exit" aria-label="Organizer">⚙</button>`:`<button class="btn sm" data-act="sc-close">Close</button>`}</div>
   ${teamPick?`<div class="schelp tpick"><b>Team name — ${(sc.flip?(teamPick==='a'?'right':'left'):(teamPick==='a'?'left':'right'))} side (${esc(scTeam(sc,teamPick))})</b>
@@ -1270,6 +1281,7 @@ document.addEventListener('click',e=>{
     case 'sc-dec': scDecider(scoreOpen); break;
     case 'sc-serve': scServe(scoreOpen,k); break;
     case 'sc-swap': scSwap(scoreOpen,k); break;
+    case 'sc-pick': scPick(scoreOpen,k,id); break;
     case 'sc-save':{ const i=scoreOpen, sc=S.courts[i].sc; if(!sc||!sc.done) break; if(sc.done==='d'){ const sum=scSummary(sc); scoreOpen=null; renderScore(); finish(i,true,''); toast('🤝 Draw · '+sum); break; } const sum=scSummary(sc), who=scWho(sc,sc.done); scoreOpen=null; renderScore(); finish(i,true,sc.done); toast('🏆 '+who+' win · '+sum); break;}
     case 'sc-reset':{ if(confirmKey!=='screset'){confirmKey='screset';renderScore();break;} confirmKey=null; const oldSeq=(S.courts[scoreOpen].sc&&S.courts[scoreOpen].sc.seq)||0; S.courts[scoreOpen].sc=null; scEnsure(scoreOpen).seq=oldSeq+1; scEnsure(scoreOpen); save(); renderScore(); break;}
     case 'win': closeSheet(); finish(ci,true,k==='x'?'':k); toast(k==='x'?'Game saved (no result)':'Result saved'); break;
@@ -1561,7 +1573,7 @@ async function pollMain(){
 }
 /* ---------- court tablets ---------- */
 let courtExit=false, courtSetup=false, postPending=false, lastCourtKey='', posting=false;
-const COURT_OK=new Set(['sc-topen','sc-tcancel','sc-tpick','sc-tuse','sc-tclear','sc-help','sc-pt','sc-undo','sc-dec','sc-serve','sc-swap','sc-reset','court-exit','court-exit-no','court-exit-ok']);
+const COURT_OK=new Set(['sc-topen','sc-tcancel','sc-tpick','sc-tuse','sc-tclear','sc-help','sc-pt','sc-undo','sc-dec','sc-serve','sc-swap','sc-pick','sc-reset','court-exit','court-exit-no','court-exit-ok']);
 const sameSet=(x,y)=>Array.isArray(x)&&Array.isArray(y)&&x.length===y.length&&x.every(v=>y.includes(v));
 function courtKey(){ const c=S.courts[COURT_NO]; return JSON.stringify([c&&c.p,c&&c.sc&&c.sc.seq,S.phRev]); }
 function mergeMine(mine){
