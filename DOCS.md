@@ -274,6 +274,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 | 7 Nov 2026 | Page v24 | Landscape Courts tab uses the full width: 1 court fills it, 2 split it, 3 in thirds, 4 in quarters (5–8 wrap) |
 | 7 Nov 2026 | Page v25 | Tap a court to open a pop-up menu (Game done, scoreboard, reshuffle, clear, players, levels); finished courts get a red border and blinking Done tag |
 | 7 Nov 2026 | Page v26 | Developer card in Settings → About and at the end of Help: Archie Martinez Bagadiong “Baggy”, 0542873115 |
+| 7 Nov 2026 | Page v27 (1.27) | Version shown as major.minor: internal number n → (n÷31+1).(n mod 31); 1.30 is followed by 2.0. version.json keeps the plain number |
 | 7 Nov 2026 | Page v17 | Custom teams list on Players (and Teams sheet in Excel); team picker on the scoreboard |
 | 7 Nov 2026 | Page v16 | Custom team name typed on the scoreboard per match |
 | 7 Nov 2026 | Page v15 | Team names: players, scoreboard, history, team standings, Excel |

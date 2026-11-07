@@ -437,7 +437,9 @@ input.stsel{padding-right:40px}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=26;
+const APP_VERSION=27;
+/* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
+const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
 const UPD_BASE='https://raw.githubusercontent.com/archie24bagadiong-max/matchmaker-app/main/';
 let ROLE='off', MAIN_IP='';
@@ -978,7 +980,7 @@ function sheetWinner(ci){
 }
 let histCourt='All', histRange='today', histView='matches';
 let scHelp=false, helpOpen='session';
-const DEV_CARD=()=>`<div class="devcard"><div class="devk">Developer</div><div class="devn">Archie Martinez Bagadiong</div><div class="devnick">“Baggy”</div><span class="devtel">📞 0542873115</span><div class="devv">Match Maker · JAMREIBIZ Badminton Club · version ${APP_VERSION}</div></div>`;
+const DEV_CARD=()=>`<div class="devcard"><div class="devk">Developer</div><div class="devn">Archie Martinez Bagadiong</div><div class="devnick">“Baggy”</div><span class="devtel">📞 0542873115</span><div class="devv">Match Maker · JAMREIBIZ Badminton Club · version ${fmtVer(APP_VERSION)}</div></div>`;
 function vHelp(){
   const sec=(id,title,body)=>`<div class="hsec ${helpOpen===id?'open':''}"><button class="hhead" data-act="help-sec" data-k="${id}"><span>${title}</span><span class="chev">${helpOpen===id?'−':'+'}</span></button>${helpOpen===id?`<div class="hbody">${body}</div>`:''}</div>`;
   return `<div class="row" style="margin:4px 0 10px"><h2 style="margin:0;flex:1">How to use</h2><button class="btn sm" data-act="go" data-tab="courts">← Back</button></div>
@@ -1133,7 +1135,7 @@ function vHist(){
 function vSettings(){
   const exp=S.players.map(p=>p.n+', '+p.c+(p.t==='G'?', Guest':'')).join('\n');
   return `<div class="card updcard" style="margin-top:10px">
-    <div class="row" style="align-items:center"><div style="flex:1;min-width:160px"><b style="font-size:16px">App version ${APP_VERSION}</b><div class="hint" style="margin:2px 0 0">${!IS_APP?'Web version — always the latest when opened.':updBusy?'Downloading update…':updInfo?`<b style="color:var(--C)">Version ${esc(updInfo.version)} is available.</b>${updInfo.notes?' '+esc(updInfo.notes):''}`:updChecked?'You have the latest version.':'Tap Update app to get the newest version.'}</div></div>
+    <div class="row" style="align-items:center"><div style="flex:1;min-width:160px"><b style="font-size:16px">App version ${fmtVer(APP_VERSION)}</b><div class="hint" style="margin:2px 0 0">${!IS_APP?'Web version — always the latest when opened.':updBusy?'Downloading update…':updInfo?`<b style="color:var(--C)">Version ${esc(fmtVer(updInfo.version))} is available.</b>${updInfo.notes?' '+esc(updInfo.notes):''}`:updChecked?'You have the latest version.':'Tap Update app to get the newest version.'}</div></div>
     ${IS_APP?`<button class="btn pri" data-act="upd-app" ${updBusy?'disabled':''}>⟳ ${updInfo?'Install update':'Update app'}</button>`:''}</div>
     ${IS_APP?'<p class="hint" style="margin:8px 0 0">Needs internet. Your players, payments, photos and history are kept.</p>':''}
   </div>
@@ -1463,7 +1465,7 @@ function showUpdBanner(){
   let b=document.getElementById('updbar');
   if(!updInfo){ if(b) b.remove(); return; }
   if(!b){ b=document.createElement('div'); b.id='updbar'; document.querySelector('header').after(b); }
-  b.innerHTML=`<span>New version ${esc(updInfo.version)} available${updInfo.notes?' — '+esc(updInfo.notes):''}</span><button class="btn sm lime" data-act="upd-go">Update</button>`;
+  b.innerHTML=`<span>New version ${esc(fmtVer(updInfo.version))} available${updInfo.notes?' — '+esc(updInfo.notes):''}</span><button class="btn sm lime" data-act="upd-go">Update</button>`;
 }
 async function checkUpdate(manual){
   if(!IS_APP) return;
