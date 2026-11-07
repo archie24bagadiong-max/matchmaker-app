@@ -138,6 +138,21 @@ Each court has a **Keep score** button that opens a full-screen scoreboard, run 
 6. When the match ends, **Save result & clear court** records the winner and game scores in History (and the Match History sheet's Score column). **Game done** picks the winner automatically from the score: the team with more games won, or if games are level, the higher current score. It asks only when nothing separates the teams (no score kept, or a tied score).
 7. Replacing a player mid-match keeps the score; new players on a court start a fresh score.
 
+## Match format
+
+**Settings → Match format** sets the scoring for new matches (matches already being scored keep their format).
+
+| Setting | Options | Standard |
+| --- | --- | --- |
+| Games per match | 1, 2, 3, 4 or 5 | 3 |
+| Points per game | 11 (max 15), 15 (max 21), 21 (max 30) — always win by 2 | 21 |
+| Match ends (3 or 5 games) | Best of N (stop when a team has the majority) or Play all N games | Best of 3 |
+
+- 1 game: the game winner wins.
+- 2 or 4 games: all games are always played. More games won wins; if equal, more total points; if still equal, the match is a **draw** (saved with no winner).
+- The interval and change of ends happen at half the points (6, 8 or 11); in the last possible game the teams also change ends there.
+- The scoreboard header shows the format, e.g. "Game 2 of up to 3 · to 21".
+
 ## Tablet sync (local network)
 
 Several tablets can show the same session over a hotspot or Wi-Fi, with no internet and no outside service. Needs APK 1.5 or later on every tablet.
@@ -250,6 +265,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 7 Nov 2026 | Page v18 | Match format setting: 1–5 games, 11/15/21 points, best of or play all, draws |
 | 7 Nov 2026 | Page v17 | Custom teams list on Players (and Teams sheet in Excel); team picker on the scoreboard |
 | 7 Nov 2026 | Page v16 | Custom team name typed on the scoreboard per match |
 | 7 Nov 2026 | Page v15 | Team names: players, scoreboard, history, team standings, Excel |
