@@ -268,6 +268,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 | 7 Nov 2026 | Page v18 | Match format setting: 1–5 games, 11/15/21 points, best of or play all, draws |
 | 7 Nov 2026 | Page v19 | Receiving player highlighted in orange on the scoreboard (server stays lime) |
 | 7 Nov 2026 | Page v20 | Update app button at the top of Settings (checks and installs in one tap) |
+| 7 Nov 2026 | Page v21 | Scoreboard auto-fits short screens and phones (big score boxes always visible) |
 | 7 Nov 2026 | Page v17 | Custom teams list on Players (and Teams sheet in Excel); team picker on the scoreboard |
 | 7 Nov 2026 | Page v16 | Custom team name typed on the scoreboard per match |
 | 7 Nov 2026 | Page v15 | Team names: players, scoreboard, history, team standings, Excel |

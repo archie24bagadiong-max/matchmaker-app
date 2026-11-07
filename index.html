@@ -253,6 +253,55 @@ body.noscroll{overflow:hidden}
   .cw-big{font-size:44px}
   .cw-t{font-size:26px}
 }
+
+/* auto-fit: added by JS when the score boxes get too small (short screens, large system text) */
+.scorev.cmp{padding:calc(env(safe-area-inset-top) + 4px) calc(env(safe-area-inset-right) + 10px) calc(env(safe-area-inset-bottom) + 6px) calc(env(safe-area-inset-left) + 10px)}
+.scorev.cmp .sbar b{font-size:18px}
+.scorev.cmp .sbar span{font-size:12px}
+.scorev.cmp .sbar .btn{padding:3px 8px}
+.scorev.cmp .smsg{margin:4px 0;padding:5px 10px;font-size:13px}
+.scorev.cmp .sboard{gap:6px}
+.scorev.cmp .sside{gap:4px;padding:4px}
+.scorev.cmp .steam{flex-direction:row;gap:4px}
+.scorev.cmp .spl{flex:1;padding:3px 6px;gap:4px;border-radius:8px}
+.scorev.cmp .sct{display:none}
+.scorev.cmp .spl .av{width:26px;height:26px;border-width:1px}
+.scorev.cmp .spl .av.ini{font-size:11px}
+.scorev.cmp .spn{font-size:14px}
+.scorev.cmp .stag{font-size:8.5px}
+.scorev.cmp .sgw{padding:3px 8px;gap:2px 8px}
+.scorev.cmp .sgw-l span{font-size:10px}
+.scorev.cmp .sgw .sdots{display:none}
+.scorev.cmp .sgw>b{font-size:30px}
+.scorev.cmp .sgw-g i{font-size:10.5px;padding:1px 6px}
+.scorev.cmp .sgw-g{display:none}
+.scorev.cmp .stsel{padding:3px 8px;font-size:15px}
+.scorev.cmp .sgw{grid-template-rows:auto}
+.scorev.cmp .spt span{font-size:clamp(40px,min(22vw,26vh),220px)}
+.scorev.cmp .spt{max-height:none}
+.scorev.cmp .sctl{flex-direction:row}
+.scorev.cmp .sctl .btn{flex:1;padding:5px 8px;font-size:13px}
+.scorev.cmp .sprev{margin:3px 0;font-size:15px}
+.scorev.cmp .sprev span{white-space:nowrap}
+.scorev.cmp .sfoot{gap:6px}
+.scorev.cmp .sfoot .btn{padding:6px 8px;font-size:14px}
+.scorev.cmp .cdone{font-size:13px;padding:4px}
+.scorev.cmp .cw-big{font-size:44px}
+.scorev.cmp .cw-t{font-size:26px}
+.scorev.cmp2 .sprev{display:none}
+.scorev.cmp2 .smsg{font-size:12px;padding:3px 8px;margin:3px 0}
+.scorev.cmp2 .sbar b{font-size:16px}
+.scorev.cmp2 .stsel{padding:1px 8px;font-size:13px;min-height:0}
+.scorev.cmp2 .spl{padding:2px 5px}
+.scorev.cmp2 .spl .av{width:20px;height:20px}
+.scorev.cmp2 .spn{font-size:13px}
+.scorev.cmp2 .sgw{display:flex;align-items:center;padding:1px 8px}
+.scorev.cmp2 .sgw-l{flex:1}
+.scorev.cmp2 .sgw>b{font-size:20px}
+.scorev.cmp2 .sctl .btn{padding:3px 6px;font-size:12px}
+.scorev.cmp2 .sfoot .btn{padding:4px 8px;font-size:13px}
+.scorev.cmp2 .sside{gap:3px}
+.scorev.cmp .spt{min-height:56px}
 .spt:active{background:var(--lime)}
 .spt:disabled{opacity:.55}
 .sctl{display:flex;flex-direction:column;gap:6px}
@@ -352,7 +401,7 @@ input.stsel{padding-right:40px}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=20;
+const APP_VERSION=21;
 const IS_APP=!!window.AndroidApp;
 const UPD_BASE='https://raw.githubusercontent.com/archie24bagadiong-max/matchmaker-app/main/';
 let ROLE='off', MAIN_IP='';
@@ -820,7 +869,16 @@ function renderScore(){
   <div class="sfoot"><button class="btn" data-act="sc-undo" ${sc.undo.length?'':'disabled'}>↶ Undo</button><button class="btn warn" data-act="sc-reset">${confirmKey==='screset'?'Tap again to reset score':'Reset score'}</button>${sc.done?(IS_COURT?`<div class="cdone">Match finished — the organizer records the result</div>`:`<button class="btn lime big" data-act="sc-save">Save result &amp; clear court</button>`):''}</div>
   <div id="scflash" class="scflash"></div>`;
   v.hidden=false; document.body.classList.add('noscroll');
+  fitScore();
 }
+/* shrink the scoreboard step by step until the score boxes have room */
+function fitScore(){
+  const v=document.getElementById('scorev'); if(!v||v.hidden) return;
+  v.classList.remove('cmp','cmp2');
+  const small=()=>{ const b=v.querySelector('.spt'); if(!b) return false; const h=b.getBoundingClientRect().height, sb=v.querySelector('.sboard'); return h<Math.max(110,window.innerHeight*0.22)||(sb&&sb.scrollHeight>sb.clientHeight+2); };
+  if(small()){ v.classList.add('cmp'); if(small()) v.classList.add('cmp2'); }
+}
+window.addEventListener('resize',()=>requestAnimationFrame(fitScore));
 function sheetWinner(ci){
   const c=S.courts[ci]; if(!c.p.length) return;
   const half=c.p.length/2, A=c.p.slice(0,half), B=c.p.slice(half);
