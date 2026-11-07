@@ -178,6 +178,7 @@ body.noscroll{overflow:hidden}
 .sbar span{flex:1;opacity:.8;font-size:14px}
 .smsg{margin:8px 0;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.1);font-size:15px;line-height:1.35}
 .smsg b{color:var(--lime)}
+.smsg b.rcvn{color:#ffb347}
 .sboard{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 3px minmax(0,1fr);gap:10px;min-height:0;overflow:hidden}
 .snet{background:var(--line);opacity:.8;border-radius:2px}
 .sside{display:flex;flex-direction:column;gap:8px;min-width:0;min-height:0;border-radius:14px;padding:8px;border:2px solid transparent}
@@ -186,11 +187,13 @@ body.noscroll{overflow:hidden}
 .steam{display:flex;flex-direction:column;gap:6px}
 .spl{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);border-radius:10px;padding:8px 10px;min-width:0}
 .spl.srv{background:var(--lime);color:var(--court)}
-.spl.rcv{background:rgba(255,255,255,.25)}
+.spl.rcv{background:#ff9f1c;color:#3a1d00}
+.spl.rcv .sct{opacity:.8}
+.spl.rcv .av{border-color:#fff}
 .sct{font-size:11px;font-weight:700;text-transform:uppercase;opacity:.7;width:38px;flex:none}
 .spn{font-weight:700;font-size:17px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .stag{font-size:10px;font-weight:800;letter-spacing:.5px;flex:none}
-.stag.r{opacity:.85}
+.stag.r{opacity:1}
 .sdots{display:flex;gap:6px;justify-content:center}
 .sgw{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;align-items:center;gap:4px 10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:8px 12px}
 .sgw.has{background:rgba(200,241,105,.16);border-color:var(--lime)}
@@ -349,7 +352,7 @@ input.stsel{padding-right:40px}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=18;
+const APP_VERSION=19;
 const IS_APP=!!window.AndroidApp;
 const UPD_BASE='https://raw.githubusercontent.com/archie24bagadiong-max/matchmaker-app/main/';
 let ROLE='off', MAIN_IP='';
@@ -803,7 +806,7 @@ function renderScore(){
   if(sc.done==='d') msg=`🤝 <b>Draw</b> — ${scWon(sc,'a')}–${scWon(sc,'b')} in games · ${esc(scSummary(sc))}`;
   else if(sc.done) msg=`🏆 <b>${esc(scWho(sc,sc.done))} win</b> ${esc(scSummary(sc))}`;
   else if(!sc.srv) msg='Toss done? Tap <b>Serves first</b> for the team that serves. Use ⇄ to set who stands in the right court.';
-  else msg=`<b>${nm(srvId)}</b> serves from the <b>${sc[sc.srv]%2?'left':'right'}</b> court to <b>${nm(rcvId)}</b>`;
+  else msg=`<b>${nm(srvId)}</b> serves from the <b>${sc[sc.srv]%2?'left':'right'}</b> court to <b class="rcvn">${nm(rcvId)}</b>`;
   v.innerHTML=`<div class="sbar"><b>Court ${i+1}</b><span>${sc.done?'Match finished · '+esc(fmtLabel(RU(sc))):'Game '+(sc.g.length+1)+' of '+(RU(sc).mode==='best'&&RU(sc).n>1?'up to ':'')+RU(sc).n+' · to '+RU(sc).pts}</span><button class="btn sm gear" data-act="sc-help" aria-label="How to score">?</button>${IS_COURT?`<button class="btn sm gear" data-act="court-exit" aria-label="Organizer">⚙</button>`:`<button class="btn sm" data-act="sc-close">Close</button>`}</div>
   ${teamPick?`<div class="schelp tpick"><b>Team name — ${(sc.flip?(teamPick==='a'?'right':'left'):(teamPick==='a'?'left':'right'))} side (${esc(scTeam(sc,teamPick))})</b>
     <div class="tpgrid">${allTeamNames().map(n=>`<button class="btn ${n===scTN(sc,teamPick)?'pri':''}" data-act="sc-tpick" data-k="${teamPick}" data-v="${esc(n)}">${esc(n)}</button>`).join('')||'<span class="hint">No saved teams yet — type one below, or add them on the Players tab.</span>'}</div>
