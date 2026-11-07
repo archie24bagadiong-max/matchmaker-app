@@ -163,6 +163,16 @@ Example for 4 courts: tablets 1–4 = Court tablets, tablet 5 = Main, tablet 6 =
 
 - How it works: the Main tablet runs a small server on port 8787 (`GET /state` returns the session as JSON, `POST /score` receives a court's score); Displays and Court tablets poll it. Each score carries a sequence number so the newest change wins.
 
+## Teams
+
+Players can belong to a team (for example "Racket Kings"). Teams are optional.
+
+- **Set a team:** Players → add form (Team box), **Edit** → Team, a 4th value in Add many at once (`Archie, C, Subscriber, Racket Kings`), or a **Team** column in Excel.
+- **Lists:** the team shows under each name on Players and Attendance; a **team filter** sits next to the search box (Check in all works per team too).
+- **Scoreboard:** a team box at the top of each side. It fills in automatically when both players share a team; tap it to pick another team or none. Court tablets can set it too.
+- **Results:** the court card shows the team names; the win message, History card ("Winning team"), and **History → Teams** standings (played, won, lost, win %) use them.
+- **Excel report:** Team column on Players, Payments and Win Statistics; Match History has Team 1 name, Team 2 name and Winning team; new **Team Statistics** sheet.
+
 ## Player photos
 
 Each player can have a photo, shown next to their name on the court cards, the scoreboard, the pick list, Attendance and Players. Players without a photo show their initials.
@@ -239,6 +249,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 7 Nov 2026 | Page v15 | Team names: players, scoreboard, history, team standings, Excel |
 | 7 Nov 2026 | Page v14 | Scoreboard: big Games won panel per team with each game score; shorter score boxes |
 | 7 Nov 2026 | Page v13 | In-app How to use guide (? button, Settings) and scoring help on the scoreboard |
 | 7 Nov 2026 | Docs | Full how-to guide and everyday tasks added |
