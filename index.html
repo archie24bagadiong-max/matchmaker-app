@@ -303,6 +303,8 @@ body.noscroll{overflow:hidden}
 .scorev.cmp2 .sside{gap:3px}
 .scorev.cmp .spt{min-height:56px}
 .spt:active{background:var(--lime)}
+.btn.gdone{background:#e5383b;color:#fff;border-color:#e5383b;font-weight:800;animation:gblink 1s steps(1,end) infinite}
+@keyframes gblink{0%{background:#e5383b;border-color:#e5383b;box-shadow:0 0 0 4px rgba(229,56,59,.35)}50%{background:#7a1214;border-color:#7a1214;box-shadow:none}}
 .spt:disabled{opacity:.55}
 .sctl{display:flex;flex-direction:column;gap:6px}
 .sctl .ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.35)}
@@ -401,7 +403,7 @@ input.stsel{padding-right:40px}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=22;
+const APP_VERSION=23;
 const IS_APP=!!window.AndroidApp;
 const UPD_BASE='https://raw.githubusercontent.com/archie24bagadiong-max/matchmaker-app/main/';
 let ROLE='off', MAIN_IP='';
@@ -605,8 +607,26 @@ function replace(courtIdx,outId,inId,rest){
 }
 
 /* ---------- render ---------- */
+/* finished matches: red blinking Game done + a "ting ting" chime on the Main tablet */
+let doneSeen=null, audioCtx=null;
+function ting(){
+  try{
+    audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==='suspended') audioCtx.resume();
+    [0,0.28].forEach(d=>{ const t=audioCtx.currentTime+d, o=audioCtx.createOscillator(), g=audioCtx.createGain();
+      o.type='sine'; o.frequency.setValueAtTime(1568,t); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.5,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+0.6);
+      o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t+0.65); });
+  }catch(e){}
+}
+function checkDone(){
+  const now=new Set(S.courts.map((c,i)=>c.p.length&&c.sc&&c.sc.done?i+':'+c.sc.g.length+':'+(c.sc.dec?1:0):null).filter(Boolean));
+  if(doneSeen&&!IS_DISPLAY&&!IS_COURT&&[...now].some(k=>!doneSeen.has(k))) ting();
+  doneSeen=now;
+}
+document.addEventListener('pointerdown',()=>{ try{ audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume(); }catch(e){} },{once:true});
 function render(){
   if(IS_COURT){ renderScore(); return; }
+  checkDone();
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
   const app=$('#app');
   if(tab==='courts') app.innerHTML=vCourts();
@@ -651,7 +671,7 @@ function vCourts(){
       <div class="pitch">${pitch}</div>
       ${c.p.length?scoreStrip(i):''}
       <div class="court-f">${c.p.length
-        ?`<button class="btn lime" data-act="finish" data-c="${i}">Game done</button><button class="btn ghost" data-act="reshuffle" data-c="${i}">Reshuffle</button><button class="btn ghost" data-act="cancel" data-c="${i}">Clear</button>`
+        ?`<button class="btn ${c.sc&&c.sc.done?'gdone':'lime'}" data-act="finish" data-c="${i}">${c.sc&&c.sc.done?'🔔 Game done':'Game done'}</button><button class="btn ghost" data-act="reshuffle" data-c="${i}">Reshuffle</button><button class="btn ghost" data-act="cancel" data-c="${i}">Clear</button>`
         :`<button class="btn lime" data-act="gen" data-c="${i}">Auto match</button><button class="btn ghost" data-act="pick" data-c="${i}">Pick players</button>`}</div>
     </div>`;
   });
@@ -877,6 +897,7 @@ function renderScore(){
   <div id="scflash" class="scflash"></div>`;
   v.hidden=false; document.body.classList.add('noscroll');
   fitScore();
+  if(!IS_COURT) checkDone();
 }
 /* shrink the scoreboard step by step until the score boxes have room */
 function fitScore(){
@@ -921,7 +942,7 @@ function vHelp(){
     <li><b>Courts:</b> tap <b>Auto match</b> (fair, balanced teams) or <b>Pick players</b> (choose 4 yourself). <b>Fill empty courts</b> does all courts.</li>
     <li>Scores are kept on the court tablet, or tap <b>🏸 Keep score</b> on the court card.</li>
     <li>Someone can't play? Tap their name → <b>Can't play</b>, or pick a substitute. Later tap <b>Back to play</b>.</li>
-    <li>Match over? Tap <b>Game done</b>. The winner is picked from the score and saved to History. The court empties.</li>
+    <li>Match over? The <b>Game done</b> button blinks red with a “ting ting” sound when the score shows the match is finished. Tap <b>Game done</b>. The winner is picked from the score and saved to History. The court empties.</li>
     <li>Put the next players on and repeat.</li>
     <li><b>Payments:</b> tap <b>Unpaid → Paid</b> as players pay.</li></ol>`)}
   ${sec('score','4. Keeping score',`<ol>
