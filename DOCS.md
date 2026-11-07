@@ -273,6 +273,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 | 7 Nov 2026 | Page v23 | Main tablet: Game done blinks red and plays a ting-ting chime when a court’s match is finished |
 | 7 Nov 2026 | Page v24 | Landscape Courts tab uses the full width: 1 court fills it, 2 split it, 3 in thirds, 4 in quarters (5–8 wrap) |
 | 7 Nov 2026 | Page v25 | Tap a court to open a pop-up menu (Game done, scoreboard, reshuffle, clear, players, levels); finished courts get a red border and blinking Done tag |
+| 7 Nov 2026 | Page v26 | Developer card in Settings → About and at the end of Help: Archie Martinez Bagadiong “Baggy”, 0542873115 |
 | 7 Nov 2026 | Page v17 | Custom teams list on Players (and Teams sheet in Excel); team picker on the scoreboard |
 | 7 Nov 2026 | Page v16 | Custom team name typed on the scoreboard per match |
 | 7 Nov 2026 | Page v15 | Team names: players, scoreboard, history, team standings, Excel |
@@ -294,3 +295,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 | 7 Nov 2026 | APK 1.1 | In-app updates |
 | 7 Nov 2026 | APK 1.0 | First Android build |
 | 6–7 Nov 2026 | Claude link | Courts, attendance, players, payments, guests, history, import |
+
+## Developer
+
+Archie Martinez Bagadiong "Baggy" · Contact: 0542873115

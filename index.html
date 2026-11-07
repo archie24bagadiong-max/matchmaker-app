@@ -77,6 +77,12 @@ h2 small{font-family:Barlow;font-size:13px;color:var(--muted);text-transform:non
 .cfin-tag{white-space:nowrap;flex:none;background:#e5383b;color:#fff;font-size:12px;font-weight:800;padding:2px 8px;border-radius:999px;margin-left:8px;animation:gblink 1s steps(1,end) infinite}
 .cmenu{margin-left:8px;font-size:22px;line-height:1;opacity:.8;padding:0 4px}
 body.display .cmenu{display:none}
+.devcard{background:var(--court);color:#fff;border-radius:var(--radius);padding:18px;text-align:center;margin:14px 0 6px}
+.devk{font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--lime)}
+.devn{font-family:'Barlow Condensed';font-weight:800;font-size:24px;margin-top:4px}
+.devnick{font-size:16px;opacity:.9;font-style:italic}
+.devtel{display:inline-block;margin-top:10px;background:var(--lime);color:var(--court);font-weight:800;padding:8px 16px;border-radius:999px;text-decoration:none}
+.devv{font-size:12px;opacity:.7;margin-top:10px}
 .cmgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 .cmgrid .btn{padding:14px 10px;font-size:16px}
 .cmgrid .full{grid-column:1/-1}
@@ -431,7 +437,7 @@ input.stsel{padding-right:40px}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=25;
+const APP_VERSION=26;
 const IS_APP=!!window.AndroidApp;
 const UPD_BASE='https://raw.githubusercontent.com/archie24bagadiong-max/matchmaker-app/main/';
 let ROLE='off', MAIN_IP='';
@@ -972,6 +978,7 @@ function sheetWinner(ci){
 }
 let histCourt='All', histRange='today', histView='matches';
 let scHelp=false, helpOpen='session';
+const DEV_CARD=()=>`<div class="devcard"><div class="devk">Developer</div><div class="devn">Archie Martinez Bagadiong</div><div class="devnick">“Baggy”</div><span class="devtel">📞 0542873115</span><div class="devv">Match Maker · JAMREIBIZ Badminton Club · version ${APP_VERSION}</div></div>`;
 function vHelp(){
   const sec=(id,title,body)=>`<div class="hsec ${helpOpen===id?'open':''}"><button class="hhead" data-act="help-sec" data-k="${id}"><span>${title}</span><span class="chev">${helpOpen===id?'−':'+'}</span></button>${helpOpen===id?`<div class="hbody">${body}</div>`:''}</div>`;
   return `<div class="row" style="margin:4px 0 10px"><h2 style="margin:0;flex:1">How to use</h2><button class="btn sm" data-act="go" data-tab="courts">← Back</button></div>
@@ -1029,7 +1036,8 @@ function vHelp(){
     <tr><td>Leave court mode</td><td>⚙ on the court tablet + PIN</td></tr>
     <tr><td>Display says offline</td><td>Same hotspot? Re-enter the Main address</td></tr>
     <tr><td>New version</td><td>Tap Update on the top bar</td></tr></table>`)}
-  <p class="hint" style="margin-top:14px">Full guide with pictures: the Match Maker documentation (ask the organizer for the link). App version ${APP_VERSION}.</p>`;
+  <p class="hint" style="margin-top:14px">Full guide with pictures: the Match Maker documentation (ask the organizer for the link).</p>
+  ${DEV_CARD()}`;
 }
 function todayRows(){
   const d=dayKey(Date.now());
@@ -1180,7 +1188,9 @@ function vSettings(){
     <textarea readonly id="exp">${esc(exp)}</textarea>
     <div class="row" style="margin-top:8px"><button class="btn" data-act="copy">Copy list</button><button class="btn warn" data-act="wipe">${confirmKey==='wipe'?'Tap again — deletes all players':'Delete all players'}</button></div>
     <p class="hint">Paste this list into "Add many at once" to restore.</p>
-  </div>`;
+  </div>
+  <h2>About</h2>
+  ${DEV_CARD()}`;
 }
 
 /* ---------- sheets ---------- */
