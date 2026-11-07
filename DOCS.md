@@ -169,7 +169,8 @@ Players can belong to a team (for example "Racket Kings"). Teams are optional.
 
 - **Set a team:** Players → add form (Team box), **Edit** → Team, a 4th value in Add many at once (`Archie, C, Subscriber, Racket Kings`), or a **Team** column in Excel.
 - **Lists:** the team shows under each name on Players and Attendance; a **team filter** sits next to the search box (Check in all works per team too).
-- **Scoreboard:** a **+ Team name** box at the top of each side. Type any custom name for that match (or pick one used before); it fills in automatically when both players share a team; ✕ clears it. Court tablets can set it too. The custom name is for that match only and does not change the players' saved teams.
+- **Custom teams (Players tab):** type a name in **Custom teams** and tap **Add team** (✕ deletes, tap twice). Or fill the **Teams** sheet in the Excel file. These are match teams: players can be put in any of them for each game.
+- **Scoreboard:** tap the team box at the top of each side to open the picker: tap a saved custom team, type a new name (**Use**), or choose **No team name**; it fills in automatically when both players share a team; ✕ clears it. Court tablets can set it too. The custom name is for that match only and does not change the players' saved teams.
 - **Results:** the court card shows the team names; the win message, History card ("Winning team"), and **History → Teams** standings (played, won, lost, win %) use them.
 - **Excel report:** Team column on Players, Payments and Win Statistics; Match History has Team 1 name, Team 2 name and Winning team; new **Team Statistics** sheet.
 
@@ -249,6 +250,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 7 Nov 2026 | Page v17 | Custom teams list on Players (and Teams sheet in Excel); team picker on the scoreboard |
 | 7 Nov 2026 | Page v16 | Custom team name typed on the scoreboard per match |
 | 7 Nov 2026 | Page v15 | Team names: players, scoreboard, history, team standings, Excel |
 | 7 Nov 2026 | Page v14 | Scoreboard: big Games won panel per team with each game score; shorter score boxes |

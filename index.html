@@ -306,6 +306,14 @@ body.courtmode nav,body.courtmode main{display:none}
 input.stsel{padding-right:40px}
 .stclr{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;border:0;background:rgba(255,255,255,.18);color:#fff;font-weight:700;padding:0}
 .sside.won .stclr{background:rgba(15,61,46,.15);color:var(--court)}
+.stbtn{text-align:left;cursor:pointer}
+.stbtn.empty{color:rgba(255,255,255,.7);font-family:Barlow;font-weight:700;font-size:16px;text-transform:none;letter-spacing:0;border-style:dashed}
+.tpgrid{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;max-height:40vh;overflow:auto}
+.tpgrid .btn{font-weight:700}
+.tpick{width:min(620px,94vw)}
+.tchips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.tchip{display:inline-flex;align-items:center;gap:6px;background:#efedff;color:#4b3fa8;border:1px solid #d9d4fb;border-radius:999px;padding:4px 6px 4px 12px;font-weight:700;font-size:14px}
+.tchip button{border:0;background:#fff;color:#b3261e;border-radius:999px;padding:2px 8px;font-size:12px;font-weight:700}
 .stsel option{color:var(--ink);text-transform:none;font-family:Barlow;font-size:15px}
 .sside.won .stsel{background:var(--lime);color:var(--court);border-color:var(--lime)}
 .ptn{font-family:'Barlow Condensed';font-weight:800;font-size:14px;letter-spacing:.6px;text-transform:uppercase;color:var(--lime);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -341,7 +349,7 @@ input.stsel{padding-right:40px}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=16;
+const APP_VERSION=17;
 const IS_APP=!!window.AndroidApp;
 const UPD_BASE='https://raw.githubusercontent.com/archie24bagadiong-max/matchmaker-app/main/';
 let ROLE='off', MAIN_IP='';
@@ -368,6 +376,8 @@ function normalize(s){
   s.players=s.players.filter(p=>p&&p.id&&typeof p.n==='string').map(p=>({id:String(p.id),n:p.n.slice(0,40),c:CATS.includes(p.c)?p.c:'C',t:p.t==='G'?'G':'S',tm:typeof p.tm==='string'?p.tm.trim().slice(0,40):''}));
   if(!Array.isArray(s.courts)||!s.courts.length) s.courts=d.courts;
   s.courts=s.courts.map(c=>({lv:Array.isArray(c&&c.lv)?c.lv.filter(x=>CATS.includes(x)):CATS.slice(),p:Array.isArray(c&&c.p)?c.p.map(String):[],t:+(c&&c.t)||0,sc:(c&&c.sc&&typeof c.sc==='object'&&c.sc.pos)?c.sc:null}));
+  if(!Array.isArray(s.teams)) s.teams=[];
+  s.teams=[...new Set(s.teams.filter(x=>typeof x==='string').map(x=>x.trim().slice(0,40)).filter(Boolean))];
   if(!Array.isArray(s.hist)) s.hist=[];
   if(!Array.isArray(s.ledger)) s.ledger=[];
   s.ledger=s.ledger.slice(-4000);
@@ -443,10 +453,10 @@ const need=()=>S.mode==='doubles'?4:2;
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2200);}
 function onCourt(){const m={};S.courts.forEach((c,i)=>c.p.forEach(id=>m[id]=i));return m;}
 function pkey(a,b){return a<b?a+'|'+b:b+'|'+a;}
-function allTeamNames(){ const s=new Set(teamsList()); S.hist.slice(-300).forEach(x=>{ if(x.ta) s.add(x.ta); if(x.tb) s.add(x.tb); }); S.courts.forEach(c=>{ if(c.sc&&c.sc.tn){ if(c.sc.tn.a) s.add(c.sc.tn.a); if(c.sc.tn.b) s.add(c.sc.tn.b); } }); return [...s].filter(Boolean).sort((a,b)=>a.localeCompare(b)); }
+function allTeamNames(){ const s=new Set((S.teams||[]).concat(teamsList())); S.hist.slice(-300).forEach(x=>{ if(x.ta) s.add(x.ta); if(x.tb) s.add(x.tb); }); S.courts.forEach(c=>{ if(c.sc&&c.sc.tn){ if(c.sc.tn.a) s.add(c.sc.tn.a); if(c.sc.tn.b) s.add(c.sc.tn.b); } }); return [...s].filter(Boolean).sort((a,b)=>a.localeCompare(b)); }
 function teamsList(){ return [...new Set(S.players.map(p=>p.tm).filter(Boolean))].sort((a,b)=>a.localeCompare(b)); }
 function teamTag(p){ return p&&p.tm?`<span class="tmtag">${esc(p.tm)}</span>`:''; }
-function teamDatalist(){ return `<datalist id="teamlist">${teamsList().map(t=>`<option value="${esc(t)}">`).join('')}</datalist>`; }
+function teamDatalist(){ return `<datalist id="teamlist">${allTeamNames().map(t=>`<option value="${esc(t)}">`).join('')}</datalist>`; }
 function commonTeam(ids){ const t=ids.map(id=>(byId(id)||{}).tm||''); return t.length&&t[0]&&t.every(x=>x===t[0])?t[0]:''; }
 function teamFilterSel(cur,act){ const ts=teamsList(); if(!ts.length) return ''; return `<select class="mini tfsel" data-act="${act}"><option value="">All teams</option>${ts.map(t=>`<option ${t===cur?'selected':''} value="${esc(t)}">${esc(t)}</option>`).join('')}<option value="__none" ${cur==='__none'?'selected':''}>No team</option></select>`; }
 const teamMatch=(p,f)=>!f||(f==='__none'?!p.tm:p.tm===f);
@@ -627,6 +637,12 @@ function vPlayers(){
     ${teamDatalist()}
     <p class="hint">A = strongest … D = beginner. Subscribers get priority on courts. Team is optional — pick an existing one or type a new name.</p>
   </div>
+  <h2>Custom teams <small>${(S.teams||[]).length} saved · pick them on the scoreboard during a game</small></h2>
+  <div class="card">
+    <form id="teamf" class="row"><input type="text" id="team-n" maxlength="40" placeholder="New team name, e.g. Thunder Smash" style="flex:1;min-width:180px"><button class="btn pri">Add team</button></form>
+    <div class="tchips">${(S.teams||[]).map(t=>`<span class="tchip">${esc(t)}<button data-act="team-del" data-k="${esc(t)}" aria-label="Delete ${esc(t)}">${confirmKey==='td'+t?'Delete?':'✕'}</button></span>`).join('')||'<span class="hint" style="margin:0">No custom teams yet.</span>'}</div>
+    <p class="hint">These names are for matches: players can be mixed into any team for each game. To give a player a permanent team, use <b>Edit</b>.</p>
+  </div>
   <h2>Import from Excel / CSV</h2>
   <div class="card">
     <div class="filebtn btn pri">Choose file (.xlsx, .xls, .csv)<input type="file" id="file-in" accept=".xlsx,.xls,.csv,.ods,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" aria-label="Choose Excel or CSV file"></div>
@@ -687,9 +703,10 @@ function vPay(){
 }
 /* ---------- scoring (BWF: 21 pts, win by 2, cap 30, best of 3) ---------- */
 const SC={pts:21,cap:30,best:3};
-let scoreOpen=null, scoreDeferred=false;
-document.addEventListener('focusout',e=>{ if(e.target.classList&&e.target.classList.contains('stsel')) setTimeout(()=>{ if(scoreDeferred){ scoreDeferred=false; renderScore(); } },60); });
-document.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.classList&&e.target.classList.contains('stsel')) e.target.blur(); });
+let scoreOpen=null, scoreDeferred=false, teamPick=null;
+function setTeamName(i,t,v){ const sc=scEnsure(i); if(!sc||!t) return; sc.tn=Object.assign({a:scTN(sc,'a'),b:scTN(sc,'b')},sc.tn||{}); sc.tn[t]=v; sc.seq=(sc.seq||0)+1; teamPick=null; save(); try{ document.activeElement&&document.activeElement.blur(); }catch(e){} scoreDeferred=false; renderScore(); toast(v?'Team name: '+v:'Team name removed'); }
+document.addEventListener('focusout',e=>{ if(e.target.tagName==='INPUT'&&((e.target.classList&&e.target.classList.contains('stsel'))||e.target.id==='tp-in')) setTimeout(()=>{ if(scoreDeferred){ scoreDeferred=false; renderScore(); } },60); });
+document.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.id==='tp-in'){ e.preventDefault(); const b=document.querySelector('[data-act=sc-tuse]'); b&&b.click(); } });
 function scEnsure(i){
   const c=S.courts[i]; if(!c||!c.p.length) return null;
   if(!c.sc){ const half=c.p.length/2, A=c.p.slice(0,half), B=c.p.slice(half); c.sc={g:[],a:0,b:0,srv:'',pos:{a:A,b:B},tn:{a:commonTeam(A),b:commonTeam(B)},undo:[],done:''}; }
@@ -747,7 +764,7 @@ function scoreStrip(i){
   return `<div class="sstrip"><button class="btn sbtn" data-act="score" data-c="${i}"><span>🏸 ${live}</span><span class="gw">Games ${scWon(sc,'a')}–${scWon(sc,'b')}</span></button></div>`;
 }
 function renderScore(){
-  const ae=document.activeElement; if(ae&&ae.classList&&ae.classList.contains('stsel')&&ae.closest('#scorev')){ scoreDeferred=true; return; }
+  const ae=document.activeElement; if(ae&&ae.tagName==='INPUT'&&((ae.classList&&ae.classList.contains('stsel'))||ae.id==='tp-in')&&ae.closest('#scorev')){ scoreDeferred=true; return; }
   const v=document.getElementById('scorev');
   if(IS_COURT){
     scoreOpen=COURT_NO;
@@ -763,7 +780,7 @@ function renderScore(){
     const court=(id,label)=>`<div class="spl ${id===srvId&&!sc.done?'srv':''} ${id===rcvId&&!sc.done?'rcv':''}">${doubles?`<span class="sct">${label}</span>`:''}${av(id)}<span class="spn">${nm(id)}</span>${id===srvId&&!sc.done?'<span class="stag">SERVING</span>':id===rcvId&&!sc.done?'<span class="stag r">RECEIVING</span>':''}</div>`;
     const dots=Array.from({length:Math.ceil(SC.best/2)},(_,k)=>`<i class="${k<scWon(sc,t)?'on':''}"></i>`).join('');
     return `<div class="sside ${serving?'serving':''} ${won?'won':''}">
-      ${IS_DISPLAY?(scTN(sc,t)?`<div class="stn"><div class="stsel ro">${esc(scTN(sc,t))}</div></div>`:''):`<div class="stn"><input class="stsel" data-scteam="${t}" list="sc-teams" maxlength="40" placeholder="+ Team name" value="${esc(scTN(sc,t))}" enterkeyhint="done" autocomplete="off" aria-label="Team name for this side">${scTN(sc,t)?`<button class="stclr" data-act="sc-tclear" data-k="${t}" aria-label="Clear team name">✕</button>`:''}</div>`}
+      ${IS_DISPLAY?(scTN(sc,t)?`<div class="stn"><div class="stsel ro">${esc(scTN(sc,t))}</div></div>`:''):`<div class="stn"><button class="stsel stbtn ${scTN(sc,t)?'':'empty'}" data-act="sc-topen" data-k="${t}" aria-label="Choose team name">${scTN(sc,t)?esc(scTN(sc,t)):'+ Team name'}</button>${scTN(sc,t)?`<button class="stclr" data-act="sc-tclear" data-k="${t}" aria-label="Clear team name">✕</button>`:''}</div>`}
       <div class="steam">${doubles?court(pos[1],'Left')+court(pos[0],'Right'):court(pos[0],'')}</div>
       <div class="sgw ${scWon(sc,t)?'has':''}"><div class="sgw-l"><span>Games won</span><div class="sdots">${dots}</div></div><b>${scWon(sc,t)}</b><div class="sgw-g">${sc.g.map((x,k)=>{const mine=t==='a'?x[0]:x[1], their=t==='a'?x[1]:x[0];return `<i class="${mine>their?'w':'l'}">G${k+1} ${mine}</i>`;}).join('')||'<i class="n">No games yet</i>'}</div></div>
       <button class="spt" data-act="sc-pt" data-k="${t}" ${sc.done||!sc.srv?'disabled':''}><span>${sc[t]}</span></button>
@@ -776,6 +793,10 @@ function renderScore(){
   else if(!sc.srv) msg='Toss done? Tap <b>Serves first</b> for the team that serves. Use ⇄ to set who stands in the right court.';
   else msg=`<b>${nm(srvId)}</b> serves from the <b>${sc[sc.srv]%2?'left':'right'}</b> court to <b>${nm(rcvId)}</b>`;
   v.innerHTML=`<div class="sbar"><b>Court ${i+1}</b><span>${sc.done?'Match finished':'Game '+(sc.g.length+1)+' of '+SC.best+' · to '+SC.pts}</span><button class="btn sm gear" data-act="sc-help" aria-label="How to score">?</button>${IS_COURT?`<button class="btn sm gear" data-act="court-exit" aria-label="Organizer">⚙</button>`:`<button class="btn sm" data-act="sc-close">Close</button>`}</div>
+  ${teamPick?`<div class="schelp tpick"><b>Team name — ${(sc.flip?(teamPick==='a'?'right':'left'):(teamPick==='a'?'left':'right'))} side (${esc(scTeam(sc,teamPick))})</b>
+    <div class="tpgrid">${allTeamNames().map(n=>`<button class="btn ${n===scTN(sc,teamPick)?'pri':''}" data-act="sc-tpick" data-k="${teamPick}" data-v="${esc(n)}">${esc(n)}</button>`).join('')||'<span class="hint">No saved teams yet — type one below, or add them on the Players tab.</span>'}</div>
+    <div class="row" style="margin-top:12px"><input type="text" id="tp-in" maxlength="40" placeholder="Type a new team name" style="flex:1;min-width:160px" autocomplete="off"><button class="btn lime" data-act="sc-tuse">Use</button></div>
+    <div class="row" style="margin-top:10px"><button class="btn" data-act="sc-tpick" data-k="${teamPick}" data-v="">No team name</button><span class="grow"></span><button class="btn" data-act="sc-tcancel">Cancel</button></div></div>`:''}
   ${scHelp?`<div class="schelp"><b>How to score</b><ol><li>After the toss, tap <b>Serves first</b> on the serving team. Use <b>⇄ Swap</b> so the names match where players stand (only at 0–0).</li><li>Tap the big number of the team that <b>wins the rally</b>. Every rally is a point.</li><li>The top line tells you who serves, from which side, and who receives. Even score = serve from the right, odd = from the left.</li><li>Wrong tap? Press <b>↶ Undo</b>.</li><li>Games go to 21, win by 2, maximum 30. Best of 3 games. Sides swap on screen when teams change ends.</li><li>When the match is over, tell the organizer.</li></ol><button class="btn lime sm" data-act="sc-help">Got it</button></div>`:''}
   <div class="smsg">${msg}</div>
   <datalist id="sc-teams">${allTeamNames().map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
@@ -804,7 +825,7 @@ function vHelp(){
   <p class="hint" style="margin:0 0 12px">Tap a topic to open it. ${IS_DISPLAY?'This tablet is a <b>Display</b>: it shows the Main tablet live and cannot change anything.':''}</p>
   ${sec('first','1. First time setup',`<ol>
     <li>Install <b>MatchMaker.apk</b> on every tablet. A newer APK installs over the old one and keeps your data — don't uninstall.</li>
-    <li>Put your players in the Excel template (Players sheet: <b>Name</b>, <b>Category</b> A–D, <b>Type</b> Subscriber/Guest, <b>Team</b> optional).</li>
+    <li>Put your players in the Excel template (Players sheet: <b>Name</b>, <b>Category</b> A–D, <b>Type</b> Subscriber/Guest, <b>Team</b> optional; a <b>Teams</b> sheet adds custom team names).</li>
     <li>Copy the file to the Main tablet, then <b>Players → Choose file</b>.</li>
     <li>Check <b>Settings</b>: number of courts, Doubles, skill mixing, subscriber priority and fees.</li>
     <li>Optional: tap a player's name → <b>📷 Take photo</b>.</li></ol>`)}
@@ -845,6 +866,8 @@ function vHelp(){
     <tr><td>Add a photo</td><td>Tap the name → Take photo</td></tr>
     <tr><td>Give a player a team</td><td>Players → Edit → Team (or a Team column in Excel)</td></tr>
     <tr><td>Team results</td><td>History → Teams</td></tr>
+    <tr><td>Create custom teams</td><td>Players → Custom teams → Add team</td></tr>
+    <tr><td>Pick a team during a game</td><td>Scoreboard → tap the team box at the top of a side</td></tr>
     <tr><td>Someone went home</td><td>Waiting queue → name → Went home</td></tr>
     <tr><td>Guests rarely play</td><td>Settings → Subscriber priority → Fair turns</td></tr>
     <tr><td>Wrong winner saved</td><td>History → Change winner</td></tr>
@@ -1057,14 +1080,14 @@ document.addEventListener('click',e=>{
   const a=el.dataset.act, id=el.dataset.id, ci=el.dataset.c!==undefined?+el.dataset.c:null, k=el.dataset.k;
   if(IS_COURT&&!COURT_OK.has(a)) return;
   if(IS_DISPLAY&&!VIEW_OK.has(a)){ toast('Display tablet — make changes on the Main tablet'); return; }
-  if(!['del','reset','wipe','h-del','h-clear','sc-reset','ph-del'].includes(a)) confirmKey=null;
+  if(!['del','reset','wipe','h-del','h-clear','sc-reset','ph-del','team-del'].includes(a)) confirmKey=null;
   switch(a){
     case 'go': tab=el.dataset.tab; render(); break;
     case 'fill-all': fillAll(); break;
     case 'gen': if(fillCourt(ci)){save();render();} break;
     case 'finish':{ const sc=S.courts[ci].sc, w=scLeader(sc); if(w){ const who=scWho(sc,w), sum=scSummary(sc); finish(ci,true,w); toast(who+' win · '+sum); break; } sheetWinner(ci); break;}
     case 'score': scoreOpen=ci; renderScore(); break;
-    case 'sc-close': scoreOpen=null; renderScore(); render(); break;
+    case 'sc-close': teamPick=null; scoreOpen=null; renderScore(); render(); break;
     case 'sc-pt': scPoint(scoreOpen,k); break;
     case 'sc-undo': scUndo(scoreOpen); break;
     case 'sc-serve': scServe(scoreOpen,k); break;
@@ -1143,6 +1166,11 @@ document.addEventListener('click',e=>{
       c.p=need()===4?arrange(pickSel.slice()):pickSel.slice(); c.t=Date.now(); c.sc=null; pickSel=[]; closeSheet(); save(); render(); break;}
     case 'export': exportReport(); break;
     case 'sc-help': scHelp=!scHelp; renderScore(); break;
+    case 'team-del':{ if(confirmKey!=='td'+k){ confirmKey='td'+k; render(); break; } confirmKey=null; S.teams=(S.teams||[]).filter(x=>x!==k); save(); render(); break;}
+    case 'sc-topen': teamPick=k; renderScore(); break;
+    case 'sc-tcancel': teamPick=null; renderScore(); break;
+    case 'sc-tpick': setTeamName(scoreOpen,teamPick||k,el.dataset.v||''); break;
+    case 'sc-tuse':{ const v=(($('#tp-in')||{}).value||'').trim().slice(0,40); if(!v){ toast('Type a team name'); break; } if(!(S.teams||[]).some(x=>x.toLowerCase()===v.toLowerCase())) S.teams=(S.teams||[]).concat(v); setTeamName(scoreOpen,teamPick,v); break;}
     case 'sc-tclear':{ const sc=scEnsure(scoreOpen); if(!sc) break; sc.tn=Object.assign({a:scTN(sc,'a'),b:scTN(sc,'b')},sc.tn||{}); sc.tn[k]=''; sc.seq=(sc.seq||0)+1; save(); renderScore(); break;}
     case 'help-sec': helpOpen=helpOpen===k?'':k; render(); break;
     case 'court-exit': courtExit=true; renderScore(); break;
@@ -1230,6 +1258,10 @@ async function importFile(f){
     const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
     const ws=wb.Sheets[wb.SheetNames[0]];
     importRows(XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:''}));
+    const tsn=wb.SheetNames.find((n,i)=>i>0&&/^teams?$/i.test(n.trim()));
+    if(tsn){ const rows=XLSX.utils.sheet_to_json(wb.Sheets[tsn],{header:1,raw:false,defval:''}); let added=0;
+      rows.forEach((r,i)=>{ const v=String(r[0]||'').trim().slice(0,40); if(!v||(i===0&&/^(team|teams|team name)$/i.test(v))) return; if(!(S.teams||[]).some(x=>x.toLowerCase()===v.toLowerCase())){ S.teams=(S.teams||[]).concat(v); added++; } });
+      if(added){ save(); render(); setTimeout(()=>toast(added+' custom team'+(added>1?'s':'')+' added from the Teams sheet'),2300); } }
   }catch(err){ toast('Could not read that file — try saving it as .xlsx or .csv'); }
   const fi=document.getElementById('file-in'); if(fi) fi.value='';
 }
@@ -1239,6 +1271,7 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('submit',e=>{
   e.preventDefault();
+  if(e.target.id==='teamf'&&!IS_DISPLAY){ const v=(($('#team-n')||{}).value||'').trim().slice(0,40); if(!v) return; if(!(S.teams||[]).some(x=>x.toLowerCase()===v.toLowerCase())){ S.teams=(S.teams||[]).concat(v); save(); toast('Team added: '+v); } else toast('Already saved'); render(); setTimeout(()=>{const i=$('#team-n');i&&i.focus();},0); return; }
   if(IS_DISPLAY){ toast('Display tablet — make changes on the Main tablet'); return; }
   if(e.target.id==='addf'){ const n=$('#add-n').value.trim(); if(!n) return; S.players.push({id:uid(),n:n.slice(0,40),c:$('#add-c').value,t:$('#add-t').value,tm:($('#add-tm').value||'').trim().slice(0,40)}); save(); render(); toast('Added '+n); setTimeout(()=>{const i=$('#add-n');i&&i.focus();},0); }
   if(e.target.id==='renf'){ const p=byId(e.target.dataset.id); const n=$('#ren-n').value.trim(); if(p&&n){p.n=n.slice(0,40); p.tm=(($('#ren-tm')||{}).value||'').trim().slice(0,40); save();} closeSheet(); render(); }
@@ -1340,7 +1373,7 @@ async function pollMain(){
 }
 /* ---------- court tablets ---------- */
 let courtExit=false, courtSetup=false, postPending=false, lastCourtKey='', posting=false;
-const COURT_OK=new Set(['sc-tclear','sc-help','sc-pt','sc-undo','sc-serve','sc-swap','sc-reset','court-exit','court-exit-no','court-exit-ok']);
+const COURT_OK=new Set(['sc-topen','sc-tcancel','sc-tpick','sc-tuse','sc-tclear','sc-help','sc-pt','sc-undo','sc-serve','sc-swap','sc-reset','court-exit','court-exit-no','court-exit-ok']);
 const sameSet=(x,y)=>Array.isArray(x)&&Array.isArray(y)&&x.length===y.length&&x.every(v=>y.includes(v));
 function courtKey(){ const c=S.courts[COURT_NO]; return JSON.stringify([c&&c.p,c&&c.sc&&c.sc.seq,S.phRev]); }
 function mergeMine(mine){
