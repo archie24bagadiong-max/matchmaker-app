@@ -72,10 +72,23 @@ h2 small{font-family:Barlow;font-size:13px;color:var(--muted);text-transform:non
   .courts.n4 .pitch,.courts.n7 .pitch,.courts.n8 .pitch{margin:0 8px}
   .courts.n4 .side,.courts.n7 .side,.courts.n8 .side{padding:6px 4px}
 }
-.court{background:var(--court);border-radius:var(--radius);color:#fff;overflow:hidden}
+.court{background:var(--court);border-radius:var(--radius);color:#fff;overflow:hidden;cursor:pointer}
+.court.cfin{box-shadow:0 0 0 3px #e5383b}
+.cfin-tag{white-space:nowrap;flex:none;background:#e5383b;color:#fff;font-size:12px;font-weight:800;padding:2px 8px;border-radius:999px;margin-left:8px;animation:gblink 1s steps(1,end) infinite}
+.cmenu{margin-left:8px;font-size:22px;line-height:1;opacity:.8;padding:0 4px}
+body.display .cmenu{display:none}
+.cmgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.cmgrid .btn{padding:14px 10px;font-size:16px}
+.cmgrid .full{grid-column:1/-1}
+.cmpl{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.cmpl .pl{border:1px solid var(--line)}
+.cmlv{display:flex;gap:6px;align-items:center;margin-top:12px;flex-wrap:wrap}
+.cmlv button{min-width:44px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:#fff;font-weight:700}
+.cmlv button.on{background:var(--court);color:#fff;border-color:var(--court)}
 .court-h{display:flex;align-items:center;gap:8px;padding:10px 12px}
 .court-h b{font-family:"Barlow Condensed";font-size:20px;text-transform:uppercase;letter-spacing:.5px}
-.court-h .t{margin-left:auto;font-size:13px;opacity:.85}
+.court-h .t{margin-left:auto;font-size:13px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.court-h b{white-space:nowrap}
 .lv{display:flex;gap:4px;padding:0 12px 8px;align-items:center;font-size:12px;opacity:.95}
 .lv button{border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;border-radius:6px;width:28px;height:24px;font-weight:700;font-size:12px;padding:0}
 .lv button.on{background:#fff;color:var(--court)}
@@ -418,7 +431,7 @@ input.stsel{padding-right:40px}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=24;
+const APP_VERSION=25;
 const IS_APP=!!window.AndroidApp;
 const UPD_BASE='https://raw.githubusercontent.com/archie24bagadiong-max/matchmaker-app/main/';
 let ROLE='off', MAIN_IP='';
@@ -681,8 +694,8 @@ function vCourts(){
       const ctn=ids=>{ if(c.sc){ const t=sameSet(ids,c.sc.pos.a)?'a':'b'; return scTN(c.sc,t); } return commonTeam(ids); }, tl=ids=>{ const n=ctn(ids); return n?`<div class="ptn">${esc(n)}</div>`:''; };
       pitch=`<div class="side">${tl(L)}${L.map(id=>plBtn(id,i)).join('')}</div><div class="net"></div><div class="side">${tl(R)}${R.map(id=>plBtn(id,i)).join('')}</div>`;
     }
-    h+=`<div class="court">
-      <div class="court-h"><b>Court ${i+1}</b><span class="t" data-t="${c.t}">${elapsed(c.t)}</span></div>
+    h+=`<div class="court ${c.sc&&c.sc.done&&c.p.length?'cfin':''}" data-act="court-menu" data-c="${i}">
+      <div class="court-h"><b>Court ${i+1}</b>${c.sc&&c.sc.done&&c.p.length?'<span class="cfin-tag">🔔 Done</span>':''}<span class="t" data-t="${c.t}">${elapsed(c.t)}</span><span class="cmenu" aria-hidden="true">⋯</span></div>
       <div class="lv"><span>Levels</span>${lv}</div>
       <div class="pitch">${pitch}</div>
       ${c.p.length?scoreStrip(i):''}
@@ -923,6 +936,29 @@ function fitScore(){
   if(small()){ v.classList.add('cmp'); if(small()) v.classList.add('cmp2'); }
 }
 window.addEventListener('resize',()=>requestAnimationFrame(fitScore));
+function sheetCourt(ci){
+  const c=S.courts[ci]; if(!c) return; menuCourt=ci;
+  const sc=c.sc, fin=!!(sc&&sc.done&&c.p.length);
+  let status;
+  if(!c.p.length) status='Empty court';
+  else if(fin) status=`🏆 <b>Match finished</b> · ${esc(scSummary(sc))}${sc.done==='d'?' · Draw':' · '+esc(scWho(sc,sc.done))+' win'}${sc.tie?' · games tied — open the scoreboard to play a decider':''}`;
+  else if(sc&&(sc.srv||sc.g.length)) status=`Playing · Game ${sc.g.length+1}: <b>${sc.a}–${sc.b}</b> · Games ${scWon(sc,'a')}–${scWon(sc,'b')}`;
+  else status='Playing · '+elapsed(c.t);
+  const lv=CATS.map(k=>`<button class="${c.lv.includes(k)?'on':''}" data-act="lv" data-c="${ci}" data-k="${k}">${k}</button>`).join('');
+  openSheet(`<h3>Court ${ci+1}</h3><div class="hint" style="margin:0">${status}</div>
+  ${c.p.length?`<div class="cmpl">${c.p.map(id=>plBtn(id,ci)).join('')}</div><div class="hint" style="margin:6px 0 0">Tap a player to swap, rest or remove them.</div>`:''}
+  <div class="cmgrid">
+    ${c.p.length?`
+      <button class="btn full ${fin?'gdone':'lime'}" data-act="finish" data-c="${ci}">${fin?'🔔 Game done — save result &amp; clear':'Game done'}</button>
+      <button class="btn pri" data-act="score" data-c="${ci}">🏸 ${sc&&(sc.srv||sc.g.length)?'Open scoreboard':'Keep score'}</button>
+      <button class="btn" data-act="reshuffle" data-c="${ci}">🔀 Reshuffle</button>
+      <button class="btn full warn" data-act="cancel" data-c="${ci}">Clear court (no result)</button>`
+    :`<button class="btn lime" data-act="gen" data-c="${ci}">Auto match</button><button class="btn pri" data-act="pick" data-c="${ci}">Pick players</button>`}
+  </div>
+  <div class="cmlv"><span class="hint" style="margin:0 6px 0 0">Levels on this court</span>${lv}</div>
+  <div class="row" style="margin-top:14px"><span class="grow"></span><button class="btn" data-act="sheet-close">Close</button></div>`);
+}
+let menuCourt=null;
 function sheetWinner(ci){
   const c=S.courts[ci]; if(!c.p.length) return;
   const half=c.p.length/2, A=c.p.slice(0,half), B=c.p.slice(half);
@@ -958,6 +994,7 @@ function vHelp(){
     <li><b>Courts:</b> tap <b>Auto match</b> (fair, balanced teams) or <b>Pick players</b> (choose 4 yourself). <b>Fill empty courts</b> does all courts.</li>
     <li>Scores are kept on the court tablet, or tap <b>🏸 Keep score</b> on the court card.</li>
     <li>Someone can't play? Tap their name → <b>Can't play</b>, or pick a substitute. Later tap <b>Back to play</b>.</li>
+    <li>Tap any court (its name or empty space) to open its menu: Game done, scoreboard, reshuffle, clear, players and levels.</li>
     <li>Match over? The <b>Game done</b> button blinks red with a “ting ting” sound when the score shows the match is finished. Tap <b>Game done</b>. The winner is picked from the score and saved to History. The court empties.</li>
     <li>Put the next players on and repeat.</li>
     <li><b>Payments:</b> tap <b>Unpaid → Paid</b> as players pay.</li></ol>`)}
@@ -1203,9 +1240,13 @@ document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el) return;
   const a=el.dataset.act, id=el.dataset.id, ci=el.dataset.c!==undefined?+el.dataset.c:null, k=el.dataset.k;
   if(IS_COURT&&!COURT_OK.has(a)) return;
+  if(IS_DISPLAY&&a==='court-menu') return;
   if(IS_DISPLAY&&!VIEW_OK.has(a)){ toast('Display tablet — make changes on the Main tablet'); return; }
   if(!['del','reset','wipe','h-del','h-clear','sc-reset','ph-del','team-del'].includes(a)) confirmKey=null;
+  if(el.closest('#sheet')&&['gen','finish','score','cancel','reshuffle','sheet-close'].includes(a)){ closeSheet(); menuCourt=null; }
   switch(a){
+    case 'court-menu': if(!IS_DISPLAY) sheetCourt(ci); break;
+    case 'sheet-close': break;
     case 'go': tab=el.dataset.tab; render(); break;
     case 'fill-all': fillAll(); break;
     case 'gen': if(fillCourt(ci)){save();render();} break;
@@ -1232,7 +1273,7 @@ document.addEventListener('click',e=>{
       // try a fresh group from the queue first; if not enough, mix the current players with the queue
       if(!fillCourt(ci,true,old)){ if(!fillCourt(ci,true)){c.p=old;toast('Not enough players to reshuffle');} }
       save();render(); break;}
-    case 'lv':{ const c=S.courts[ci]; const has=c.lv.includes(k); if(has&&c.lv.length===1){toast('Keep at least one level');break;} c.lv=has?c.lv.filter(x=>x!==k):c.lv.concat(k).sort(); save();render(); break;}
+    case 'lv':{ const c=S.courts[ci]; const has=c.lv.includes(k); if(has&&c.lv.length===1){toast('Keep at least one level');break;} c.lv=has?c.lv.filter(x=>x!==k):c.lv.concat(k).sort(); save();render(); if(el.closest('#sheet')) sheetCourt(ci); break;}
     case 'court-pl': sheetCourtPlayer(ci,id); break;
     case 'sub-rest': replace(ci,id,null,true); break;
     case 'sub-auto': replace(ci,id,null,false); break;
