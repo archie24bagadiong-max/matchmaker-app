@@ -278,6 +278,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 | 7 Nov 2026 | Page v28 (1.28) | Update bar and Settings just say “New version 1.xx available” (no notes) |
 | 7 Nov 2026 | Page v29 (1.29) | Set the serve before starting: tap the player who serves first, then the player who receives (0–0, first game); serving team can still be changed until the first point |
 | 7 Nov 2026 | Page v30 (1.30) | Payments: mark each player paid by 💵 Cash or 📱 STC Pay; Collected shows the split; Excel Payments sheet has a Method column and Daily Summary has Cash / STC Pay totals |
+| 7 Nov 2026 | Page v31 (2.0) | Export all activity: new Activity Log sheet (check-ins/outs, match start and finish with result, payments received/cancelled with amount and Cash / STC Pay, new sessions — all with date and time). Export button also in Settings |
 | 7 Nov 2026 | Page v17 | Custom teams list on Players (and Teams sheet in Excel); team picker on the scoreboard |
 | 7 Nov 2026 | Page v16 | Custom team name typed on the scoreboard per match |
 | 7 Nov 2026 | Page v15 | Team names: players, scoreboard, history, team standings, Excel |

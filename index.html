@@ -444,7 +444,7 @@ input.stsel{padding-right:40px}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=30;
+const APP_VERSION=31;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -463,8 +463,11 @@ const CLIENT=Math.random().toString(36).slice(2);
 function fresh(){
   return {players:[],present:{},resting:{},games:{},lastEnd:{},partners:{},
     courts:[0,1,2].map(()=>({lv:CATS.slice(),p:[],t:0})),
-    mode:'doubles',mix:'adjacent',autoNext:true,prio:'strong',paid:{},hist:[],ledger:[],teams:[],match:{n:3,pts:21,mode:'best'},fee:{gp:25,gn:3,gx:10,sp:2.5}};
+    mode:'doubles',mix:'adjacent',autoNext:true,prio:'strong',paid:{},hist:[],ledger:[],log:[],teams:[],match:{n:3,pts:21,mode:'best'},fee:{gp:25,gn:3,gx:10,sp:2.5}};
 }
+/* activity log: every check-in, payment and session change, with time */
+function logEv(k,o){ if(IS_DISPLAY||IS_COURT) return; if(!Array.isArray(S.log)) S.log=[]; S.log.push(Object.assign({d:Date.now(),k},o||{})); if(S.log.length>6000) S.log=S.log.slice(-6000); }
+const pnm=id=>(byId(id)||{}).n||'?';
 function normalize(s){
   const d=fresh();
   s=(s&&typeof s==='object')?s:{};
@@ -817,8 +820,8 @@ function vPay(){
     <p class="hint">Games are counted automatically when you tap “Game done” on a court.</p>
   </div>
   <h2>Excel report</h2>
-  <div class="card"><p class="hint" style="margin-top:0">One Excel file with sheets: Players, Payments (all days), Match History, Win Statistics and Daily Summary.</p>
-  <button class="btn pri" data-act="export">Export Excel report</button></div>
+  <div class="card"><p class="hint" style="margin-top:0">One Excel file with everything: <b>Activity Log</b> (check-ins, matches and payments with time and Cash / STC Pay), Payments (all days), Match History, Team and Win Statistics, Daily Summary and Players.</p>
+  <button class="btn pri" data-act="export">⬇ Export all activity (Excel)</button></div>
   <h2>Summary to share</h2>
   <div class="card"><textarea readonly id="paytxt">${esc(rows.slice().sort((a,b)=>a.n.localeCompare(b.n)).map(p=>`${p.n}${p.t==='G'?' (Guest)':''} – ${S.games[p.id]||0} games – ${fee(p)?sr(fee(p)):'0 SR'}${S.paid[p.id]?' ✓ paid ('+PM[payM(p.id)]+')':''}`).join('\n')+(rows.length?`\n\nTotal: ${sr(tot(rows))}`:''))}</textarea>
   <div class="row" style="margin-top:8px"><button class="btn" data-act="copypay">Copy summary</button></div></div>`;
@@ -1078,6 +1081,14 @@ function buildReport(){
   const add=(name,aoa,widths)=>{const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=widths.map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws,name);};
   add('Players',[['Name','Category','Type','Team']].concat(S.players.slice().sort((a,b)=>a.c.localeCompare(b.c)||a.n.localeCompare(b.n)).map(p=>[p.n,p.c,T(p.t),p.tm||''])),[26,10,12,20]);
   add('Payments',[['Date','Player','Team','Category','Type','Games','Fee (SR)','Paid','Method']].concat(pay.map(r=>[dayDate(r.day),r.n,r.tm||((S.players.find(p=>p.n===r.n)||{}).tm||''),r.c,T(r.t),r.g,r.f,r.pd?'Yes':'No',r.pd?(r.pm||'Cash'):''])),[13,24,18,10,12,8,10,7,10]);
+  { const L={in:'Checked in',out:'Checked out',pay:'Payment received',unpay:'Payment cancelled',session:'New session started'};
+    const ev=(S.log||[]).map(e=>({d:e.d,a:L[e.k]||e.k,p:e.n||'',c:'',x:e.k==='pay'?(e.g?e.g+' games':''):'',amt:(e.k==='pay'||e.k==='unpay')?(e.k==='unpay'?-e.amt:e.amt):'',m:e.m||''}));
+    S.hist.forEach(x=>{ const ns=(ids,n2)=>ids.map((id,j)=>(byId(id)||{}).n||n2[j]).join(' & ');
+      if(x.s&&x.s!==x.d) ev.push({d:x.s,a:'Match started',p:ns(x.a,x.an)+' vs '+ns(x.b,x.bn),c:x.c,x:'',amt:'',m:''});
+      ev.push({d:x.d,a:'Match finished',p:ns(x.a,x.an)+' vs '+ns(x.b,x.bn),c:x.c,x:(x.w==='a'?ns(x.a,x.an)+(x.ta?' ('+x.ta+')':'')+' won':x.w==='b'?ns(x.b,x.bn)+(x.tb?' ('+x.tb+')':'')+' won':x.w==='d'?'Draw':'No result')+(x.sc?' · '+x.sc:''),amt:'',m:''}); });
+    ev.sort((p,q)=>p.d-q.d);
+    const tm=d=>{const t=new Date(d);return String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');};
+    add('Activity Log',[['Date','Time','Activity','Player(s)','Court','Details','Amount (SR)','Method']].concat(ev.map(e=>[dayDate(dayKey(e.d)),tm(e.d),e.a,e.p,e.c,e.x,e.amt,e.m])).concat(ev.length?[]:[['No activity yet','','','','','','','']]),[12,7,20,40,7,40,12,10]); }
   add('Match History',[['Date','Time','Court','Team 1 – Player 1','Team 1 – Player 2','Team 2 – Player 1','Team 2 – Player 2','Team 1 name','Team 2 name','Winner','Winning team','Score','Minutes']].concat(S.hist.map(x=>{const nm=(ids,ns,i)=>ids[i]?((byId(ids[i])||{}).n||ns[i]):'';
     return [dayDate(dayKey(x.d)),fmtTime(x.d),x.c,nm(x.a,x.an,0),nm(x.a,x.an,1),nm(x.b,x.bn,0),nm(x.b,x.bn,1),x.ta||'',x.tb||'',x.w==='a'?'Team 1':x.w==='b'?'Team 2':'',x.w==='a'?(x.ta||nm(x.a,x.an,0)+(x.a[1]?' & '+nm(x.a,x.an,1):'')):x.w==='b'?(x.tb||nm(x.b,x.bn,0)+(x.b[1]?' & '+nm(x.b,x.bn,1):'')):'',x.sc||'',Math.max(1,Math.round((x.d-x.s)/60000))];})),[13,10,7,20,20,20,20,18,18,9,26,20,9]);
   const st={};
@@ -1210,6 +1221,8 @@ function vSettings(){
     <div class="row" style="margin-top:8px"><button class="btn" data-act="copy">Copy list</button><button class="btn warn" data-act="wipe">${confirmKey==='wipe'?'Tap again — deletes all players':'Delete all players'}</button></div>
     <p class="hint">Paste this list into "Add many at once" to restore.</p>
   </div>
+  <h2>Export</h2>
+  <div class="card"><p class="hint" style="margin-top:0">All activity in one Excel file: check-ins, matches, payments (Cash / STC Pay), statistics and daily totals.</p><button class="btn pri" data-act="export">⬇ Export all activity (Excel)</button></div>
   <h2>About</h2>
   ${DEV_CARD()}`;
 }
@@ -1313,16 +1326,16 @@ document.addEventListener('click',e=>{
     case 'wait-pl': sheetWaiting(id); break;
     case 'rest': S.resting[id]=1; closeSheet(); save(); render(); break;
     case 'unrest': delete S.resting[id]; save(); render(); toast(byId(id).n+' is back in the queue'); break;
-    case 'checkout': delete S.present[id]; delete S.resting[id]; closeSheet(); save(); render(); break;
+    case 'checkout': delete S.present[id]; delete S.resting[id]; logEv('out',{n:pnm(id)}); closeSheet(); save(); render(); break;
     case 'addto': if(S.courts[ci].p.length<need()){S.courts[ci].p.push(id);} closeSheet(); save(); render(); break;
     case 'ci-f': ciFilter=k; render(); break;
     case 'pl-f': plFilter=k; render(); break;
     case 'ci':{ const oc=onCourt();
-      if(S.present[id]){ if(oc[id]!==undefined){toast('On court now — replace them from the Courts tab first');break;} delete S.present[id]; delete S.resting[id]; }
-      else S.present[id]=1;
+      if(S.present[id]){ if(oc[id]!==undefined){toast('On court now — replace them from the Courts tab first');break;} delete S.present[id]; delete S.resting[id]; logEv('out',{n:pnm(id)}); }
+      else { S.present[id]=1; logEv('in',{n:pnm(id)}); }
       save(); render(); break;}
     case 'ci-all': case 'ci-none':{ const oc=onCourt();
-      S.players.filter(p=>(ciFilter==='All'||p.c===ciFilter)&&teamMatch(p,ciTeam)).forEach(p=>{ if(a==='ci-all') S.present[p.id]=1; else if(oc[p.id]===undefined){delete S.present[p.id];delete S.resting[p.id];} });
+      S.players.filter(p=>(ciFilter==='All'||p.c===ciFilter)&&teamMatch(p,ciTeam)).forEach(p=>{ if(a==='ci-all'){ if(!S.present[p.id]) logEv('in',{n:p.n}); S.present[p.id]=1; return; } if(S.present[p.id]&&oc[p.id]===undefined) logEv('out',{n:p.n}); if(oc[p.id]===undefined){delete S.present[p.id];delete S.resting[p.id];} });
       save(); render(); break;}
     case 'bulk':{ const t=$('#bulk').value; let n=0;
       t.split(/\r?\n/).forEach(line=>{ line=line.trim(); if(!line) return;
@@ -1352,7 +1365,7 @@ document.addEventListener('click',e=>{
     case 'auto': S.autoNext=k==='1'; save(); render(); break;
     case 'reset':
       if(confirmKey!=='reset'){confirmKey='reset';render();break;}
-      confirmKey=null; archiveDay(); S.present={};S.resting={};S.games={};S.lastEnd={};S.partners={};S.paid={}; S.courts.forEach(c=>{c.p=[];c.t=0;}); save(); render(); toast('New session started'); break;
+      confirmKey=null; archiveDay(); logEv('session',{}); S.present={};S.resting={};S.games={};S.lastEnd={};S.partners={};S.paid={}; S.courts.forEach(c=>{c.p=[];c.t=0;}); save(); render(); toast('New session started'); break;
     case 'wipe':
       if(confirmKey!=='wipe'){confirmKey='wipe';render();break;}
       confirmKey=null; const keep=S.courts.length; S=fresh(); S.courts=Array.from({length:keep},()=>({lv:CATS.slice(),p:[],t:0})); save(); render(); break;
@@ -1390,7 +1403,7 @@ document.addEventListener('click',e=>{
     case 'settype':{ const p=byId(id); if(p){p.t=p.t==='G'?'S':'G'; save(); render();} break;}
     case 'prio': S.prio=k; save(); render(); break;
     case 'pay-f': payFilter=k; render(); break;
-    case 'paid': { const m=k||'cash'; if(payM(id)===m) delete S.paid[id]; else S.paid[id]=m; save(); render(); break; }
+    case 'paid': { const m=k||'cash', pl=byId(id), amt=pl?Math.round(fee(pl)*100)/100:0; if(payM(id)===m){ delete S.paid[id]; logEv('unpay',{n:pnm(id),amt,m:PM[m]}); } else { S.paid[id]=m; logEv('pay',{n:pnm(id),amt,m:PM[m],g:S.games[id]||0}); } save(); render(); break; }
     case 'g+': S.games[id]=(S.games[id]||0)+1; S.present[id]=1; save(); render(); break;
     case 'g-': if((S.games[id]||0)>0){ S.games[id]--; save(); render(); } break;
     case 'copypay': try{ navigator.clipboard.writeText($('#paytxt').value).then(()=>toast('Copied'),()=>{$('#paytxt').select();toast('Select & copy manually');}); }catch(err){ $('#paytxt').select(); toast('Select & copy manually'); } break;
