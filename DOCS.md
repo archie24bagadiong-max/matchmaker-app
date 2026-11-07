@@ -239,6 +239,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 7 Nov 2026 | Page v14 | Scoreboard: big Games won panel per team with each game score; shorter score boxes |
 | 7 Nov 2026 | Page v13 | In-app How to use guide (? button, Settings) and scoring help on the scoreboard |
 | 7 Nov 2026 | Docs | Full how-to guide and everyday tasks added |
 | 7 Nov 2026 | Page v12 | Court tablets update themselves while their court is waiting; all tablets re-check for updates every 15 min (court: 3 min) |

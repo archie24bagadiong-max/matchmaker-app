@@ -192,9 +192,28 @@ body.noscroll{overflow:hidden}
 .stag{font-size:10px;font-weight:800;letter-spacing:.5px;flex:none}
 .stag.r{opacity:.85}
 .sdots{display:flex;gap:6px;justify-content:center}
+.sgw{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;align-items:center;gap:4px 10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:8px 12px}
+.sgw.has{background:rgba(200,241,105,.16);border-color:var(--lime)}
+.sgw-l{display:flex;flex-direction:column;gap:6px}
+.sgw-l span{font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;opacity:.85}
+.sgw-l .sdots{justify-content:flex-start}
+.sgw>b{grid-row:1/3;grid-column:2;font-family:'Barlow Condensed';font-weight:800;font-size:clamp(44px,8vh,72px);line-height:1;color:var(--lime);min-width:40px;text-align:center}
+.sgw-g{display:flex;gap:6px;flex-wrap:wrap}
+.sgw-g i{font-style:normal;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.12)}
+.sgw-g i.w{background:var(--lime);color:var(--court)}
+.sgw-g i.n{opacity:.6;background:none;padding:2px 0;font-weight:500}
+@media (min-height:820px){
+  .sgw{padding:16px 18px;gap:10px 14px;border-width:2px}
+  .sgw-l span{font-size:15px}
+  .sgw>b{font-size:clamp(90px,11vh,140px)}
+  .sgw .sdots i{width:16px;height:16px}
+  .sgw-g i{font-size:16px;padding:4px 12px}
+  .sside .spt{flex:0 1 52vh}
+  .sside .spt span{font-size:clamp(90px,min(24vw,26vh),240px)}
+}
 .sdots i{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.6)}
 .sdots i.on{background:var(--lime);border-color:var(--lime)}
-.spt{flex:1;min-height:0;border-radius:16px;border:0;background:rgba(255,255,255,.95);color:var(--court);display:flex;align-items:center;justify-content:center;touch-action:manipulation}
+.spt{flex:1;min-height:0;overflow:hidden;border-radius:16px;border:0;background:rgba(255,255,255,.95);color:var(--court);display:flex;align-items:center;justify-content:center;touch-action:manipulation}
 .spt span{font-family:'Barlow Condensed';font-weight:800;font-size:clamp(56px,min(22vw,30vh),220px);line-height:1}
 @media (max-height:560px){
   .scorev{padding:calc(env(safe-area-inset-top) + 4px) calc(env(safe-area-inset-right) + 10px) calc(env(safe-area-inset-bottom) + 6px) calc(env(safe-area-inset-left) + 10px)}
@@ -211,7 +230,15 @@ body.noscroll{overflow:hidden}
   .spl .av.ini{font-size:11px}
   .spn{font-size:14px}
   .stag{font-size:8.5px}
-  .sdots{display:none}
+  .sgw{padding:3px 8px;gap:2px 8px}
+  .sgw-l span{font-size:10px}
+  .sgw .sdots{display:none}
+  .sgw>b{font-size:30px}
+  .sgw-g i{font-size:10.5px;padding:1px 6px}
+  .sgw-g{display:none}
+  .sgw{grid-template-rows:auto}
+  .spt span{font-size:clamp(40px,min(22vw,26vh),220px)}
+  .spt{max-height:none}
   .sctl{flex-direction:row}
   .sctl .btn{flex:1;padding:5px 8px;font-size:13px}
   .sprev{margin:3px 0;font-size:15px}
@@ -296,7 +323,7 @@ body.courtmode nav,body.courtmode main{display:none}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=13;
+const APP_VERSION=14;
 const IS_APP=!!window.AndroidApp;
 const UPD_BASE='https://raw.githubusercontent.com/archie24bagadiong-max/matchmaker-app/main/';
 let ROLE='off', MAIN_IP='';
@@ -705,7 +732,7 @@ function renderScore(){
     const dots=Array.from({length:Math.ceil(SC.best/2)},(_,k)=>`<i class="${k<scWon(sc,t)?'on':''}"></i>`).join('');
     return `<div class="sside ${serving?'serving':''} ${won?'won':''}">
       <div class="steam">${doubles?court(pos[1],'Left')+court(pos[0],'Right'):court(pos[0],'')}</div>
-      <div class="sdots">${dots}</div>
+      <div class="sgw ${scWon(sc,t)?'has':''}"><div class="sgw-l"><span>Games won</span><div class="sdots">${dots}</div></div><b>${scWon(sc,t)}</b><div class="sgw-g">${sc.g.map((x,k)=>{const mine=t==='a'?x[0]:x[1], their=t==='a'?x[1]:x[0];return `<i class="${mine>their?'w':'l'}">G${k+1} ${mine}</i>`;}).join('')||'<i class="n">No games yet</i>'}</div></div>
       <button class="spt" data-act="sc-pt" data-k="${t}" ${sc.done||!sc.srv?'disabled':''}><span>${sc[t]}</span></button>
       <div class="sctl">${atStart&&!sc.g.length&&!sc.srv?`<button class="btn lime" data-act="sc-serve" data-k="${t}">Serves first</button>`:''}${atStart&&doubles&&!sc.done?`<button class="btn ghost" data-act="sc-swap" data-k="${t}">⇄ Swap left/right</button>`:''}</div>
     </div>`;
