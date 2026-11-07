@@ -113,7 +113,7 @@ Each session day:
 | Players | Add form, Excel import, bulk paste, roster | Add, Choose file, Add list, change level, Sub/Guest, rename, delete |
 | Payments | Totals, per-player games and fee | Filter, mark Paid, Export Excel report, Copy summary |
 | History | Matches by day with court, teams, winner; wins leaderboard | Filter by date/court, Change winner, delete match, Export Excel |
-| Settings | Options | Courts 1–8, Doubles/Singles, mixing, priority, fees, App updates, Start new session, Clear history, Backup roster, Delete all players |
+| Settings | Options | Courts 1–8, Doubles/Singles, mixing, priority, fees, Update app (top), Start new session, Clear history, Backup roster, Delete all players |
 
 Player tags: level badge A–D, SUB (blue) or GUEST (yellow), games played (e.g. 3g).
 
@@ -229,7 +229,7 @@ Export (MatchMaker_Report_YYYY-MM-DD.xlsx): Players · Payments (all days) · Ma
 
 Install: copy MatchMaker.apk to the tablet → tap → allow this source → Install (Play Protect: More details → Install anyway). A newer APK installs over the old one and keeps data.
 
-Updates: Claude uploads index.html and a higher version.json here and republishes the Claude link. On opening (with internet) the app compares version.json with its own APP_VERSION and shows "New version available — Update"; tapping it saves the new page inside the app and reloads, keeping all data. Settings → App updates → Check for updates. Changes to the Android shell (file picker, file saving) need a new APK.
+Updates: Claude uploads index.html and a higher version.json here and republishes the Claude link. On opening (with internet) the app compares version.json with its own APP_VERSION and shows "New version available — Update"; tapping it saves the new page inside the app and reloads, keeping all data. Or tap Settings → **Update app** (top of Settings): it checks and installs in one tap. Changes to the Android shell (file picker, file saving) need a new APK.
 
 ## Data and backup
 
@@ -250,7 +250,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 | Choose file does nothing in the Claude app | Use the tablet app, Chrome, paste into Add many at once, or send the file to Claude |
 | Claude link opens in the Claude app | Choose Chrome, paste the link, or turn off "Open supported links" for Claude |
 | Export asks for the latest APK | Install the current MatchMaker.apk once |
-| No Update bar | Needs internet on opening; GitHub can take ~5 min; use Check for updates |
+| No Update bar | Needs internet on opening; GitHub can take ~5 min; use Settings → Update app |
 | Guests rarely play | Switch priority to Fair turns or use Pick players |
 
 ## Technical reference
@@ -267,6 +267,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 | --- | --- | --- |
 | 7 Nov 2026 | Page v18 | Match format setting: 1–5 games, 11/15/21 points, best of or play all, draws |
 | 7 Nov 2026 | Page v19 | Receiving player highlighted in orange on the scoreboard (server stays lime) |
+| 7 Nov 2026 | Page v20 | Update app button at the top of Settings (checks and installs in one tap) |
 | 7 Nov 2026 | Page v17 | Custom teams list on Players (and Teams sheet in Excel); team picker on the scoreboard |
 | 7 Nov 2026 | Page v16 | Custom team name typed on the scoreboard per match |
 | 7 Nov 2026 | Page v15 | Team names: players, scoreboard, history, team standings, Excel |
