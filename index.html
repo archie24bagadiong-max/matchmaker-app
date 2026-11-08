@@ -148,6 +148,18 @@ body.display .cmenu{display:none}
 .wp small{color:var(--muted);font-weight:500}
 .wgrp{flex:0 0 100%;font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.5px;color:var(--court2);margin:8px 2px 0;padding-bottom:4px;border-bottom:1px solid var(--border)}
 .wgrp:first-child{margin-top:0}
+/* waiting queue: a column per level */
+.wq-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -6px;padding:0 6px 4px}
+.wq-grid{display:grid;grid-template-columns:repeat(var(--n),minmax(124px,1fr));gap:6px;align-items:start}
+.wq-col{display:flex;flex-direction:column;gap:5px;background:#f7faf8;border:1px solid var(--border);border-radius:12px;padding:6px;min-width:0}
+.wq-h{display:flex;align-items:center;gap:6px;padding:2px 4px 4px;border-bottom:1px solid var(--border);margin-bottom:2px}
+.wq-h small{color:var(--muted);font-weight:700;font-size:12px;margin-left:auto}
+.wq-p{display:flex;align-items:center;gap:5px;width:100%;min-width:0;background:#fff;border:1px solid var(--border);border-radius:9px;padding:6px 7px;font-weight:600;font-size:14px;text-align:left}
+.wq-p .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wq-p .gb{font-size:9px;padding:1px 4px}
+.wq-p small{flex:none;color:var(--muted);font-weight:600;font-size:12px}
+.wq-p.z{border-color:#cfe7a6;background:#fbfff3}
+.wq-p.z small{color:#3d6b00}
 .wgrp small{font-family:Barlow,sans-serif;font-weight:600;color:var(--muted);font-size:12px;margin-left:4px}
 .wp.rest{border-style:dashed}
 input[type=text],input[type=search],select,textarea{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fff;width:100%}
@@ -532,7 +544,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=43;
+const APP_VERSION=44;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -866,7 +878,9 @@ function vCourts(){
   h+=`</div>`;
   h+=`<h2>Waiting queue <small>${WQ_SORTS[wqSort][1]} · tap to manage</small></h2><div class="card">`;
   h+=`<div class="chips" style="margin:0 0 10px;align-items:center"><span class="hint" style="margin:0 4px 0 0">Arrange:</span>${Object.keys(WQ_SORTS).map(k=>`<button class="chip ${wqSort===k?'on':''}" data-act="wq-sort" data-k="${k}">${WQ_SORTS[k][0]}</button>`).join('')}</div>`;
-  h+= w.length?`<div class="wait">${wqGroups(w).map(g=>(g.label?`<div class="wgrp">${g.label} <small>${g.list.length}</small></div>`:'')+g.list.map(p=>`<button class="wp" data-act="wait-pl" data-id="${p.id}">${catBadge(p.c)}${esc(p.n)} ${typeBadge(p)}<small>${S.games[p.id]||0}g</small></button>`).join('')).join('')}</div>`:`<div class="hint" style="margin:0">Nobody waiting.</div>`;
+  h+= !w.length?`<div class="hint" style="margin:0">Nobody waiting.</div>`
+    : wqSort==='grid'?wqGrid(w)
+    : `<div class="wait">${wqGroups(w).map(g=>(g.label?`<div class="wgrp">${g.label} <small>${g.list.length}</small></div>`:'')+g.list.map(p=>`<button class="wp" data-act="wait-pl" data-id="${p.id}">${catBadge(p.c)}${esc(p.n)} ${typeBadge(p)}<small>${S.games[p.id]||0}g</small></button>`).join('')).join('')}</div>`;
   h+=`</div>`;
   if(resting.length){
     h+=`<h2>Resting / can't play <small>${resting.length}</small></h2><div class="card"><div class="list">${resting.map(p=>`<div class="item">${catBadge(p.c)}<div class="nm">${esc(p.n)}</div>${typeBadge(p)}${gpill(p.id)}<button class="btn sm pri" data-act="unrest" data-id="${p.id}">Back to play</button></div>`).join('')}</div></div>`;
@@ -874,9 +888,20 @@ function vCourts(){
   return h;
 }
 /* waiting queue arrangement (display only — Auto match still takes players in "Next up" order). Remembered on this device. */
-const WQ_SORTS={played:['Played · Level','by games played, then level'],level:['Level','by level, fewest games first'],queue:['Next up','next up first']};
-let wqSort='played'; try{ wqSort=localStorage.getItem('mm_wq_sort')||'played'; }catch(e){}
-if(!WQ_SORTS[wqSort]) wqSort='played';
+const WQ_SORTS={grid:['Level columns','a column per level, fewest games on top'],played:['Played · Level','by games played, then level'],level:['Level','by level, fewest games first'],queue:['Next up','next up first']};
+let wqSort='grid'; try{ wqSort=localStorage.getItem('mm_wq_grid')?(localStorage.getItem('mm_wq_sort')||'grid'):'grid'; }catch(e){}
+if(!WQ_SORTS[wqSort]) wqSort='grid';
+/* one column per level (only levels with someone waiting); inside each column: fewest games first, then next-up order */
+function wqGrid(w){
+  const pos=new Map(w.map((p,i)=>[p.id,i])), gm=p=>S.games[p.id]||0;
+  const cols=CATS.map(c=>({c,list:w.filter(p=>p.c===c)})).filter(x=>x.list.length);
+  const odd=w.filter(p=>!CATS.includes(p.c)); if(odd.length) cols.push({c:'?',list:odd});
+  return `<div class="hint" style="margin:0 2px 8px">Only Guest and Family are tagged; everyone else is a Member.</div><div class="wq-scroll"><div class="wq-grid" style="--n:${cols.length}">${cols.map(col=>{
+    const list=col.list.slice().sort((a,b)=>gm(a)-gm(b)||pos.get(a.id)-pos.get(b.id));
+    return `<div class="wq-col"><div class="wq-h">${col.c==='?'?'<b>No level</b>':catBadge(col.c)}<small>${list.length}</small></div>${list.map(p=>{ const g=gm(p);
+      return `<button class="wq-p ${g?'':'z'}" data-act="wait-pl" data-id="${p.id}"><span class="nm">${esc(p.n)}</span>${p.t==='G'||p.t==='F'?typeBadge(p):''}<small>${g}g</small></button>`; }).join('')}</div>`;
+  }).join('')}</div></div>`;
+}
 function wqGroups(w){
   if(wqSort==='queue') return [{label:'',list:w}];
   const pos=new Map(w.map((p,i)=>[p.id,i])), lv=p=>{ const i=CATS.indexOf(p.c); return i<0?99:i; }, gm=p=>S.games[p.id]||0;
@@ -1640,7 +1665,7 @@ document.addEventListener('click',e=>{
     case 'slot-clear': S.courts[ci].d=[]; save(); render(); break;
     case 'pick': pickCourt=ci; pickSel=[]; pickCat='All'; sheetPick(); break;
     case 'pick-f': pickCat=k; sheetPick(); break;
-    case 'wq-sort': wqSort=WQ_SORTS[k]?k:'played'; try{ localStorage.setItem('mm_wq_sort',wqSort); }catch(e){} render(); break;
+    case 'wq-sort': wqSort=WQ_SORTS[k]?k:'grid'; try{ localStorage.setItem('mm_wq_sort',wqSort); localStorage.setItem('mm_wq_grid','1'); }catch(e){} render(); break;
     case 'sh-sort':{ shSort=SH_SORTS[k]?k:'games'; try{ localStorage.setItem('mm_sh_sort',shSort); }catch(e){}
       const s=$('#sh-s'), q=s?s.value:'', top=$('#sheet').scrollTop;
       if(shReopen) shReopen();
