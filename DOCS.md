@@ -120,7 +120,8 @@ Player tags: level badge A–D, SUB (blue) or GUEST (yellow), games played (e.g.
 ## Matching rules
 
 1. Eligible: checked in, not resting, not on a court, level allowed on that court.
-2. Queue order (Settings → Subscriber priority): Subscribers first (default; guests only when not enough subscribers) · Fair turns (fewest games, subscriber wins ties) · Equal. Ties: earliest last-game end first.
+2. Equal rounds (Settings, On by default): automatic picks use only the players with the fewest games; someone on 3 games waits until everyone waiting has 3, unless the organizer puts them on by hand. The next round is used only when a court cannot be filled at its levels.
+3. Queue order (Settings → Subscriber priority): Subscribers first (default; guests only when not enough subscribers) · Fair turns (fewest games, subscriber wins ties) · Equal. Ties: earliest last-game end first.
 3. Group: first in queue is the seed; same level first, then per Skill mixing (Same only / Next level OK default / Any). If the seed's level cannot fill a group, the next player becomes seed.
 4. Teams: A+=8, A-=7, B+=6, B-=5, C+=4, C-=3, D+=2, D-=1; the split with the smallest team difference wins, avoiding repeat partners.
 
@@ -284,6 +285,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 | 7 Nov 2026 | Page v29 (1.29) | Set the serve before starting: tap the player who serves first, then the player who receives (0–0, first game); serving team can still be changed until the first point |
 | 7 Nov 2026 | Page v30 (1.30) | Payments: mark each player paid by 💵 Cash or 📱 STC Pay; Collected shows the split; Excel Payments sheet has a Method column and Daily Summary has Cash / STC Pay totals |
 | 7 Nov 2026 | Page v31 (2.0) | Export all activity: new Activity Log sheet (check-ins/outs, match start and finish with result, payments received/cancelled with amount and Cash / STC Pay, new sessions — all with date and time). Export button also in Settings |
+| 8 Nov 2026 | Page v46 (2.15) | Settings → Equal rounds (On by default): Auto match, Fill empty courts, auto-filled boxes and Replace with next in line take only the fewest-games players; the next round is used only when a court cannot be filled at its levels/mixing. Subscriber priority orders players within a round. Manual picks (Pick players, court boxes, substitute list) can still choose anyone |
 | 8 Nov 2026 | Page v45 (2.14) | Level columns rotate: not played on top; among the same games, whoever finished longest ago is higher; who just played goes to the bottom and moves up as others play |
 | 8 Nov 2026 | Page v44 (2.13) | Waiting queue default is Level columns: one column per level A+ … D- (levels with someone waiting), each sorted fewest games first then next-up order; not-played players highlighted green; only Guest/Family tagged. Columns scroll sideways on phones |
 | 8 Nov 2026 | Page v43 (2.12) | Waiting queue Arrange buttons: Played · Level (default; groups Not played, Played 1, 2… with A+ … D- inside), Level (groups A+ … D-, fewest games first), Next up (Auto match order). Display only; remembered per device |

@@ -1,1 +1,1 @@
-{"version": 45, "notes": "Level columns rotate: who just played goes to the bottom and moves up as others play"}
+{"version": 46, "notes": "Equal rounds: Auto match waits until everyone waiting has played the same number of games; organizer can still pick anyone by hand"}

@@ -544,7 +544,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=45;
+const APP_VERSION=46;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -563,7 +563,7 @@ const CLIENT=Math.random().toString(36).slice(2);
 function fresh(){
   return {players:[],present:{},resting:{},games:{},lastEnd:{},partners:{},
     courts:[0,1,2].map(()=>({lv:GROUPS.slice(),p:[],t:0})),
-    mode:'doubles',mix:'adjacent',autoNext:true,prio:'strong',paid:{},hist:[],ledger:[],log:[],teams:[],match:{n:3,pts:21,mode:'best'},fee:{gp:25,gn:3,gx:10,sp:2.5}};
+    mode:'doubles',mix:'adjacent',autoNext:true,prio:'strong',rounds:true,paid:{},hist:[],ledger:[],log:[],teams:[],match:{n:3,pts:21,mode:'best'},fee:{gp:25,gn:3,gx:10,sp:2.5}};
 }
 /* activity log: every check-in, payment and session change, with time */
 function logEv(k,o){ if(IS_DISPLAY||IS_COURT) return; if(!Array.isArray(S.log)) S.log=[]; S.log.push(Object.assign({d:Date.now(),k},o||{})); if(S.log.length>6000) S.log=S.log.slice(-6000); }
@@ -684,7 +684,8 @@ function isG(p){return p.t==='G'?1:0;}
 function prioritySort(list){
   const g=(a,b)=>S.prio==='none'?0:isG(a)-isG(b);
   const n=(a,b)=>((S.games[a.id]||0)-(S.games[b.id]||0));
-  return list.slice().sort((a,b)=>(S.prio==='strong'?(g(a,b)||n(a,b)):(n(a,b)||g(a,b)))||((S.lastEnd[a.id]||0)-(S.lastEnd[b.id]||0))||a.n.localeCompare(b.n));
+  // Equal rounds on: games played always comes first (subscriber priority only orders players within the same round)
+  return list.slice().sort((a,b)=>(S.prio==='strong'&&!S.rounds?(g(a,b)||n(a,b)):(n(a,b)||g(a,b)))||((S.lastEnd[a.id]||0)-(S.lastEnd[b.id]||0))||a.n.localeCompare(b.n));
 }
 function fee(p){
   const g=S.games[p.id]||0; if(!g) return 0;
@@ -715,12 +716,24 @@ function dist(a,b){return Math.abs((RATE[a]||0)-(RATE[b]||0));}
 function allowed(a,b){ const d=Math.abs(GROUPS.indexOf(grp(a))-GROUPS.indexOf(grp(b))); return S.mix==='strict'?d===0:S.mix==='adjacent'?d<=1:true; }
 
 /* ---------- matching ---------- */
+/* Equal rounds: weight that makes fewer games always win over level/guest preferences */
+const roundW=p=>S.rounds?(S.games[p.id]||0)*1e7:0;
 function pickGroup(pool,n){
+  if(S.rounds){
+    // nobody plays game N+1 while someone waiting has fewer: try only the lowest round first, and let in the
+    // next round only when the lower one cannot make a full group (court levels / skill mixing)
+    const rounds=[...new Set(pool.map(p=>S.games[p.id]||0))].sort((a,b)=>a-b);
+    for(const r of rounds){ const g=pickGroupIn(pool.filter(p=>(S.games[p.id]||0)<=r),n); if(g) return g; }
+    return null;
+  }
+  return pickGroupIn(pool,n);
+}
+function pickGroupIn(pool,n){
   // the longest-waiting player who can make a full group is the seed; others chosen around them
   for(let s=0;s<pool.length;s++){
     const seed=pool[s];
     const cands=pool.filter((p,i)=>i!==s&&allowed(p.c,seed.c))
-      .map(p=>({p,score:(S.prio==='strong'&&isG(p)?100000:0)+dist(p.c,seed.c)*1000+pool.indexOf(p)}))
+      .map(p=>({p,score:roundW(p)+(S.prio==='strong'&&isG(p)?100000:0)+dist(p.c,seed.c)*1000+pool.indexOf(p)}))
       .sort((a,b)=>a.score-b.score).map(x=>x.p);
     if(cands.length>=n-1) return [seed].concat(cands.slice(0,n-1));
   }
@@ -748,7 +761,7 @@ function fillCourt(i,quiet,exclude){
     // some boxes already chosen by hand: keep them where they are and fill only the empty boxes
     const chosen=d.filter(Boolean).map(byId), avg=chosen.reduce((a,p)=>a+RATE[p.c],0)/chosen.length;
     const pool=waiting().filter(p=>onLv(c,p)&&!(exclude&&exclude.includes(p.id)))
-      .map((p,k)=>({p,score:(S.prio==='strong'&&isG(p)?100000:0)+Math.abs(RATE[p.c]-avg)*1000+k})).sort((a,b)=>a.score-b.score).map(x=>x.p);
+      .map((p,k)=>({p,score:roundW(p)+(S.prio==='strong'&&isG(p)?100000:0)+Math.abs(RATE[p.c]-avg)*1000+k})).sort((a,b)=>a.score-b.score).map(x=>x.p);
     const free=d.filter(x=>!x).length;
     if(pool.length<free){ if(!quiet) toast(`Court ${i+1}: not enough waiting players to fill the empty boxes`); return false; }
     let j=0; c.d=d.map(x=>x||pool[j++].id);
@@ -781,7 +794,7 @@ function finish(i,count,win){
 function substitutes(courtIdx,outId){
   const c=S.courts[courtIdx], out=byId(outId);
   return waiting().filter(p=>onLv(c,p))
-    .map((p,i)=>({p,score:(S.prio==='strong'&&isG(p)?100000:0)+dist(p.c,out.c)*1000+i})).sort((a,b)=>a.score-b.score).map(x=>x.p);
+    .map((p,i)=>({p,score:roundW(p)+(S.prio==='strong'&&isG(p)?100000:0)+dist(p.c,out.c)*1000+i})).sort((a,b)=>a.score-b.score).map(x=>x.p);
 }
 function replace(courtIdx,outId,inId,rest){
   const c=S.courts[courtIdx]; const k=c.p.indexOf(outId); if(k<0) return;
@@ -1431,6 +1444,9 @@ function vSettings(){
       <button class="${S.prio==='tie'?'on':''}" data-act="prio" data-k="tie">Fair turns</button>
       <button class="${S.prio==='none'?'on':''}" data-act="prio" data-k="none">Equal</button></div>
       <p class="hint">Subscribers first: guests only get a court when there aren't enough subscribers waiting. Fair turns: whoever has played least goes first; subscribers win ties. Equal: no difference.</p></div>
+    <div><label>Equal rounds</label>
+      <div class="seg"><button class="${S.rounds?'on':''}" data-act="rounds" data-k="1">On</button><button class="${S.rounds?'':'on'}" data-act="rounds" data-k="0">Off</button></div>
+      <p class="hint">On: nobody plays a 4th game while someone waiting has played only 3 (and so on) — Auto match, Fill empty courts and substitutes take the fewest-games players first. Players from the next round are used only when there are not enough to fill a court at its levels. The organizer can still put anyone on by hand (Pick players, tap a court box, or pick a substitute). ${S.rounds?'Subscriber priority then decides the order within a round.':''}</p></div>
     <div><label>Fees</label>
       <div class="row"><span style="min-width:110px">Guest</span><input type="text" inputmode="decimal" data-fee="gp" value="${S.fee.gp}" style="width:80px"> SR per <input type="text" inputmode="numeric" data-fee="gn" value="${S.fee.gn}" style="width:56px"> games</div>
       <div class="row" style="margin-top:8px"><span style="min-width:110px">Guest extra</span>+<input type="text" inputmode="decimal" data-fee="gx" value="${S.fee.gx}" style="width:80px"> SR per extra ${S.fee.gn} games (${sr(S.fee.gx/S.fee.gn)} each)</div>
@@ -1704,6 +1720,7 @@ document.addEventListener('click',e=>{
     case 'upd-app': updateApp(); break;
     case 'settype':{ const p=byId(id); if(p){p.t=p.t==='S'?'F':p.t==='F'?'G':'S'; save(); render();} break;}
     case 'prio': S.prio=k; save(); render(); break;
+    case 'rounds': S.rounds=k==='1'; save(); render(); break;
     case 'pay-f': payFilter=k; render(); break;
     case 'paid': { const m=k||'cash', pl=byId(id), amt=pl?Math.round(fee(pl)*100)/100:0; if(payM(id)===m){ delete S.paid[id]; logEv('unpay',{n:pnm(id),amt,m:PM[m]}); } else { S.paid[id]=m; logEv('pay',{n:pnm(id),amt,m:PM[m],g:S.games[id]||0}); } save(); render(); break; }
     case 'g+': S.games[id]=(S.games[id]||0)+1; S.present[id]=1; save(); render(); break;
