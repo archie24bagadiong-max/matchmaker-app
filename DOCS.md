@@ -261,6 +261,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 
 - Claude link: https://claude.ai/artifact/NCBtfjcXPbVzeZ8yNHivGj
 - Update source: https://github.com/archie24bagadiong-max/matchmaker-app (index.html, version.json)
+- Live website: https://archie24bagadiong-max.github.io/matchmaker-app/ (GitHub Pages from `main`, root). Works offline after the first visit and can be installed from the browser. Its data stays in that browser, separate from the tablets.
 - Android package com.badminton.matchmaker, min API 24, target API 34, debug-signed (same key each build).
 - One index.html runs every version; Excel via SheetJS 0.18.5 (bundled in APK).
 - Android shell: WebView loading the page saved in app storage; bridge `AndroidApp.saveUpdate(html)` and `AndroidApp.saveFile(base64, name)`.
