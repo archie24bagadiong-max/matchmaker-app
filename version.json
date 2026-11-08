@@ -1,1 +1,1 @@
-{"version": 44, "notes": "Waiting queue in level columns (A+ to D-), each sorted by fewest games played"}
+{"version": 45, "notes": "Level columns rotate: who just played goes to the bottom and moves up as others play"}
