@@ -146,6 +146,9 @@ body.display .cmenu{display:none}
 .wait{display:flex;flex-wrap:wrap;gap:6px}
 .wp{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:6px 10px 6px 6px;font-weight:600;font-size:14px}
 .wp small{color:var(--muted);font-weight:500}
+.wgrp{flex:0 0 100%;font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.5px;color:var(--court2);margin:8px 2px 0;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.wgrp:first-child{margin-top:0}
+.wgrp small{font-family:Barlow,sans-serif;font-weight:600;color:var(--muted);font-size:12px;margin-left:4px}
 .wp.rest{border-style:dashed}
 input[type=text],input[type=search],select,textarea{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fff;width:100%}
 textarea{min-height:140px;resize:vertical}
@@ -529,7 +532,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=42;
+const APP_VERSION=43;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -861,13 +864,26 @@ function vCourts(){
     </div>`;
   });
   h+=`</div>`;
-  h+=`<h2>Waiting queue <small>next up first · tap to manage</small></h2><div class="card">`;
-  h+= w.length?`<div class="wait">${w.map(p=>`<button class="wp" data-act="wait-pl" data-id="${p.id}">${catBadge(p.c)}${esc(p.n)} ${typeBadge(p)}<small>${S.games[p.id]||0}g</small></button>`).join('')}</div>`:`<div class="hint" style="margin:0">Nobody waiting.</div>`;
+  h+=`<h2>Waiting queue <small>${WQ_SORTS[wqSort][1]} · tap to manage</small></h2><div class="card">`;
+  h+=`<div class="chips" style="margin:0 0 10px;align-items:center"><span class="hint" style="margin:0 4px 0 0">Arrange:</span>${Object.keys(WQ_SORTS).map(k=>`<button class="chip ${wqSort===k?'on':''}" data-act="wq-sort" data-k="${k}">${WQ_SORTS[k][0]}</button>`).join('')}</div>`;
+  h+= w.length?`<div class="wait">${wqGroups(w).map(g=>(g.label?`<div class="wgrp">${g.label} <small>${g.list.length}</small></div>`:'')+g.list.map(p=>`<button class="wp" data-act="wait-pl" data-id="${p.id}">${catBadge(p.c)}${esc(p.n)} ${typeBadge(p)}<small>${S.games[p.id]||0}g</small></button>`).join('')).join('')}</div>`:`<div class="hint" style="margin:0">Nobody waiting.</div>`;
   h+=`</div>`;
   if(resting.length){
     h+=`<h2>Resting / can't play <small>${resting.length}</small></h2><div class="card"><div class="list">${resting.map(p=>`<div class="item">${catBadge(p.c)}<div class="nm">${esc(p.n)}</div>${typeBadge(p)}${gpill(p.id)}<button class="btn sm pri" data-act="unrest" data-id="${p.id}">Back to play</button></div>`).join('')}</div></div>`;
   }
   return h;
+}
+/* waiting queue arrangement (display only — Auto match still takes players in "Next up" order). Remembered on this device. */
+const WQ_SORTS={played:['Played · Level','by games played, then level'],level:['Level','by level, fewest games first'],queue:['Next up','next up first']};
+let wqSort='played'; try{ wqSort=localStorage.getItem('mm_wq_sort')||'played'; }catch(e){}
+if(!WQ_SORTS[wqSort]) wqSort='played';
+function wqGroups(w){
+  if(wqSort==='queue') return [{label:'',list:w}];
+  const pos=new Map(w.map((p,i)=>[p.id,i])), lv=p=>{ const i=CATS.indexOf(p.c); return i<0?99:i; }, gm=p=>S.games[p.id]||0;
+  const key=wqSort==='level'?lv:gm;
+  const sorted=w.slice().sort(wqSort==='level'?((a,b)=>lv(a)-lv(b)||gm(a)-gm(b)||pos.get(a.id)-pos.get(b.id)):((a,b)=>gm(a)-gm(b)||lv(a)-lv(b)||pos.get(a.id)-pos.get(b.id)));
+  const out=[]; sorted.forEach(p=>{ const k=key(p); let g=out[out.length-1]; if(!g||g.k!==k){ g={k,list:[],label:wqSort==='level'?(CATS[k]?'Level '+CATS[k]:'No level'):(k?'Played '+k:'Not played')}; out.push(g); } g.list.push(p); });
+  return out;
 }
 function filterChips(cur,act){
   return `<div class="chips">${['All'].concat(CATS).map(k=>`<button class="chip ${cur===k?'on':''}" data-act="${act}" data-k="${k}">${k}${k!=='All'?' <span style="opacity:.7">'+S.players.filter(p=>p.c===k).length+'</span>':''}</button>`).join('')}</div>`;
@@ -1624,6 +1640,7 @@ document.addEventListener('click',e=>{
     case 'slot-clear': S.courts[ci].d=[]; save(); render(); break;
     case 'pick': pickCourt=ci; pickSel=[]; pickCat='All'; sheetPick(); break;
     case 'pick-f': pickCat=k; sheetPick(); break;
+    case 'wq-sort': wqSort=WQ_SORTS[k]?k:'played'; try{ localStorage.setItem('mm_wq_sort',wqSort); }catch(e){} render(); break;
     case 'sh-sort':{ shSort=SH_SORTS[k]?k:'games'; try{ localStorage.setItem('mm_sh_sort',shSort); }catch(e){}
       const s=$('#sh-s'), q=s?s.value:'', top=$('#sheet').scrollTop;
       if(shReopen) shReopen();
@@ -1911,7 +1928,7 @@ function applyIncoming(){
   }
   if(changed){ save(); render(); }
 }
-const VIEW_OK=new Set(['sc-help','go','ci-f','pl-f','h-f','h-r','h-v','pay-f','score','sc-close','sync-role','sync-ip','upd-check','upd-go','upd-app','export','copypay','copy']);
+const VIEW_OK=new Set(['sc-help','go','wq-sort','ci-f','pl-f','h-f','h-r','h-v','pay-f','score','sc-close','sync-role','sync-ip','upd-check','upd-go','upd-app','export','copypay','copy']);
 if(IS_DISPLAY) document.body.classList.add('display');
 if(IS_APP){
   if(ROLE==='main'){ try{ AndroidApp.startServer(); }catch(e){} shareState(); sharePhotos(); setInterval(applyIncoming,400); setInterval(syncHeader,3000); }
