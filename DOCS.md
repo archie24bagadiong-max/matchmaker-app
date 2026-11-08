@@ -21,7 +21,7 @@ Set up once, then each playing day the organizer runs the session from the Main 
 ### A. Before the first session (once)
 
 1. **Install the app** on every tablet: open MatchMaker.apk → allow this source → **Install** (Play Protect: **More details → Install anyway**). A newer APK installs over the old one and keeps the data.
-2. **Prepare the player list** in MatchMaker_Template.xlsx: Players sheet, columns Name, Category (A–D), Type (Subscriber or Guest). Keep Players as the first sheet.
+2. **Prepare the player list** in MatchMaker_Template.xlsx: Players sheet, columns Name, Level (A–D), Type (Subscriber or Guest). Keep Players as the first sheet.
 3. **Copy the Excel file to the Main tablet** (WhatsApp, email or Drive → save to Downloads).
 4. On the Main tablet: **Players → Choose file** → pick the file.
 5. Check **Settings**: Number of courts (for example 4), Doubles, Mixing skill levels, Subscriber priority, Fees.
@@ -91,7 +91,7 @@ Set up once, then each playing day the organizer runs the session from the Main 
 
 First-time setup:
 1. Install MatchMaker.apk on the tablet.
-2. Fill the Players sheet of the Excel template: Name, Category (A–D), Type (Subscriber/Guest).
+2. Fill the Players sheet of the Excel template: Name, Level (A–D), Type (Subscriber/Guest).
 3. Players → Choose file → pick the Excel file.
 4. Check Settings: courts, Doubles, skill mixing, subscriber priority, fees.
 
@@ -122,7 +122,11 @@ Player tags: level badge A–D, SUB (blue) or GUEST (yellow), games played (e.g.
 1. Eligible: checked in, not resting, not on a court, level allowed on that court.
 2. Queue order (Settings → Subscriber priority): Subscribers first (default; guests only when not enough subscribers) · Fair turns (fewest games, subscriber wins ties) · Equal. Ties: earliest last-game end first.
 3. Group: first in queue is the seed; same level first, then per Skill mixing (Same only / Next level OK default / Any). If the seed's level cannot fill a group, the next player becomes seed.
-4. Teams: A=4, B=3, C=2, D=1; the split with the smallest team difference wins, avoiding repeat partners.
+4. Teams: A+=8, A-=7, B+=6, B-=5, C+=4, C-=3, D+=2, D-=1; the split with the smallest team difference wins, avoiding repeat partners.
+
+Levels: 8 grades, A+ strongest … D- beginner. Skill mixing works on the letter: Same only = A+ with A-; Next level OK = A with B, B with C… Court level buttons (A B C D) each cover the + and - of that letter. Data from before 8 Nov 2026 with plain A/B/C/D became A+/B+/C+/D+.
+
+Player types: Member, Family (pays the member fee) and Guest. Active status from the club roster: Reg, A-SUB, or No (inactive — hidden from Attendance until "Show inactive"). Gender (Male/Female) and Full Name are kept per player (Players → Edit).
 
 Can't play: replaced by closest-level substitute and moved to Resting until Back to play; the unfinished game is not counted for them.
 
@@ -221,7 +225,7 @@ All fee numbers are editable in Settings → Fees. Above 6 games the 3.33 SR/gam
 
 ## Excel
 
-Upload (MatchMaker_Template.xlsx): first sheet only; columns Name, Category (A–D or 1–4), Type (Subscriber/Guest, blank = Subscriber). Missing category = C. Existing names are updated. MatchMaker_Players.xlsx holds the 4th-quarter list (27 subscribers, 13 guests) with random levels to correct.
+Upload (MatchMaker_Template.xlsx or the club roster sheet): first sheet only; columns Name (or Player Master List), Level (A+ … D-; a plain letter becomes "+"; a "Category" header still works), type Member/Family/Guest (found by its values even under another header such as "Timestamp"; blank = Member), Active (Reg / A-SUB / No), Gender, Full Name, Team. Missing level = C+. Existing names are updated. MatchMaker_Players.xlsx holds the 4th-quarter list (27 subscribers, 13 guests) with random levels to correct.
 
 Export (MatchMaker_Report_YYYY-MM-DD.xlsx): Players · Payments (all days) · Match History · Win Statistics · Daily Summary. From Payments → Export Excel report or History → Export Excel.
 
@@ -279,6 +283,8 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 | 7 Nov 2026 | Page v29 (1.29) | Set the serve before starting: tap the player who serves first, then the player who receives (0–0, first game); serving team can still be changed until the first point |
 | 7 Nov 2026 | Page v30 (1.30) | Payments: mark each player paid by 💵 Cash or 📱 STC Pay; Collected shows the split; Excel Payments sheet has a Method column and Daily Summary has Cash / STC Pay totals |
 | 7 Nov 2026 | Page v31 (2.0) | Export all activity: new Activity Log sheet (check-ins/outs, match start and finish with result, payments received/cancelled with amount and Cash / STC Pay, new sessions — all with date and time). Export button also in Settings |
+| 8 Nov 2026 | Page v37 (2.6) | Search box (name or full name) when picking a substitute or filling a court box; score screen draws each team's score on its half of a badminton court, with each player shown in the service box they stand in (left/right from the team's view facing the net; singles players move with the server's score) |
+| 8 Nov 2026 | Page v36 (2.5) | "Category" renamed to "Level"; 8 levels A+ … D-; Family type (member fee); Active status (No = inactive, hidden from Attendance); Gender and Full Name; club roster sheet imports directly; Excel Players sheet adds Full Name, Active, Gender |
 | 7 Nov 2026 | Page v17 | Custom teams list on Players (and Teams sheet in Excel); team picker on the scoreboard |
 | 7 Nov 2026 | Page v16 | Custom team name typed on the scoreboard per match |
 | 7 Nov 2026 | Page v15 | Team names: players, scoreboard, history, team standings, Excel |
