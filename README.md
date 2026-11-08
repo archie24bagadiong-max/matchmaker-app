@@ -8,4 +8,4 @@ Update source for the Match Maker Android app.
 
 ## Developer
 
-Archie Martinez Bagadiong "Baggy" · Contact: 0542873115
+Archie Martinez Bagadiong "Baggy" · Contact: 0542873115 · archie24bagadiong@gmail.com
