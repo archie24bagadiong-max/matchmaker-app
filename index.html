@@ -509,7 +509,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=37;
+const APP_VERSION=38;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1849,6 +1849,45 @@ render();
 if(!IS_APP&&'serviceWorker' in navigator&&/^https?:$/.test(location.protocol)&&!(window.claude&&window.claude.use)){
   window.addEventListener('load',()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
 }
+/* install prompt for the website: iPhone/iPad shows Share → Add to Home Screen steps; Android/laptop Chrome gets an Install button.
+   Hidden in the Android app, inside Claude, on court/display tablets, when already installed, or after "Not now". */
+(function(){
+  try{
+    if(IS_APP||IS_COURT||IS_DISPLAY||(window.claude&&window.claude.use)||!/^https?:$/.test(location.protocol)) return;
+    const installed=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
+    if(installed) return;
+    let hideUntil=0; try{ hideUntil=+localStorage.getItem('mm_install_hide')||0; }catch(e){}
+    if(Date.now()<hideUntil) return;
+    const ua=navigator.userAgent;
+    const ios=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+    const share='<svg width="16" height="18" viewBox="0 0 16 18" style="vertical-align:-3px" aria-label="Share"><path d="M8 1v11M4 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 8H2v9h12V8h-1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+    const bar=document.createElement('div');
+    bar.style.cssText='position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:9999;max-width:520px;margin:0 auto;background:#0f3d2e;color:#fff;border-radius:16px;padding:14px 16px;box-shadow:0 8px 28px rgba(0,0,0,.35);font:15px/1.4 system-ui,-apple-system,sans-serif;display:flex;gap:12px;align-items:center';
+    const close=()=>{ bar.remove(); try{ localStorage.setItem('mm_install_hide',String(Date.now()+7*864e5)); }catch(e){} };
+    const btn='padding:9px 14px;border:0;border-radius:999px;font:inherit;font-weight:700;cursor:pointer;white-space:nowrap';
+    if(ios){
+      const inApp=/FBAN|FBAV|Instagram|Line\/|GSA\//.test(ua);
+      bar.innerHTML='<img src="icons/apple-touch-icon.png" alt="" style="width:44px;height:44px;border-radius:10px;flex:none">'
+        +'<div style="flex:1"><b>Install Match Maker on your iPhone</b><br>'
+        +(inApp?'Open this page in <b>Safari</b> first, then tap ':'Tap ')+'<b>Share</b> '+share+' then <b>Add to Home Screen</b>.</div>'
+        +'<button style="'+btn+';background:transparent;color:#c6f135">Not now</button>';
+      bar.querySelector('button').onclick=close;
+      setTimeout(()=>document.body.appendChild(bar),2500);
+    }else{
+      window.addEventListener('beforeinstallprompt',ev=>{
+        ev.preventDefault();
+        bar.innerHTML='<img src="icons/icon-192.png" alt="" style="width:44px;height:44px;border-radius:10px;flex:none">'
+          +'<div style="flex:1"><b>Install Match Maker</b><br>Opens like an app, works offline.</div>'
+          +'<button data-a="no" style="'+btn+';background:transparent;color:#c6f135">Not now</button>'
+          +'<button data-a="yes" style="'+btn+';background:#c6f135;color:#0f3d2e">Install</button>';
+        bar.querySelector('[data-a=no]').onclick=close;
+        bar.querySelector('[data-a=yes]').onclick=async()=>{ bar.remove(); ev.prompt(); try{ await ev.userChoice; }catch(e){} };
+        document.body.appendChild(bar);
+      });
+      window.addEventListener('appinstalled',()=>bar.remove());
+    }
+  }catch(e){}
+})();
 })();
 </script>
 </body>
