@@ -525,11 +525,23 @@ html.sheet-open,html.sheet-open body{overflow:hidden}
 .rb-t small{font-size:12px;color:var(--muted)}
 .rb-i,.rb-big{font-size:34px;line-height:1}
 @media(max-width:480px){ .rblk:not(.on){flex-direction:column;align-items:stretch} .rb-q{align-self:center} }
-.rbadge{margin-left:8px;font-size:15px;opacity:.45;filter:grayscale(1)}
-.rbadge.live{opacity:1;filter:none}
+/* court card: a phone is linked to this court */
+.rbadge{display:inline-flex;align-items:center;gap:4px;margin-left:8px;flex:none;white-space:nowrap;font-size:12px;font-weight:800;padding:2px 9px;border-radius:999px;background:#ffb347;color:#3a1d00}
+.rbadge i{font-style:normal}
+.rbadge .on{display:none}
+.rbadge.live{background:var(--lime);color:var(--court)}
+.rbadge.live .on{display:inline}.rbadge.live .off{display:none}
+/* court pop-up: only the QR code, or the linked phone */
+.cq{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:16px;margin-top:8px;border:1px solid var(--border);border-radius:16px;background:#fff}
+.cq svg{max-width:100%;height:auto}
+.cq b{font-size:18px}
+.cq small{font-size:13px;color:var(--muted)}
+.cq.on{background:#eefaf3;border-color:#bfe7cf}
+.cq-i{font-size:48px;line-height:1}
+.cq .btn{margin-top:6px;min-width:200px}
 /* phones scoring by QR: no leaving court mode, no team names (host only) */
 #netbar{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 8px);transform:translateX(-50%);z-index:95;background:#ffb347;color:#3a1d00;font-weight:700;font-size:14px;padding:8px 14px;border-radius:999px;box-shadow:0 4px 16px rgba(0,0,0,.3);max-width:calc(100vw - 24px);text-align:center}
-body.served .gear,body.served [data-act="sc-topen"],body.served [data-act="sc-tclear"]{display:none!important}
+body.served .gear{display:none!important}
 .linkbtn{border:0;background:none;color:var(--court2);text-decoration:underline;padding:0;font-size:12px}
 </style>
 </head>
@@ -574,7 +586,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=51;
+const APP_VERSION=52;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -922,7 +934,7 @@ function vCourts(){
       pitch=`<div class="side">${tl(L)}${L.map(id=>plBtn(id,i)).join('')}</div><div class="net"></div><div class="side">${tl(R)}${R.map(id=>plBtn(id,i)).join('')}</div>`;
     }
     h+=`<div class="court ${c.sc&&c.sc.done&&c.p.length?'cfin':''}" data-act="court-menu" data-c="${i}">
-      <div class="court-h"><b>Court ${i+1}</b>${(S.remote||{})[i]&&!IS_COURT?`<span class="rbadge ${Date.now()-(RSEEN[i]||0)<12000?'live':''}" data-rs="${i}" title="Phone scoring">📱</span>`:''}${c.sc&&c.sc.done&&c.p.length?'<span class="cfin-tag">🔔 Done</span>':''}<span class="t" data-t="${c.t}">${elapsed(c.t)}</span><span class="cmenu" aria-hidden="true">⋯</span></div>
+      <div class="court-h"><b>Court ${i+1}</b>${(S.remote||{})[i]&&!IS_COURT?`<span class="rbadge ${Date.now()-(RSEEN[i]||0)<12000?'live':''}" data-rs="${i}" title="A phone is scoring this court">📱 <i class="on">Connected</i><i class="off">Reconnecting…</i></span>`:''}${c.sc&&c.sc.done&&c.p.length?'<span class="cfin-tag">🔔 Done</span>':''}<span class="t" data-t="${c.t}">${elapsed(c.t)}</span><span class="cmenu" aria-hidden="true">⋯</span></div>
       <div class="lv"><span>Levels</span>${lv}</div>
       <div class="pitch">${pitch}</div>
       ${c.p.length?scoreStrip(i):''}
@@ -1161,11 +1173,11 @@ function renderScore(){
     if(IS_REMOTE){
       // phone that scanned a court QR: only scores once the Main tablet has accepted it for this court
       const st=remoteState(), n=COURT_NO+1;
-      const M={connecting:['📶','Connecting to the Main tablet…','Keep this phone on the club hotspot / Wi-Fi.'],
-        waiting:['⏳',`Connecting to Court ${n}…`,'Waiting for the Main tablet to accept this phone.'],
-        busy:['🔒',`Court ${n} is connected to another device`,'Only the organizer can disconnect it on the Main tablet.'],
-        kicked:['⛔','Disconnected by the organizer',`This phone no longer scores Court ${n}. If the organizer asks you to, scan Court ${n}'s QR code on the Main tablet again.`],
-        badkey:['⚠️','This QR code is no longer valid',`Scan Court ${n}'s QR code on the Main tablet again.`]}[st];
+      const M={connecting:['📶','Connecting to the host…',IS_JOIN?'Make sure this phone has internet (Wi-Fi or mobile data) and Match Maker is open on the host.':'Keep this phone on the club hotspot / Wi-Fi.'],
+        waiting:['⏳',`Connecting to Court ${n}…`,'Waiting for the host to accept this phone.'],
+        busy:['🔒',`Court ${n} is connected to another device`,'Only the organizer can disconnect it on the host.'],
+        kicked:['⛔','Disconnected by the organizer',`This phone no longer scores Court ${n}. If the organizer asks you to, scan Court ${n}'s QR code on the host again.`],
+        badkey:['⚠️','This QR code is no longer valid',`Scan Court ${n}'s QR code on the host again.`]}[st];
       if(M){ v.innerHTML=`<div class="sbar"><b>Court ${n}</b><span>Phone scoring</span></div><div class="cwait"><div class="cw-big">${M[0]}</div><div class="cw-t">${M[1]}</div><div class="cw-s">${M[2]}</div></div>`; v.hidden=false; document.body.classList.add('noscroll'); return; }
     }
     if(courtExit){ v.innerHTML=`<div class="sbar"><b>Court ${COURT_NO+1}</b><span>Organizer only</span></div><div class="cwait"><div class="cw-t">${COURT_PIN?'Enter PIN to leave court mode':'Leave court mode?'}</div>${COURT_PIN?`<input type="password" id="pin-in" inputmode="numeric" maxlength="8" class="pinin" autocomplete="off">`:''}<div class="row" style="justify-content:center"><button class="btn" data-act="court-exit-no">Cancel</button><button class="btn lime" data-act="court-exit-ok">Leave</button></div></div>`; v.hidden=false; document.body.classList.add('noscroll'); setTimeout(()=>{const i=document.getElementById('pin-in'); i&&i.focus();},50); return; }
@@ -1186,7 +1198,7 @@ function renderScore(){
     const sgLeft=!!(sc.srv&&sc[sc.srv]%2);
     const dots=Array.from({length:RU(sc).mode==='all'?RU(sc).n:needWins(RU(sc))},(_,k)=>`<i class="${k<scWon(sc,t)?'on':''}"></i>`).join('');
     return `<div class="sside ${serving?'serving':''} ${won?'won':''}">
-      ${IS_DISPLAY?(scTN(sc,t)?`<div class="stn"><div class="stsel ro">${esc(scTN(sc,t))}</div></div>`:''):`<div class="stn"><button class="stsel stbtn ${scTN(sc,t)?'':'empty'}" data-act="sc-topen" data-k="${t}" aria-label="Choose team name">${scTN(sc,t)?esc(scTN(sc,t)):'+ Team name'}</button>${scTN(sc,t)?`<button class="stclr" data-act="sc-tclear" data-k="${t}" aria-label="Clear team name">✕</button>`:''}</div>`}
+      ${IS_DISPLAY||IS_REMOTE?(scTN(sc,t)?`<div class="stn"><div class="stsel ro">${esc(scTN(sc,t))}</div></div>`:''):`<div class="stn"><button class="stsel stbtn ${scTN(sc,t)?'':'empty'}" data-act="sc-topen" data-k="${t}" aria-label="Choose team name">${scTN(sc,t)?esc(scTN(sc,t)):'+ Team name'}</button>${scTN(sc,t)?`<button class="stclr" data-act="sc-tclear" data-k="${t}" aria-label="Clear team name">✕</button>`:''}</div>`}
       <div class="sgw ${scWon(sc,t)?'has':''}"><div class="sgw-l"><span>Games won</span><div class="sdots">${dots}</div></div><b>${scWon(sc,t)}</b><div class="sgw-g">${sc.g.map((x,k)=>{const mine=t==='a'?x[0]:x[1], their=t==='a'?x[1]:x[0];return `<i class="${mine>their?'w':'l'}">G${k+1} ${mine}</i>`;}).join('')||'<i class="n">No games yet</i>'}</div></div>
       <div class="spt"><button class="sptb" data-act="sc-pt" data-k="${t}" ${sc.done||!sc.srv?'disabled':''} aria-label="Point to this side"><span class="snum">${sc[t]}</span></button>${doubles?court(pos[1],true)+court(pos[0],false):court(pos[0],sgLeft)}</div>
       <div class="sctl">${atStart&&!sc.g.length?(sc.srv===t?`<button class="btn lime" disabled>✓ Serving first</button>`:`<button class="btn ${sc.srv?'ghost':'lime'}" data-act="sc-serve" data-k="${t}">Serves first</button>`):''}${atStart&&doubles&&!sc.done?`<button class="btn ghost" data-act="sc-swap" data-k="${t}">⇄ Swap left/right</button>`:''}</div>
@@ -1232,45 +1244,21 @@ function eqChips(v){
   cs.forEach(c=>c.style.width=Math.ceil(w)+'px');
 }
 window.addEventListener('resize',()=>requestAnimationFrame(fitScore));
+/* tapping a court: only its phone-scoring QR code — or, once a phone is linked, its status and Disconnect (host only).
+   Everything else (Game done, Keep score, Reshuffle, Clear, levels) is on the court card itself. */
 function sheetCourt(ci){
-  const c=S.courts[ci]; if(!c) return; menuCourt=ci;
-  const sc=c.sc, fin=!!(sc&&sc.done&&c.p.length);
-  let status;
-  if(!c.p.length) status='Empty court';
-  else if(fin) status=`🏆 <b>Match finished</b> · ${esc(scSummary(sc))}${sc.done==='d'?' · Draw':' · '+esc(scWho(sc,sc.done))+' win'}${sc.tie?' · games tied — open the scoreboard to play a decider':''}`;
-  else if(sc&&(sc.srv||sc.g.length)) status=`Playing · Game ${sc.g.length+1}: <b>${sc.a}–${sc.b}</b> · Games ${scWon(sc,'a')}–${scWon(sc,'b')}`;
-  else status='Playing · '+elapsed(c.t);
-  const lv=GROUPS.map(k=>`<button class="${c.lv.includes(k)?'on':''}" data-act="lv" data-c="${ci}" data-k="${k}">${k}</button>`).join('');
-  openSheet(`<h3>Court ${ci+1}</h3><div class="hint" style="margin:0">${status}</div>
-  ${c.p.length?`<div class="cmpl">${c.p.map(id=>plBtn(id,ci)).join('')}</div><div class="hint" style="margin:6px 0 0">Tap a player to swap, rest or remove them.</div>`:''}
-  <div class="cmgrid">
-    ${c.p.length?`
-      <button class="btn full ${fin?'gdone':'lime'}" data-act="finish" data-c="${ci}">${fin?'🔔 Game done — save result &amp; clear':'Game done'}</button>
-      <button class="btn pri" data-act="score" data-c="${ci}">🏸 ${sc&&(sc.srv||sc.g.length)?'Open scoreboard':'Keep score'}</button>
-      <button class="btn" data-act="reshuffle" data-c="${ci}">🔀 Reshuffle</button>
-      <button class="btn full warn" data-act="cancel" data-c="${ci}">Clear court (no result)</button>`
-    :`<button class="btn lime" data-act="gen" data-c="${ci}">Auto match</button><button class="btn pri" data-act="pick" data-c="${ci}">Pick players</button>`}
-  </div>
-  <div class="cmlv"><span class="hint" style="margin:0 6px 0 0">Levels on this court</span>${lv}</div>
-  ${remoteBlock(ci)}
-  <div class="row" style="margin-top:14px"><span class="grow"></span><button class="btn" data-act="sheet-close">Close</button></div>`);
+  const c=S.courts[ci]; if(!c||!IS_HOST()) return; menuCourt=ci;
+  rtcHost();
+  const r=(S.remote||{})[ci], live=Date.now()-(RSEEN[ci]||0)<12000;
+  openSheet(`<h3>Court ${ci+1}</h3>
+  ${r?`<div class="cq on"><div class="cq-i">📱</div><b>${live?'Phone connected':'Phone reconnecting…'}</b><small>${seenText(ci)} · only this phone can score Court ${ci+1}</small>
+      <button class="btn warn" data-act="rdis" data-c="${ci}">${confirmKey==='rdis'+ci?'Tap again to disconnect':'Disconnect phone'}</button></div>`
+     :`<div class="cq">${qrSvg(courtUrl(ci),260)}<b>Scan to score Court ${ci+1}</b><small>${rtcStatusText()}</small></div>`}
+  <div class="row" style="margin-top:12px"><span class="grow"></span><button class="btn" data-act="sheet-close">Close</button></div>`);
   sheetView={k:'court',c:ci};
 }
 let menuCourt=null;
-/* ---------- scoring by QR code: the Main tablet serves the app, phones scan a court's code ---------- */
-const QR_OK=()=>ROLE==='main'&&CAN_SYNC&&typeof AndroidApp.pageServer==='function';
-/* court menu: this court's phone — its QR code to connect, or the connected phone with Disconnect (host only) */
-function remoteBlock(ci){
-  if(!IS_HOST()) return '';
-  rtcHost();
-  const r=(S.remote||{})[ci];
-  if(r) return `<div class="rblk on"><div class="rb-i">📱</div><div class="rb-t"><b>Phone connected to Court ${ci+1}</b><small>${seenText(ci)} · only this phone can score this court</small></div>
-    <button class="btn sm warn" data-act="rdis" data-c="${ci}">${confirmKey==='rdis'+ci?'Tap again to disconnect':'Disconnect'}</button></div>`;
-  return `<div class="rblk"><div class="rb-q">${qrSvg(courtUrl(ci),180)}</div><div class="rb-t"><b>📱 Score Court ${ci+1} with a phone</b>
-    <ol><li>Scan this code with any phone or tablet camera</li><li>The Match Maker page opens — no app to install</li><li>It scores Court ${ci+1} only; you put the players on</li></ol>
-    <small>${rtcStatusText()}</small>
-    <small>One phone per court. Only you can disconnect it. Needs internet on this device and the phone.</small></div></div>`;
-}
+/* ---------- scoring by QR code ---------- */
 function qrHost(){ const ips=String(mainAddr()||'').split(/,\s*/).filter(Boolean); return ips.find(ip=>/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip))||ips[0]||''; }
 function qrWifi(){ try{ return JSON.parse(localStorage.getItem('mm_wifi')||'null'); }catch(e){ return null; } }
 const wifiEsc=s=>String(s).replace(/([\\;,:"])/g,'\\$1');
@@ -2318,7 +2306,8 @@ if(IS_APP||IS_SERVED){
 if(IS_JOIN){ document.body.classList.add('courtmode','served'); render(); rtcJoin(); setInterval(qrPing,4000); setInterval(netBar,1000); setInterval(syncHeader,3000); }
 if(IS_HOST()){
   setInterval(applyIncoming,400);
-  setInterval(()=>{ rtcBroadcast(); document.querySelectorAll('[data-rs]').forEach(el=>el.classList.toggle('live',Date.now()-(RSEEN[+el.dataset.rs]||0)<12000)); },4000);
+  setInterval(()=>{ rtcBroadcast(); document.querySelectorAll('[data-rs]').forEach(el=>el.classList.toggle('live',Date.now()-(RSEEN[+el.dataset.rs]||0)<12000));
+    if(sheetView&&sheetView.k==='court'&&(S.remote||{})[sheetView.c]) refreshSheet(); },4000);
   if(Object.keys(S.remote||{}).length) rtcHost();     // phones that were scoring reconnect after the host reloads
 }
 

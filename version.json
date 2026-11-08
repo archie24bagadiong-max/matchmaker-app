@@ -1,1 +1,1 @@
-{"version": 51, "notes": "Phone scoring from any host (laptop, tablet, phone): tap a court for its QR code; phones open the web page, nothing to install"}
+{"version": 52, "notes": "Tapping a court shows only its QR code; court cards show Connected / Reconnecting; phones show the host's team names"}
