@@ -509,7 +509,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=40;
+const APP_VERSION=41;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -688,7 +688,9 @@ function arrange(ids){
     const cost=diff*10+rep;
     if(cost<bc){bc=cost;best=P;}
   }
-  return best;
+  // inside each team, the higher level goes in box 1 (teams stay the same)
+  const r=id=>RATE[byId(id).c]||0, hi=(x,y)=>r(y)>r(x)?[y,x]:[x,y];
+  return hi(best[0],best[1]).concat(hi(best[2],best[3]));
 }
 function fillCourt(i,quiet,exclude){
   const c=S.courts[i]; if(c.p.length) return true;
@@ -1391,9 +1393,10 @@ function pickRow(s,attrs,sel){
 }
 /* search box inside a sheet: filters the player rows below it as you type */
 function shSearch(){ return `<input type="search" id="sh-s" style="width:100%;margin:2px 0 6px" placeholder="Search waiting players…" aria-label="Search waiting players" autocomplete="off"><div class="hint" id="sh-none" hidden>No waiting player matches that name.</div>`; }
-/* sort for the player lists in the sheets: Played 0,1,2,3… (default), Level (A+ … D-) or Guest (guests, then family, then members);
-   ties: fewest games, then name. Remembered on this device. */
-const SH_SORTS={games:'played 0, 1, 2, 3…',level:'by level, A+ first',guest:'guests first, then family, members'};
+/* sort for the player lists in the sheets. Always: not played first, then played 1, 2, 3… at the bottom.
+   Inside each group: Played (earliest finished first), Level (A+ … D-) or Guest (guests, then family, then members); then name.
+   Remembered on this device. */
+const SH_SORTS={games:'not played first, then 1, 2, 3…',level:'not played first · by level, A+ first',guest:'not played first · guests, then family, members'};
 let shSort='games'; try{ shSort=localStorage.getItem('mm_sh_sort')||'games'; }catch(e){}
 if(!SH_SORTS[shSort]) shSort='games';
 let shReopen=null;
@@ -1401,8 +1404,9 @@ function byGames(a,b){ return ((S.games[a.id]||0)-(S.games[b.id]||0))||((S.lastE
 function shSorted(arr){
   const lv=p=>{ const i=CATS.indexOf(p.c); return i<0?99:i; }, nm=(a,b)=>a.n.localeCompare(b.n);
   const ty=p=>p.t==='G'?0:p.t==='F'?1:2;
-  const f=shSort==='level'?((a,b)=>lv(a)-lv(b)||byGames(a,b)||nm(a,b))
-        :shSort==='guest'?((a,b)=>ty(a)-ty(b)||byGames(a,b)||lv(a)-lv(b)||nm(a,b))
+  const gm=(a,b)=>(S.games[a.id]||0)-(S.games[b.id]||0);
+  const f=shSort==='level'?((a,b)=>gm(a,b)||lv(a)-lv(b)||byGames(a,b)||nm(a,b))
+        :shSort==='guest'?((a,b)=>gm(a,b)||ty(a)-ty(b)||lv(a)-lv(b)||byGames(a,b)||nm(a,b))
         :((a,b)=>byGames(a,b)||nm(a,b));
   return arr.slice().sort(f);
 }
