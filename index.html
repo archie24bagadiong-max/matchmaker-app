@@ -454,7 +454,7 @@ input.stsel{padding-right:40px}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=32;
+const APP_VERSION=33;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -782,7 +782,7 @@ function vPlayers(){
   <h2>Add many at once</h2>
   <div class="card">
     <textarea id="bulk" placeholder="One per line: Name, Category, Type, Team&#10;Archie, C, Subscriber, Racket Kings&#10;Maria Santos, B, Guest&#10;Ahmed, C, , Smash Bros"></textarea>
-    <div class="row" style="margin-top:8px"><button class="btn pri" data-act="bulk">Add list</button>${S.players.length?'':'<button class="btn" data-act="sample">Load 100 sample players</button>'}</div>
+    <div class="row" style="margin-top:8px"><button class="btn pri" data-act="bulk">Add list</button>${S.players.length?'':'<button class="btn" data-act="sample">Add sample entries</button>'}</div>
     <p class="hint">Paste from a spreadsheet too — comma or tab works. Missing category = C. Add “Guest” for guests (otherwise Subscriber). Anything else on the line becomes the team name.</p>
   </div>
   <h2>Roster <small>${S.players.filter(p=>p.t!=='G').length} subscribers · ${S.players.filter(p=>p.t==='G').length} guests · tap Sub/Guest to switch</small></h2>
@@ -1075,7 +1075,7 @@ function vHelp(){
 }
 function todayRows(){
   const d=dayKey(Date.now());
-  return S.players.filter(p=>S.present[p.id]||(S.games[p.id]||0)>0).map(p=>({day:d,n:p.n,tm:p.tm||'',c:p.c,t:p.t,g:S.games[p.id]||0,f:Math.round(fee(p)*100)/100,pd:S.paid[p.id]?1:0,pm:S.paid[p.id]?PM[payM(p.id)]:''}));
+  return S.players.filter(p=>S.present[p.id]||(S.games[p.id]||0)>0).map(p=>({id:p.id,day:d,n:p.n,tm:p.tm||'',c:p.c,t:p.t,g:S.games[p.id]||0,f:Math.round(fee(p)*100)/100,pd:S.paid[p.id]?1:0,pm:S.paid[p.id]?PM[payM(p.id)]:''}));
 }
 function archiveDay(){
   const rows=todayRows().filter(r=>r.g>0||r.pd);
@@ -1138,6 +1138,32 @@ async function browserSave(bytes,name,type){
   const url=URL.createObjectURL(file), a=document.createElement('a');
   a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),4000); toast('Report saved to Downloads');
+}
+/* temporary sample entries: every sample player's id starts with "demo_" so they can be removed cleanly */
+const isDemo=id=>typeof id==='string'&&id.indexOf('demo_')===0;
+function demoCount(){ return S.players.filter(p=>isDemo(p.id)).length; }
+function addSamples(){
+  if(demoCount()){ toast('Sample entries are already loaded'); return; }
+  const names=['Alex','Ben','Carlo','Dina','Eli','Faisal','Gina','Hana','Ivan','Jo','Kai','Lea','Mo','Nina','Omar','Pia','Quinn','Rafi','Sara','Tom'];
+  const now=Date.now();
+  for(let i=0;i<40;i++){
+    const id='demo_'+i+'_'+now.toString(36);
+    S.players.push({id,n:names[i%20]+' '+(i<20?'S':'T'),c:CATS[i%4],t:i%5===4?'G':'S',tm:i<8?'Smashers':i<16?'Net Kings':''});
+    if(i<20){ S.present[id]=1; }
+  }
+  logEv('demo',{n:'40 sample players'}); save(); render(); toast('40 sample players added — 20 checked in');
+}
+function clearSamples(){
+  const ids=new Set(S.players.filter(p=>isDemo(p.id)).map(p=>p.id));
+  if(!ids.size) return;
+  S.players=S.players.filter(p=>!ids.has(p.id));
+  ['present','resting','games','lastEnd','paid'].forEach(k=>{ ids.forEach(id=>delete S[k][id]); });
+  Object.keys(S.partners).forEach(k=>{ if(k.split('|').some(x=>ids.has(x))) delete S.partners[k]; });
+  S.courts.forEach(c=>{ if(c.p.some(x=>ids.has(x))){ c.p=[]; c.t=0; c.sc=null; } });
+  S.hist=S.hist.filter(x=>!x.a.concat(x.b).some(id=>ids.has(id)));
+  S.ledger=S.ledger.filter(r=>!ids.has(r.id));
+  ids.forEach(id=>{ if(PH[id]){ delete PH[id]; photoDbWrite(id,''); } }); persistPhotos();
+  save(); render(); toast('Sample entries removed');
 }
 function dayKey(t){const d=new Date(t);return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
 function fmtTime(t){try{return new Date(t).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});}catch(e){return '';}}
@@ -1234,6 +1260,11 @@ function vSettings(){
   <h2>Match history</h2>
   <div class="card"><p class="hint" style="margin-top:0">${S.hist.length} matches saved. “Start new session” keeps history; this deletes it all.</p>
   <button class="btn warn" data-act="h-clear">${confirmKey==='hclear'?'Tap again to delete all history':'Clear match history'}</button></div>
+  <h2>Sample entries</h2>
+  <div class="card">${demoCount()?`<p class="hint" style="margin-top:0">${demoCount()} temporary sample players are in the app. Removing them also clears their games, payments and matches; your real players stay.</p>
+    <button class="btn warn" data-act="demo-clear">${confirmKey==='demo-clear'?'Tap again — removes all sample entries':'Remove sample entries'}</button>`
+    :`<p class="hint" style="margin-top:0">Add 40 temporary players (20 checked in) to try the app or show it to someone. Remove them here with one tap.</p>
+    <button class="btn" data-act="sample">Add sample entries</button>`}</div>
   <h2>Backup roster</h2>
   <div class="card">
     <textarea readonly id="exp">${esc(exp)}</textarea>
@@ -1305,7 +1336,7 @@ document.addEventListener('click',e=>{
   if(IS_COURT&&!COURT_OK.has(a)) return;
   if(IS_DISPLAY&&a==='court-menu') return;
   if(IS_DISPLAY&&!VIEW_OK.has(a)){ toast('Display tablet — make changes on the Main tablet'); return; }
-  if(!['del','reset','wipe','h-del','h-clear','sc-reset','ph-del','team-del'].includes(a)) confirmKey=null;
+  if(!['del','reset','wipe','h-del','h-clear','sc-reset','ph-del','team-del','demo-clear'].includes(a)) confirmKey=null;
   if(el.closest('#sheet')&&['gen','finish','score','cancel','reshuffle','sheet-close'].includes(a)){ closeSheet(); menuCourt=null; }
   switch(a){
     case 'court-menu': if(!IS_DISPLAY) sheetCourt(ci); break;
@@ -1369,9 +1400,10 @@ document.addEventListener('click',e=>{
         if(ex){ ex.c=c; ex.t=t; if(tm) ex.tm=tm; n++; return; }
         S.players.push({id:uid(),n:name.slice(0,40),c,t,tm}); n++; });
       save(); render(); toast(`Added ${n} player${n===1?'':'s'}`); break;}
-    case 'sample':{ const first=['Alex','Ben','Carlo','Dina','Eli','Faisal','Gina','Hana','Ivan','Jo','Kai','Lea','Mo','Nina','Omar','Pia','Quinn','Rafi','Sara','Tom'];
-      for(let i=0;i<100;i++){ S.players.push({id:uid(),n:first[i%20]+' '+(Math.floor(i/20)+1),c:CATS[i<20?0:i<50?1:i<80?2:3]}); }
-      save(); render(); toast('100 sample players added'); break;}
+    case 'sample': addSamples(); break;
+    case 'demo-clear':
+      if(confirmKey!=='demo-clear'){confirmKey='demo-clear';render();break;}
+      confirmKey=null; clearSamples(); break;
     case 'rename': sheetRename(id); break;
     case 'del':
       if(confirmKey!=='del'+id){confirmKey='del'+id;render();break;}
@@ -1651,6 +1683,8 @@ if(IS_APP){
   syncHeader(); setTimeout(()=>checkUpdate(false),1200); setInterval(()=>checkUpdate(false),IS_COURT?3*60*1000:15*60*1000);
 }
 
+/* a link ending in ?demo opens with sample entries on a device that has no players yet */
+try{ if(!IS_DISPLAY&&!IS_COURT&&/[?&]demo\b/.test(location.search)&&!S.players.length){ addSamples(); } }catch(e){}
 render();
 /* web / laptop / iPhone version: offline support + install. Not in the Android app (file://) or inside Claude. */
 if(!IS_APP&&'serviceWorker' in navigator&&/^https?:$/.test(location.protocol)&&!(window.claude&&window.claude.use)){
