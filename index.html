@@ -509,7 +509,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=39;
+const APP_VERSION=40;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1391,18 +1391,23 @@ function pickRow(s,attrs,sel){
 }
 /* search box inside a sheet: filters the player rows below it as you type */
 function shSearch(){ return `<input type="search" id="sh-s" style="width:100%;margin:2px 0 6px" placeholder="Search waiting players…" aria-label="Search waiting players" autocomplete="off"><div class="hint" id="sh-none" hidden>No waiting player matches that name.</div>`; }
-/* sort for the player lists in the sheets: fewest games (default), level (A+ … D-) or name; remembered on this device */
+/* sort for the player lists in the sheets: Played 0,1,2,3… (default), Level (A+ … D-) or Guest (guests, then family, then members);
+   ties: fewest games, then name. Remembered on this device. */
+const SH_SORTS={games:'played 0, 1, 2, 3…',level:'by level, A+ first',guest:'guests first, then family, members'};
 let shSort='games'; try{ shSort=localStorage.getItem('mm_sh_sort')||'games'; }catch(e){}
+if(!SH_SORTS[shSort]) shSort='games';
 let shReopen=null;
-const SH_SORTS={games:'fewest games first',level:'by level, A+ first',name:'by name'};
 function byGames(a,b){ return ((S.games[a.id]||0)-(S.games[b.id]||0))||((S.lastEnd[a.id]||0)-(S.lastEnd[b.id]||0)); }
 function shSorted(arr){
   const lv=p=>{ const i=CATS.indexOf(p.c); return i<0?99:i; }, nm=(a,b)=>a.n.localeCompare(b.n);
-  const f=shSort==='level'?((a,b)=>lv(a)-lv(b)||byGames(a,b)||nm(a,b)):shSort==='name'?nm:((a,b)=>byGames(a,b)||nm(a,b));
+  const ty=p=>p.t==='G'?0:p.t==='F'?1:2;
+  const f=shSort==='level'?((a,b)=>lv(a)-lv(b)||byGames(a,b)||nm(a,b))
+        :shSort==='guest'?((a,b)=>ty(a)-ty(b)||byGames(a,b)||lv(a)-lv(b)||nm(a,b))
+        :((a,b)=>byGames(a,b)||nm(a,b));
   return arr.slice().sort(f);
 }
 function shSortChips(){
-  return `<div class="chips" style="margin:0 0 6px;align-items:center"><span class="hint" style="margin:0 4px 0 0">Sort:</span>${[['games','Fewest games'],['level','Level'],['name','Name']].map(([k,l])=>`<button class="chip ${shSort===k?'on':''}" data-act="sh-sort" data-k="${k}">${l}</button>`).join('')}</div>`;
+  return `<div class="chips" style="margin:0 0 6px;align-items:center"><span class="hint" style="margin:0 4px 0 0">Sort:</span>${[['games','Played'],['level','Level'],['guest','Guest']].map(([k,l])=>`<button class="chip ${shSort===k?'on':''}" data-act="sh-sort" data-k="${k}">${l}</button>`).join('')}</div>`;
 }
 function shFilter(v){
   const q=v.trim().toLowerCase(), sh=$('#sheet'); let any=false;

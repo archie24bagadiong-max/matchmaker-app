@@ -1,1 +1,1 @@
-{"version": 39, "notes": "Sort waiting players by fewest games, level or name when filling a court box, picking players or a substitute"}
+{"version": 40, "notes": "Sort buttons are now Played (0, 1, 2, 3…), Level and Guest (guests first)"}
