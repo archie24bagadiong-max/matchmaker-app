@@ -509,7 +509,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=38;
+const APP_VERSION=39;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1391,6 +1391,19 @@ function pickRow(s,attrs,sel){
 }
 /* search box inside a sheet: filters the player rows below it as you type */
 function shSearch(){ return `<input type="search" id="sh-s" style="width:100%;margin:2px 0 6px" placeholder="Search waiting players…" aria-label="Search waiting players" autocomplete="off"><div class="hint" id="sh-none" hidden>No waiting player matches that name.</div>`; }
+/* sort for the player lists in the sheets: fewest games (default), level (A+ … D-) or name; remembered on this device */
+let shSort='games'; try{ shSort=localStorage.getItem('mm_sh_sort')||'games'; }catch(e){}
+let shReopen=null;
+const SH_SORTS={games:'fewest games first',level:'by level, A+ first',name:'by name'};
+function byGames(a,b){ return ((S.games[a.id]||0)-(S.games[b.id]||0))||((S.lastEnd[a.id]||0)-(S.lastEnd[b.id]||0)); }
+function shSorted(arr){
+  const lv=p=>{ const i=CATS.indexOf(p.c); return i<0?99:i; }, nm=(a,b)=>a.n.localeCompare(b.n);
+  const f=shSort==='level'?((a,b)=>lv(a)-lv(b)||byGames(a,b)||nm(a,b)):shSort==='name'?nm:((a,b)=>byGames(a,b)||nm(a,b));
+  return arr.slice().sort(f);
+}
+function shSortChips(){
+  return `<div class="chips" style="margin:0 0 6px;align-items:center"><span class="hint" style="margin:0 4px 0 0">Sort:</span>${[['games','Fewest games'],['level','Level'],['name','Name']].map(([k,l])=>`<button class="chip ${shSort===k?'on':''}" data-act="sh-sort" data-k="${k}">${l}</button>`).join('')}</div>`;
+}
 function shFilter(v){
   const q=v.trim().toLowerCase(), sh=$('#sheet'); let any=false;
   sh.querySelectorAll('.list').forEach(l=>{ const rows=l.querySelectorAll('[data-q]'); if(!rows.length) return; let vis=0;
@@ -1400,7 +1413,8 @@ function shFilter(v){
 }
 function sheetCourtPlayer(ci,id){
   const p=byId(id); const c=S.courts[ci];
-  const all=waiting().slice().sort((a,b)=>((S.games[a.id]||0)-(S.games[b.id]||0))||((S.lastEnd[a.id]||0)-(S.lastEnd[b.id]||0))); const okIds=new Set(substitutes(ci,id).map(x=>x.id)); const ok=all.filter(x=>okIds.has(x.id));
+  shReopen=()=>sheetCourtPlayer(ci,id);
+  const all=shSorted(waiting()); const okIds=new Set(substitutes(ci,id).map(x=>x.id)); const ok=all.filter(x=>okIds.has(x.id));
   const other=all.filter(x=>!okIds.has(x.id));
   openSheet(`<h3>${catBadge(p.c)}${esc(p.n)} ${typeBadge(p)}</h3><div class="hint" style="margin:0">Court ${ci+1} · ${gpill(id)}</div>
   ${photoActs(id)}
@@ -1408,8 +1422,8 @@ function sheetCourtPlayer(ci,id){
     <button class="btn pri" data-act="sub-rest" data-c="${ci}" data-id="${id}">Can't play — replace &amp; set resting</button>
     <button class="btn" data-act="sub-auto" data-c="${ci}" data-id="${id}">Replace with next in line</button>
   </div>
-  ${shSearch()}
-  <h2 style="margin-top:4px">Pick a substitute <small>fewest games first</small></h2>
+  ${shSearch()}${shSortChips()}
+  <h2 style="margin-top:4px">Pick a substitute <small>${SH_SORTS[shSort]}</small></h2>
   <div class="list">${ok.map(s=>pickRow(s,`data-act="sub-pick" data-c="${ci}" data-id="${id}" data-in="${s.id}"`)).join('')||'<div class="hint">No one waiting at this court\'s levels.</div>'}</div>
   ${other.length?`<h2>Other levels waiting</h2><div class="list">${other.map(s=>pickRow(s,`data-act="sub-pick" data-c="${ci}" data-id="${id}" data-in="${s.id}"`)).join('')}</div>`:''}`);
 }
@@ -1418,13 +1432,14 @@ function sheetSlot(ci,k){
   const d=slots(c), cur=d[k]&&byId(d[k]), half=need()/2;
   const side=k<half?'Left side':'Right side';
   const inBox=d.map((id,j)=>id&&j!==k?byId(id):null).filter(Boolean);
-  const w=waiting(), ok=w.filter(p=>onLv(c,p)), other=w.filter(p=>!onLv(c,p));
+  shReopen=()=>sheetSlot(ci,k);
+  const w=shSorted(waiting()), ok=w.filter(p=>onLv(c,p)), other=w.filter(p=>!onLv(c,p));
   const row=s=>pickRow(s,`data-act="slot-set" data-c="${ci}" data-k="${k}" data-id="${s.id}"`);
   openSheet(`<h3>Court ${ci+1} — ${side}, box ${k%half+1}</h3>
   <div class="hint" style="margin:0 0 10px">${cur?`Now: <b>${esc(cur.n)}</b>. Tap someone to put them here instead.`:'Tap a player to put them in this box. The game starts when every box is filled.'}</div>
   ${cur?`<div class="acts" style="margin-top:0"><button class="btn warn" data-act="slot-set" data-c="${ci}" data-k="${k}">Empty this box</button></div>`:''}
-  ${shSearch()}
-  <h2 style="margin-top:4px">Waiting <small>fewest games first</small></h2>
+  ${shSearch()}${shSortChips()}
+  <h2 style="margin-top:4px">Waiting <small>${SH_SORTS[shSort]}</small></h2>
   <div class="list">${ok.map(row).join('')||'<div class="hint">No one waiting at this court\'s levels.</div>'}</div>
   ${other.length?`<h2>Other levels waiting</h2><div class="list">${other.map(row).join('')}</div>`:''}
   ${inBox.length?`<h2>Move from another box on this court</h2><div class="list">${inBox.map(row).join('')}</div>`:''}`);
@@ -1432,10 +1447,12 @@ function sheetSlot(ci,k){
 let pickCourt=null, pickSel=[], pickCat='All';
 function sheetPick(){
   const ci=pickCourt; const c=S.courts[ci]; const n=need();
-  const all=waiting().filter(p=>pickCat==='All'||p.c===pickCat);
+  shReopen=sheetPick;
+  const all=shSorted(waiting().filter(p=>pickCat==='All'||p.c===pickCat));
   openSheet(`<h3>Court ${ci+1} — pick ${n} players</h3>
-  <div class="hint" style="margin:0 0 10px">Selected ${pickSel.length} / ${n} · sorted by fewest games</div>
+  <div class="hint" style="margin:0 0 10px">Selected ${pickSel.length} / ${n} · ${SH_SORTS[shSort]}</div>
   <div class="chips">${['All'].concat(CATS).map(k=>`<button class="chip ${pickCat===k?'on':''}" data-act="pick-f" data-k="${k}">${k}</button>`).join('')}</div>
+  <div style="margin-top:6px">${shSortChips()}</div>
   <div class="list" style="margin-top:6px">${all.map(s=>pickRow(s,`data-act="pick-t" data-id="${s.id}"`,pickSel.includes(s.id))).join('')||'<div class="hint">No one waiting.</div>'}</div>
   <div class="acts" style="position:sticky;bottom:0;background:#fff;padding-top:8px;margin-bottom:0">
     <button class="btn pri" data-act="pick-go" ${pickSel.length===n?'':'disabled'}>Start game (${pickSel.length}/${n})</button>
@@ -1564,6 +1581,10 @@ document.addEventListener('click',e=>{
     case 'slot-clear': S.courts[ci].d=[]; save(); render(); break;
     case 'pick': pickCourt=ci; pickSel=[]; pickCat='All'; sheetPick(); break;
     case 'pick-f': pickCat=k; sheetPick(); break;
+    case 'sh-sort':{ shSort=SH_SORTS[k]?k:'games'; try{ localStorage.setItem('mm_sh_sort',shSort); }catch(e){}
+      const s=$('#sh-s'), q=s?s.value:'', top=$('#sheet').scrollTop;
+      if(shReopen) shReopen();
+      const s2=$('#sh-s'); if(s2&&q){ s2.value=q; shFilter(q); } $('#sheet').scrollTop=top; break;}
     case 'pick-t':{ const i=pickSel.indexOf(id); if(i>=0) pickSel.splice(i,1); else if(pickSel.length<need()) pickSel.push(id); else toast('Already '+need()+' selected — tap one to remove'); sheetPick(); break;}
     case 'pick-go':{ const c=S.courts[pickCourt]; if(c.p.length||pickSel.length!==need()) break;
       const w=new Set(waiting().map(p=>p.id)); if(!pickSel.every(x=>w.has(x))){toast('Someone is no longer available');pickSel=pickSel.filter(x=>w.has(x));sheetPick();break;}
