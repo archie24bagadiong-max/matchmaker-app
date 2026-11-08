@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Match Maker QR</title>
+<link rel="icon" href="icons/favicon-32.png">
+<style>
+  :root { --green: #0f3d2e; --lime: #c6f135; --ink: #1b1f1d; --muted: #5b655f; --card: #f3f6f4; --bg: #ffffff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .page { max-width: 720px; margin: 0 auto; padding: 24px 16px 40px; text-align: center; }
+  .brand { display: flex; align-items: center; justify-content: center; gap: 12px; }
+  .brand img { width: 56px; height: 56px; border-radius: 12px; }
+  h1 { margin: 0; font-size: 28px; color: var(--green); line-height: 1.15; }
+  .sub { margin: 4px 0 0; color: var(--muted); font-size: 17px; }
+  .scan { margin: 24px auto 8px; font-size: 22px; font-weight: 700; }
+  .qr { display: block; width: min(78vw, 380px); height: auto; margin: 0 auto; padding: 16px; background: #fff; border: 6px solid var(--green); border-radius: 20px; }
+  .url { margin: 10px 0 0; font-size: 14px; color: var(--muted); word-break: break-all; }
+  .steps { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 28px; text-align: left; }
+  .card { background: var(--card); border-radius: 14px; padding: 14px 16px; }
+  .card h2 { margin: 0 0 6px; font-size: 18px; color: var(--green); }
+  .card ol { margin: 0; padding-left: 20px; }
+  .card li { margin: 3px 0; }
+  .note { margin-top: 18px; font-size: 14px; color: var(--muted); }
+  .print { margin-top: 20px; padding: 12px 22px; font: inherit; font-weight: 600; color: #fff; background: var(--green); border: 0; border-radius: 999px; cursor: pointer; }
+  @media (max-width: 560px) { .steps { grid-template-columns: 1fr; } h1 { font-size: 23px; } }
+  @media print {
+    .print { display: none; }
+    .page { padding-top: 0; }
+    .qr { width: 110mm; }
+    .card { border: 1px solid #ccc; }
+  }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="brand">
+    <img src="icons/icon-192.png" alt="">
+    <div>
+      <h1>Match Maker</h1>
+      <p class="sub">JAMREIBIZ Badminton Club</p>
+    </div>
+  </div>
+
+  <p class="scan">Scan with your phone camera</p>
+  <img class="qr" src="icons/qr-code.svg" alt="QR code for the Match Maker website">
+  <p class="url">archie24bagadiong-max.github.io/matchmaker-app</p>
+
+  <section class="steps">
+    <div class="card">
+      <h2>iPhone</h2>
+      <ol>
+        <li>Open the <b>Camera</b> and point it at the code.</li>
+        <li>Tap the yellow link that appears.</li>
+        <li>Optional: in Safari tap <b>Share</b> → <b>Add to Home Screen</b>.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h2>Android</h2>
+      <ol>
+        <li>Open the <b>Camera</b> (or Google Lens) and point it at the code.</li>
+        <li>Tap the link that appears.</li>
+        <li>Optional: in Chrome tap <b>⋮</b> → <b>Add to Home screen</b>.</li>
+      </ol>
+    </div>
+  </section>
+
+  <p class="note">Nothing to download from a file — it opens in your browser and updates by itself.</p>
+  <button class="print" onclick="window.print()">Print this page</button>
+</main>
+</body>
+</html>
