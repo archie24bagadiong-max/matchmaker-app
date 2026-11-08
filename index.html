@@ -15,7 +15,9 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- fonts load in the background: with no internet (hotspot only) the app no longer waits for them before showing -->
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 :root{
   --court:#0f3d2e; --court2:#145a42; --line:#e9f5ee; --lime:#c8f169;
@@ -25,7 +27,13 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Barlow,system-ui,sans-serif;font-size:16px}
+/* iPhone: no text enlarging in landscape; no pull-to-refresh reloading the app mid-session */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;overscroll-behavior-y:none}
+body{overscroll-behavior-y:none}
 button{font:inherit;cursor:pointer;color:var(--ink)}
+/* taps respond at once (no double-tap zoom wait) and long-press does not select text or pop the iOS menu */
+button,.tapr,.chip,[data-act]{touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input[type=search]{-webkit-appearance:none;appearance:none}
 input,select,textarea{font:inherit;color:inherit}
 header{background:var(--court);color:#fff;padding:calc(env(safe-area-inset-top) + 14px) 16px 14px;position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px}
 header h1{font-family:"Barlow Condensed",sans-serif;font-weight:800;font-size:24px;letter-spacing:.5px;margin:0;flex:1;text-transform:uppercase}
@@ -466,6 +474,18 @@ input.stsel{padding-right:40px}
 .wtn{color:#4b3fa8}
 .emptybox{text-align:center;padding:26px 14px;color:var(--muted)}
 .emptybox b{display:block;color:var(--ink);font-size:17px;margin-bottom:6px}
+/* ---- iPhone / tablet fit (kept last so it wins) ---- */
+/* landscape iPhone: keep content clear of the notch and rounded corners */
+header{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+main{padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}
+nav{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+.scorev{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+/* pop-ups: correct height when Safari's toolbar shows/hides; scrolling inside does not move the page behind */
+.sheet{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right));max-height:82vh;max-height:82dvh;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+/* update bar sits under the header, which is taller on iPhones with a notch */
+#updbar{top:calc(env(safe-area-inset-top) + 72px)}
+/* page behind an open pop-up does not scroll */
+html.sheet-open,html.sheet-open body{overflow:hidden}
 </style>
 </head>
 <body>
@@ -509,7 +529,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=41;
+const APP_VERSION=42;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -569,9 +589,23 @@ let tab='courts', ciFilter='All', ciSearch='', plSearch='', plFilter='All', conf
 /* ---------- persistence ---------- */
 let dbRef=null, writing=false, dirty=false, saveTimer=null, lastTs=0;
 function setSync(ok,label){const el=document.getElementById('sync');el.className='sync'+(ok?' ok':'');el.querySelector('span').textContent=label;}
+/* Saving: quick taps (scoring, ticking attendance) are written together a moment later, so the whole session
+   (history, ledger…) is turned into text once instead of on every tap. Court tablets still send scores at once.
+   persistNow() runs when the app is hidden/closed and before any reload, so nothing is lost. */
+let persistTimer=null;
+function persistNow(){
+  clearTimeout(persistTimer); persistTimer=null;
+  let txt; try{ txt=JSON.stringify(S); }catch(e){ return; }
+  try{localStorage.setItem(LS_KEY,txt);}catch(e){}
+  if(ROLE==='main'&&CAN_SYNC){ try{ AndroidApp.setShared(txt); }catch(e){} }
+}
+function persistFlush(){ if(persistTimer) persistNow(); }
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') persistFlush(); });
+window.addEventListener('pagehide',persistFlush);
+window.addEventListener('beforeunload',persistFlush);
 function save(){
-  try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){}
-  shareState();
+  if(IS_COURT) postScore();
+  if(!persistTimer) persistTimer=setTimeout(persistNow,250);
   if(!dbRef) return;
   dirty=true; clearTimeout(saveTimer); saveTimer=setTimeout(flush,600);
 }
@@ -1385,8 +1419,8 @@ function vSettings(){
 }
 
 /* ---------- sheets ---------- */
-function openSheet(html){$('#sheet').innerHTML='<div class="grab"></div>'+html;$('#sheet').classList.add('open');$('#scrim').classList.add('open');}
-function closeSheet(){$('#sheet').classList.remove('open');$('#scrim').classList.remove('open');}
+function openSheet(html){$('#sheet').innerHTML='<div class="grab"></div>'+html;$('#sheet').classList.add('open');$('#scrim').classList.add('open');document.documentElement.classList.add('sheet-open');}
+function closeSheet(){$('#sheet').classList.remove('open');$('#scrim').classList.remove('open');document.documentElement.classList.remove('sheet-open');}
 function gpill(id){const g=S.games[id]||0;return `<span class="gpill ${g===0?'z':''}">${g===0?'Not played':'Played '+g}</span>`;}
 function pickRow(s,attrs,sel){
   return `<div class="item tapr ${sel?'sel':''}" data-q="${esc((s.n+' '+(s.fn||'')).toLowerCase())}" ${attrs}>${sel!==undefined?'<div class="check"></div>':''}${av(s.id)}${catBadge(s.c)}<div class="nm">${esc(s.n)}</div>${gBadge(s)}${typeBadge(s)}${gpill(s.id)}</div>`;
@@ -1612,13 +1646,13 @@ document.addEventListener('click',e=>{
     case 'help-sec': helpOpen=helpOpen===k?'':k; render(); break;
     case 'court-exit': courtExit=true; renderScore(); break;
     case 'court-exit-no': courtExit=false; renderScore(); break;
-    case 'court-exit-ok':{ const v=(document.getElementById('pin-in')||{}).value||''; if(COURT_PIN&&v!==COURT_PIN){ toast('Wrong PIN'); const i=document.getElementById('pin-in'); if(i){i.value='';i.focus();} break; } try{ localStorage.setItem('bmm_role','off'); }catch(e){} location.reload(); break;}
+    case 'court-exit-ok':{ const v=(document.getElementById('pin-in')||{}).value||''; if(COURT_PIN&&v!==COURT_PIN){ toast('Wrong PIN'); const i=document.getElementById('pin-in'); if(i){i.value='';i.focus();} break; } try{ localStorage.setItem('bmm_role','off'); }catch(e){} persistFlush(); location.reload(); break;}
     case 'court-setup': courtSetup=true; render(); break;
-    case 'court-start':{ const ip=(($('#court-ip')||{}).value||'').trim().replace(/^https?:\/\//,'').replace(/[:\/].*$/,''); if(!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)){ toast('Type the address shown on the Main tablet'); break; } const n=+(($('#court-no')||{}).value||1), pin=(($('#court-pin')||{}).value||'').trim(); try{ localStorage.setItem('bmm_main_ip',ip); localStorage.setItem('bmm_court',String(n)); localStorage.setItem('bmm_pin',pin); localStorage.setItem('bmm_role','court'); }catch(e){} location.reload(); break;}
+    case 'court-start':{ const ip=(($('#court-ip')||{}).value||'').trim().replace(/^https?:\/\//,'').replace(/[:\/].*$/,''); if(!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)){ toast('Type the address shown on the Main tablet'); break; } const n=+(($('#court-no')||{}).value||1), pin=(($('#court-pin')||{}).value||'').trim(); try{ localStorage.setItem('bmm_main_ip',ip); localStorage.setItem('bmm_court',String(n)); localStorage.setItem('bmm_pin',pin); localStorage.setItem('bmm_role','court'); }catch(e){} persistFlush(); location.reload(); break;}
     case 'ph-cam': if(IS_APP&&typeof AndroidApp.takePhoto==='function') AndroidApp.takePhoto(id); else webPhoto(id,true); break;
     case 'ph-gal': if(IS_APP&&typeof AndroidApp.choosePhoto==='function') AndroidApp.choosePhoto(id); else webPhoto(id,false); break;
     case 'ph-del': if(confirmKey!=='phd'+id){ confirmKey='phd'+id; const b=el; b.textContent='Tap again'; break; } confirmKey=null; setPhoto(id,''); break;
-    case 'sync-role':{ if(!CAN_SYNC) break; if(k===ROLE) break; try{ localStorage.setItem('bmm_role',k); }catch(e){} if(ROLE==='main') try{AndroidApp.stopServer();}catch(e){} location.reload(); break;}
+    case 'sync-role':{ if(!CAN_SYNC) break; if(k===ROLE) break; try{ localStorage.setItem('bmm_role',k); }catch(e){} if(ROLE==='main') try{AndroidApp.stopServer();}catch(e){} persistFlush(); location.reload(); break;}
     case 'sync-ip':{ const v=($('#main-ip')||{}).value||''; const ip=v.trim().replace(/^https?:\/\//,'').replace(/[:\/].*$/,''); if(!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)){ toast('Type the address shown on the Main tablet, e.g. 192.168.43.1'); break; } MAIN_IP=ip; try{localStorage.setItem('bmm_main_ip',ip);}catch(e){} syncFails=0; toast('Connecting to '+ip+'…'); pollMain(); break;}
     case 'upd-check': toast('Checking…'); checkUpdate(true); break;
     case 'upd-go': doUpdate(); break;
@@ -1762,7 +1796,7 @@ async function doUpdate(){
     const t=await r.text();
     if(r.ok && t.length>20000 && t.indexOf('APP_VERSION=')>0 && /^\s*<!DOCTYPE html>/i.test(t)){
       try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){}
-      if(window.AndroidApp.saveUpdate(t)){ location.reload(); return; }
+      if(window.AndroidApp.saveUpdate(t)){ persistFlush(); location.reload(); return; }
     }
     toast('Update failed — please try again');
   }catch(e){ toast('No internet — could not update'); }
@@ -1776,7 +1810,21 @@ let PH={}, photoDb=null, lastPhRev=-1;
 const PH_KEY=IS_APP?((IS_DISPLAY||IS_COURT)?'bmm_photos_display':'bmm_photos'):'bmm_photos_web';
 try{ PH=JSON.parse(localStorage.getItem(PH_KEY)||'{}')||{}; }catch(e){ PH={}; }
 function initials(n){ return String(n||'?').replace(/[^\p{L}\p{N} ]/gu,'').trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase()||'?'; }
-function av(id,cls,onlyPhoto){ const u=PH[id]; if(u) return `<img class="av ${cls||''}" src="${u}" alt="">`; if(onlyPhoto) return ''; const p=byId(id); return `<span class="av ini ${cls||''}">${esc(initials(p?p.n:'?'))}</span>`; }
+/* photos are kept as text (data:…) but shown through a short blob: link made once per photo, so a redraw of a
+   100-player list does not copy ~20 KB of text per photo into the page each time */
+const PH_URL=new Map();
+function phSrc(u){
+  if(typeof u!=='string'||u.slice(0,5)!=='data:'||!window.URL||!URL.createObjectURL) return u;
+  let x=PH_URL.get(u); if(x) return x;
+  try{
+    const i=u.indexOf(','), meta=u.slice(5,i), bin=atob(u.slice(i+1)), a=new Uint8Array(bin.length);
+    for(let k=0;k<bin.length;k++) a[k]=bin.charCodeAt(k);
+    x=URL.createObjectURL(new Blob([a],{type:meta.split(';')[0]||'image/jpeg'}));
+  }catch(e){ return u; }
+  if(PH_URL.size>400){ const live=new Set(Object.values(PH)); PH_URL.forEach((v,k)=>{ if(!live.has(k)){ URL.revokeObjectURL(v); PH_URL.delete(k); } }); }
+  PH_URL.set(u,x); return x;
+}
+function av(id,cls,onlyPhoto){ const u=PH[id]; if(u) return `<img class="av ${cls||''}" src="${phSrc(u)}" alt="" decoding="async">`; if(onlyPhoto) return ''; const p=byId(id); return `<span class="av ini ${cls||''}">${esc(initials(p?p.n:'?'))}</span>`; }
 function photoActs(id){
   if(IS_DISPLAY) return PH[id]?`<div class="phrow">${av(id,'big')}</div>`:'';
   return `<div class="phrow">${av(id,'big')}<div class="phbtns"><button class="btn sm pri" data-act="ph-cam" data-id="${id}">📷 Take photo</button><button class="btn sm" data-act="ph-gal" data-id="${id}">Choose photo</button>${PH[id]?`<button class="btn sm warn" data-act="ph-del" data-id="${id}">Remove</button>`:''}</div></div>`;
