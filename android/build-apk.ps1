@@ -3,8 +3,8 @@
 # The signing key lives OUTSIDE the repo (D:\Codes\matchmaker-keys) — the repo is public. Back that folder up:
 # every future APK must be signed with the same key to install over an earlier one.
 param(
-  [int]$VersionCode = 9,
-  [string]$VersionName = '1.8',
+  [int]$VersionCode = 10,
+  [string]$VersionName = '1.9',
   [string]$KeyDir = 'D:\Codes\matchmaker-keys',
   [string]$Out = 'D:\Codes\matchmaker-build'
 )
@@ -30,7 +30,6 @@ if (-not (Test-Path "$Out\assets\xlsx.full.min.js")) {
   Invoke-WebRequest -UseBasicParsing 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js' -OutFile "$Out\assets\xlsx.full.min.js"
 }
 Copy-Item "$Out\assets\xlsx.full.min.js" "$w\assets\"
-
 # manifest with this build's version
 $man = Get-Content -Raw "$here\AndroidManifest.xml"
 $man = $man -replace 'android:versionCode="\d+"', "android:versionCode=`"$VersionCode`"" -replace 'android:versionName="[^"]*"', "android:versionName=`"$VersionName`""

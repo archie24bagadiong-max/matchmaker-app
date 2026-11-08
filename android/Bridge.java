@@ -16,7 +16,10 @@ public class Bridge {
     final MainActivity a;
     Bridge(MainActivity a) { this.a = a; }
 
-    @JavascriptInterface public int version() { return 6; }
+    @JavascriptInterface public int version() { return 7; }
+
+    /** APK 1.9+: the Main tablet also serves the app page on port 8787, so phones can score by scanning a QR code. */
+    @JavascriptInterface public boolean pageServer() { return true; }
 
     @JavascriptInterface
     public boolean saveUpdate(String html) {

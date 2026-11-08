@@ -10,9 +10,27 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-/** Tiny HTTP server: GET /state returns the Main tablet's latest data as JSON. */
+/** Tiny HTTP server: GET /state returns the Main tablet's latest data as JSON; POST /score takes court scores;
+ *  GET / serves the app page itself so phones on the hotspot can score in a browser by scanning a court QR code. */
 public class LocalServer extends Thread {
     public static final int PORT = 8787;
+    /** The page the Main tablet is running (app storage copy, kept up to date by in-app updates). */
+    public static volatile java.io.File page;
+    public static volatile android.content.res.AssetManager assets;
+
+    private static byte[] pageBytes() {
+        try {
+            java.io.File f = page;
+            java.io.InputStream in = (f != null && f.exists()) ? new java.io.FileInputStream(f) : (assets != null ? assets.open("index.html") : null);
+            if (in == null) return null;
+            java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[16384];
+            int n;
+            while ((n = in.read(buf)) > 0) bo.write(buf, 0, n);
+            in.close();
+            return bo.toByteArray();
+        } catch (Exception e) { return null; }
+    }
     private static LocalServer instance;
     private static volatile byte[] state = "{}".getBytes();
     private static volatile long rev = 0;
@@ -121,6 +139,14 @@ public class LocalServer extends Thread {
                 byte[] body = "{\"app\":\"matchmaker\"}".getBytes("UTF-8");
                 out.write(("HTTP/1.1 200 OK\r\n" + head + "Content-Type: application/json\r\nContent-Length: " + body.length + "\r\n\r\n").getBytes("UTF-8"));
                 out.write(body);
+            } else if (line.startsWith("GET / ") || line.startsWith("GET /?") || line.startsWith("GET /index.html")) {
+                byte[] body = pageBytes();
+                if (body == null) {
+                    out.write(("HTTP/1.1 404 Not Found\r\n" + head + "Content-Length: 0\r\n\r\n").getBytes("UTF-8"));
+                } else {
+                    out.write(("HTTP/1.1 200 OK\r\n" + head + "Content-Type: text/html; charset=utf-8\r\nContent-Length: " + body.length + "\r\n\r\n").getBytes("UTF-8"));
+                    out.write(body);
+                }
             } else {
                 out.write(("HTTP/1.1 404 Not Found\r\n" + head + "Content-Length: 0\r\n\r\n").getBytes("UTF-8"));
             }

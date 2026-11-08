@@ -181,7 +181,8 @@ Several tablets can show the same session over a hotspot or Wi-Fi, with no inter
 
 Example for 4 courts: tablets 1–4 = Court tablets, tablet 5 = Main, tablet 6 = Display.
 
-- How it works: the Main tablet runs a small server on port 8787 (`GET /state` returns the session as JSON, `POST /score` receives a court's score); Displays and Court tablets poll it. Each score carries a sequence number so the newest change wins.
+- How it works: the Main tablet runs a small server on port 8787 (`GET /state` returns the session as JSON, `POST /score` receives a court's score; APK 1.9+ also serves the app page at `GET /`); Displays and Court tablets poll it.
+- **Score with a phone (APK 1.9 on the Main):** Courts tab → 📱 Score with a phone shows a QR code per court. A phone on the hotspot scans it (`http://<main>:8787/?court=N`) and becomes that court's scorer in its browser — Android or iPhone, nothing installed. `http://<main>:8787/` without a court is a live view-only display. Each score carries a sequence number so the newest change wins.
 
 ## Teams
 
@@ -286,6 +287,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 | 7 Nov 2026 | Page v29 (1.29) | Set the serve before starting: tap the player who serves first, then the player who receives (0–0, first game); serving team can still be changed until the first point |
 | 7 Nov 2026 | Page v30 (1.30) | Payments: mark each player paid by 💵 Cash or 📱 STC Pay; Collected shows the split; Excel Payments sheet has a Method column and Daily Summary has Cash / STC Pay totals |
 | 7 Nov 2026 | Page v31 (2.0) | Export all activity: new Activity Log sheet (check-ins/outs, match start and finish with result, payments received/cancelled with amount and Cash / STC Pay, new sessions — all with date and time). Export button also in Settings |
+| 8 Nov 2026 | Page v49 (2.18), APK 1.9 | Score with a phone: the Main tablet (APK 1.9) serves the app page at http://&lt;main&gt;:8787/ and shows a QR code per court (+ optional join-hotspot QR and a live-display QR). A phone that scans `?court=N` opens that court's scoreboard, gets players from the Main and posts every point back. Any browser, nothing to install. QR codes drawn by a built-in encoder (no internet) |
 | 8 Nov 2026 | Page v48 (2.17) | Picture guide guide.html (screenshots for PC, Android tablet, Android phone, iPhone and every step of a session); in-app How to use gets an install section per device, the new features, and a link to the picture guide |
 | 8 Nov 2026 | APK 1.8 | Rebuilt on the laptop (new signing key) with page v47 bundled; downloadable from the website and the QR page |
 | 8 Nov 2026 | Page v47 (2.16) | Level columns: guests have their own column at the end (all levels mixed, level badge shown, same rotation); members and family stay in the level columns |

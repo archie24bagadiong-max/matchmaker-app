@@ -46,6 +46,8 @@ public class MainActivity extends Activity {
         wv.addJavascriptInterface(new Bridge(this), "AndroidApp");
         setContentView(wv);
         File f = ensureLocal();
+        LocalServer.page = f;
+        LocalServer.assets = getAssets();
         if (f.exists()) wv.loadUrl("file://" + f.getAbsolutePath());
         else wv.loadUrl("file:///android_asset/index.html");
     }

@@ -507,6 +507,16 @@ nav{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-rig
 #updbar{top:calc(env(safe-area-inset-top) + 72px)}
 /* page behind an open pop-up does not scroll */
 html.sheet-open,html.sheet-open body{overflow:hidden}
+/* scoring QR codes */
+.qrgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin:4px 0 6px}
+.qrc{display:flex;flex-direction:column;align-items:center;gap:6px;border:1px solid var(--border);border-radius:14px;padding:12px;background:#fff;text-align:center}
+.qrc b{font-family:"Barlow Condensed",sans-serif;font-size:22px;text-transform:uppercase;letter-spacing:.5px;color:var(--court)}
+.qrc svg{max-width:100%;height:auto}
+.qrc small{font-size:12px;color:var(--muted);word-break:break-all}
+.qrw{background:#f7fbe9;border-color:#dbe9b4;align-items:stretch}
+.qrw b{text-align:center}
+.qrw svg{align-self:center}
+.linkbtn{border:0;background:none;color:var(--court2);text-decoration:underline;padding:0;font-size:12px}
 </style>
 </head>
 <body>
@@ -550,7 +560,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=48;
+const APP_VERSION=49;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -559,11 +569,17 @@ let ROLE='off', MAIN_IP='';
 try{ ROLE=localStorage.getItem('bmm_role')||'off'; MAIN_IP=localStorage.getItem('bmm_main_ip')||''; }catch(e){}
 const CAN_SYNC=IS_APP&&typeof window.AndroidApp.startServer==='function';
 if(!CAN_SYNC) ROLE='off';
+/* Opened from the Main tablet itself (a phone scanned a court QR code): http://<main>:8787/?court=N scores court N,
+   http://<main>:8787/ shows the live display. Any phone browser works — nothing to install. */
+const QS=(()=>{ try{ return new URLSearchParams(location.search); }catch(e){ return {get:()=>null}; } })();
+const IS_SERVED=!IS_APP&&location.protocol==='http:'&&location.port==='8787';
+if(IS_SERVED){ ROLE=QS.get('court')?'court':'display'; MAIN_IP=location.hostname; }
 const IS_DISPLAY=ROLE==='display';
 const IS_COURT=ROLE==='court';
 let COURT_NO=0, COURT_PIN='';
 try{ COURT_NO=Math.max(0,(+localStorage.getItem('bmm_court')||1)-1); COURT_PIN=localStorage.getItem('bmm_pin')||''; }catch(e){}
-const LS_KEY=IS_APP?(IS_DISPLAY?'bmm_display_v1':IS_COURT?'bmm_court_v1':'bmm_offline_v1'):'bmm_state_v1';
+if(IS_SERVED){ COURT_NO=Math.min(7,Math.max(0,(parseInt(QS.get('court'),10)||1)-1)); COURT_PIN=''; }
+const LS_KEY=IS_SERVED?(IS_COURT?'bmm_qr_court_v1':'bmm_qr_display_v1'):IS_APP?(IS_DISPLAY?'bmm_display_v1':IS_COURT?'bmm_court_v1':'bmm_offline_v1'):'bmm_state_v1';
 const CLIENT=Math.random().toString(36).slice(2);
 
 function fresh(){
@@ -864,7 +880,7 @@ function vCourts(){
   if(!present.length){
     h+=`<div class="card emptybox" style="margin-top:14px"><b>No one checked in yet</b>${S.players.length?'Mark today\'s attendees first.':'Add your players, then mark attendance.'}<div style="margin-top:12px"><button class="btn pri" data-act="go" data-tab="${S.players.length?'checkin':'players'}">${S.players.length?'Take attendance':'Add players'}</button></div></div>`;
   }
-  h+=`<h2>Courts <small>${S.mode==='doubles'?'Doubles':'Singles'}</small><span class="grow"></span><button class="btn lime sm" data-act="fill-all">Fill empty courts</button></h2><div class="courts n${S.courts.length}">`;
+  h+=`<h2>Courts <small>${S.mode==='doubles'?'Doubles':'Singles'}</small><span class="grow"></span>${CAN_SYNC&&!IS_DISPLAY?'<button class="btn sm" data-act="qr" data-k="all">📱 Score with a phone</button>':''}<button class="btn lime sm" data-act="fill-all">Fill empty courts</button></h2><div class="courts n${S.courts.length}">`;
   S.courts.forEach((c,i)=>{
     const lv=GROUPS.map(k=>`<button class="${c.lv.includes(k)?'on':''}" data-act="lv" data-c="${i}" data-k="${k}">${k}</button>`).join('');
     let pitch;
@@ -1120,6 +1136,7 @@ function renderScore(){
   const v=document.getElementById('scorev');
   if(IS_COURT){
     scoreOpen=COURT_NO;
+    if(courtExit&&IS_SERVED){ v.innerHTML=`<div class="sbar"><b>Court ${COURT_NO+1}</b><span>Scoring by QR code</span></div><div class="cwait"><div class="cw-big">📱</div><div class="cw-t">To stop scoring, just close this page.</div><div class="cw-s">Scores are already saved on the Main tablet. To score another court, scan that court's QR code.</div><div class="row" style="justify-content:center"><button class="btn lime" data-act="court-exit-no">Back to scoring</button></div></div>`; v.hidden=false; document.body.classList.add('noscroll'); return; }
     if(courtExit){ v.innerHTML=`<div class="sbar"><b>Court ${COURT_NO+1}</b><span>Organizer only</span></div><div class="cwait"><div class="cw-t">${COURT_PIN?'Enter PIN to leave court mode':'Leave court mode?'}</div>${COURT_PIN?`<input type="password" id="pin-in" inputmode="numeric" maxlength="8" class="pinin" autocomplete="off">`:''}<div class="row" style="justify-content:center"><button class="btn" data-act="court-exit-no">Cancel</button><button class="btn lime" data-act="court-exit-ok">Leave</button></div></div>`; v.hidden=false; document.body.classList.add('noscroll'); setTimeout(()=>{const i=document.getElementById('pin-in'); i&&i.focus();},50); return; }
     if(!S.courts[COURT_NO]||!S.courts[COURT_NO].p.length){ v.innerHTML=`<div class="sbar"><b>Court ${COURT_NO+1}</b><span>${syncOk&&Date.now()-syncOk<6000?'Connected to Main':'Connecting to Main…'}</span><button class="btn sm gear" data-act="court-exit" aria-label="Organizer">⚙</button></div><div class="cwait"><div class="cw-big">🏸</div><div class="cw-t">Waiting for players</div><div class="cw-s">The organizer will put the next match on Court ${COURT_NO+1}.</div></div>`; v.hidden=false; document.body.classList.add('noscroll'); return; }
   }
@@ -1204,9 +1221,40 @@ function sheetCourt(ci){
     :`<button class="btn lime" data-act="gen" data-c="${ci}">Auto match</button><button class="btn pri" data-act="pick" data-c="${ci}">Pick players</button>`}
   </div>
   <div class="cmlv"><span class="hint" style="margin:0 6px 0 0">Levels on this court</span>${lv}</div>
+  ${CAN_SYNC?`<button class="btn" style="width:100%;margin-top:12px" data-act="qr" data-k="${ci}">📱 Score Court ${ci+1} with a phone (QR code)</button>`:''}
   <div class="row" style="margin-top:14px"><span class="grow"></span><button class="btn" data-act="sheet-close">Close</button></div>`);
 }
 let menuCourt=null;
+/* ---------- scoring by QR code: the Main tablet serves the app, phones scan a court's code ---------- */
+const QR_OK=()=>ROLE==='main'&&CAN_SYNC&&typeof AndroidApp.pageServer==='function';
+function qrHost(){ const ips=String(mainAddr()||'').split(/,\s*/).filter(Boolean); return ips.find(ip=>/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip))||ips[0]||''; }
+function qrWifi(){ try{ return JSON.parse(localStorage.getItem('mm_wifi')||'null'); }catch(e){ return null; } }
+const wifiEsc=s=>String(s).replace(/([\\;,:"])/g,'\\$1');
+function sheetQR(only){
+  if(!QR_OK()){
+    openSheet(`<h3>📱 Score with a phone</h3>
+    <div class="hint" style="margin:0 0 12px">Phones (Android or iPhone) can score a court by scanning a QR code — nothing to install.</div>
+    ${!CAN_SYNC?'<div class="card">This needs the Android app on the Main tablet. On a laptop or phone website it is not available.</div>'
+     :typeof AndroidApp.pageServer!=='function'?'<div class="card"><b>Install MatchMaker.apk 1.9 or later on this Main tablet</b> (from the QR page). Court tablets and phones don\'t need it.</div>'
+     :`<div class="card">Make this tablet the <b>Main tablet</b> first.<div style="margin-top:10px"><button class="btn pri" data-act="sync-role" data-k="main">Make this the Main tablet</button></div></div>`}
+    <div class="row" style="margin-top:14px"><span class="grow"></span><button class="btn" data-act="sheet-close">Close</button></div>`);
+    return;
+  }
+  const host=qrHost();
+  if(!host){ openSheet(`<h3>📱 Score with a phone</h3><div class="card">No network. Turn on the hotspot (or join Wi-Fi), then open this again.</div><div class="row" style="margin-top:14px"><span class="grow"></span><button class="btn" data-act="sheet-close">Close</button></div>`); return; }
+  const base='http://'+host+':8787/', w=qrWifi(), courts=only===null||only===undefined?S.courts.map((c,i)=>i):[only];
+  const card=(title,url,sub,big)=>`<div class="qrc"><b>${title}</b>${qrSvg(url,big?260:190)}<small>${esc(sub||url)}</small></div>`;
+  const wifiBox=w&&w.s?`<div class="qrc qrw"><b>① Join the hotspot</b>${qrSvg('WIFI:T:'+(w.p?'WPA':'nopass')+';S:'+wifiEsc(w.s)+';'+(w.p?'P:'+wifiEsc(w.p)+';':'')+';',170)}<small>${esc(w.s)} · <button class="linkbtn" data-act="wifi-edit">change</button></small></div>`
+    :`<div class="qrc qrw"><b>① Join the hotspot</b><div class="hint" style="margin:4px 0 8px">Optional: save the hotspot name and password to show a "join Wi-Fi" QR code.</div>
+      <input type="text" id="qr-ssid" placeholder="Hotspot name" autocomplete="off" value="${esc(w&&w.s||'')}"><input type="text" id="qr-pass" placeholder="Password (blank if open)" autocomplete="off" style="margin-top:6px" value="${esc(w&&w.p||'')}">
+      <button class="btn sm pri" data-act="wifi-save" style="margin-top:8px">Save</button></div>`;
+  openSheet(`<h3>📱 Score with a phone${courts.length===1?' — Court '+(courts[0]+1):''}</h3>
+  <div class="hint" style="margin:0 0 10px">Android or iPhone, nothing to install: ① connect the phone to this tablet's hotspot / Wi-Fi, ② scan the court's code with the camera, ③ the scoreboard opens and the players appear when you put a match on that court. Every point comes straight back here.</div>
+  <div class="qrgrid">${courts.length===1?'':wifiBox}${courts.map(i=>card((courts.length===1?'':'② ')+'Court '+(i+1),base+'?court='+(i+1),'',courts.length===1)).join('')}${courts.length===1?'':card('Live display (view only)',base,'')}</div>
+  ${courts.length===1?`<div class="hint">Phone not on the hotspot yet? Open <b>Score with a phone</b> on the Courts tab for the join-Wi-Fi code.</div>`:''}
+  <div class="hint">Address: <b>${esc(base)}</b> · keep this app open on the Main tablet while phones score.</div>
+  <div class="row" style="margin-top:14px"><span class="grow"></span><button class="btn" data-act="sheet-close">Close</button></div>`);
+}
 function sheetWinner(ci){
   const c=S.courts[ci]; if(!c.p.length) return;
   const half=c.p.length/2, A=c.p.slice(0,half), B=c.p.slice(half);
@@ -1244,7 +1292,8 @@ function vHelp(){
     <li><b>Main tablet</b> (organizer): Settings → Tablet sync → <b>Main tablet</b>. Note the address, e.g. 192.168.43.1.</li>
     <li><b>Court tablets</b> (one per court): Settings → Tablet sync → <b>Court tablet</b> → address, court number, PIN → <b>Start court mode</b>.</li>
     <li><b>Display tablet</b>: Settings → Tablet sync → <b>Display tablet</b> → address → <b>Connect</b>.</li>
-    <li>Only one tablet? Leave Tablet sync <b>Off</b> and do everything on it.</li></ol>
+    <li>Only one tablet? Leave Tablet sync <b>Off</b> and do everything on it.</li>
+    <li><b>Score with a phone (no app needed):</b> on the Main tablet tap <b>📱 Score with a phone</b> (Courts tab). Phones join the hotspot, scan their court's QR code and score. Needs APK 1.9 on the Main tablet.</li></ol>
     <p class="hint">Only the Main tablet makes changes. Court tablets only score; Display tablets only show.</p>`)}
   ${sec('session','3. Running a session',`<ol>
     <li><b>Attendance:</b> tick everyone who arrives (Check in all, or by level).</li>
@@ -1437,7 +1486,7 @@ function vSettings(){
   <div class="card">${!CAN_SYNC?`<p class="hint" style="margin:0">Install the latest MatchMaker.apk on every tablet to use sync.</p>`:`
     <p class="hint" style="margin-top:0">Connect all tablets to the same hotspot or Wi-Fi. No internet needed. One <b>Main</b> tablet makes all changes; <b>Display</b> tablets show the same courts, scores and lists live.</p>
     <div class="seg"><button class="${ROLE==='off'?'on':''}" data-act="sync-role" data-k="off">Off</button><button class="${ROLE==='main'?'on':''}" data-act="sync-role" data-k="main">Main tablet</button><button class="${ROLE==='display'?'on':''}" data-act="sync-role" data-k="display">Display tablet</button><button class="${courtSetup?'on':''}" data-act="court-setup">Court tablet</button></div>
-    ${ROLE==='main'?`<div class="syncbox"><div class="hint" style="margin:0">On each Display tablet, enter this address:</div><div class="bigip">${esc(mainAddr()||'No network — join a hotspot or Wi-Fi')}</div><div class="hint" id="syncstat" style="margin:0">${syncStatusText()}</div></div>`:''}
+    ${ROLE==='main'?`<div class="syncbox"><div class="hint" style="margin:0">On each Display tablet, enter this address:</div><div class="bigip">${esc(mainAddr()||'No network — join a hotspot or Wi-Fi')}</div><div class="hint" id="syncstat" style="margin:0">${syncStatusText()}</div><button class="btn pri" data-act="qr" data-k="all">📱 Score with a phone — show QR codes</button></div>`:''}
     ${courtSetup?`<div class="syncbox"><div class="hint" style="margin:0">This tablet will show only one court's scoreboard. Players can score, undo and choose who serves — nothing else.</div>
       <label for="court-ip" style="font-weight:600;font-size:14px">Main tablet address</label><input type="text" id="court-ip" inputmode="decimal" placeholder="192.168.43.1" value="${esc(MAIN_IP)}">
       <label for="court-no" style="font-weight:600;font-size:14px">Court</label><select id="court-no">${[1,2,3,4,5,6,7,8].map(n=>`<option value="${n}" ${n===COURT_NO+1?'selected':''}>Court ${n}</option>`).join('')}</select>
@@ -1704,6 +1753,10 @@ document.addEventListener('click',e=>{
     case 'slot-clear': S.courts[ci].d=[]; save(); render(); break;
     case 'pick': pickCourt=ci; pickSel=[]; pickCat='All'; sheetPick(); break;
     case 'pick-f': pickCat=k; sheetPick(); break;
+    case 'qr': sheetQR(k==='all'?null:+k); break;
+    case 'wifi-edit': try{ localStorage.removeItem('mm_wifi'); }catch(e){} sheetQR(null); break;
+    case 'wifi-save':{ const s=(($('#qr-ssid')||{}).value||'').trim(), p=(($('#qr-pass')||{}).value||'');
+      if(!s){ toast('Type the hotspot name'); break; } try{ localStorage.setItem('mm_wifi',JSON.stringify({s,p})); }catch(e){} sheetQR(null); break; }
     case 'wq-sort': wqSort=WQ_SORTS[k]?k:'grid'; try{ localStorage.setItem('mm_wq_sort',wqSort); localStorage.setItem('mm_wq_grid','1'); }catch(e){} render(); break;
     case 'sh-sort':{ shSort=SH_SORTS[k]?k:'games'; try{ localStorage.setItem('mm_sh_sort',shSort); }catch(e){}
       const s=$('#sh-s'), q=s?s.value:'', top=$('#sheet').scrollTop;
@@ -1962,6 +2015,81 @@ async function pollMain(){
   syncHeader();
   pollTimer=setTimeout(pollMain, syncFails>3?4000:1500);
 }
+/* ---------- QR codes (drawn on the tablet, no internet needed) ---------- */
+/* Small QR encoder: byte mode, error correction M, versions 1–10. Returns a square boolean matrix (true = dark).
+   forceVer / forceMask only for testing. */
+function qrMatrix(text,forceVer,forceMask){
+  const data=Array.from(new TextEncoder().encode(text));
+  // [ec codewords per block, [blocks, data codewords per block]...] for level M
+  const EC=[null,[10,[1,16]],[16,[1,28]],[26,[1,44]],[18,[2,32]],[24,[2,43]],[16,[4,27]],[18,[4,31]],[22,[2,38],[2,39]],[22,[3,36],[2,37]],[26,[4,43],[1,44]]];
+  const AL=[null,[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50]];
+  const cap=v=>EC[v].slice(1).reduce((a,b)=>a+b[0]*b[1],0);
+  let ver=forceVer||0;
+  if(!ver){ for(let v=1;v<=10;v++){ if(4+(v<10?8:16)+data.length*8<=cap(v)*8){ ver=v; break; } } }
+  if(!ver) throw new Error('text too long for QR');
+  // bit stream
+  const bits=[]; const put=(val,n)=>{ for(let i=n-1;i>=0;i--) bits.push((val>>>i)&1); };
+  put(4,4); put(data.length,ver<10?8:16); data.forEach(b=>put(b,8));
+  const total=cap(ver)*8; put(0,Math.min(4,total-bits.length)); while(bits.length%8) bits.push(0);
+  const cw=[]; for(let i=0;i<bits.length;i+=8){ let b=0; for(let j=0;j<8;j++) b=(b<<1)|bits[i+j]; cw.push(b); }
+  for(let p=0;cw.length<cap(ver);p++) cw.push(p%2?0x11:0xEC);
+  // Reed–Solomon over GF(256)
+  const EXP=new Array(512), LOG=new Array(256); let x=1;
+  for(let i=0;i<255;i++){ EXP[i]=x; LOG[x]=i; x<<=1; if(x&256) x^=0x11d; } for(let i=255;i<512;i++) EXP[i]=EXP[i-255];
+  const mul=(a,b)=>a&&b?EXP[LOG[a]+LOG[b]]:0;
+  const ecn=EC[ver][0]; let gen=[1];
+  for(let i=0;i<ecn;i++){ const g=new Array(gen.length+1).fill(0); gen.forEach((c,j)=>{ g[j]^=c; g[j+1]^=mul(c,EXP[i]); }); gen=g; }
+  const blocks=[], ecs=[]; let k=0;
+  EC[ver].slice(1).forEach(([n,len])=>{ for(let b=0;b<n;b++){ const d=cw.slice(k,k+len); k+=len; blocks.push(d);
+    const r=d.concat(new Array(ecn).fill(0)); for(let i=0;i<d.length;i++){ const f=r[i]; if(f) for(let j=0;j<gen.length;j++) r[i+j]^=mul(gen[j],f); } ecs.push(r.slice(d.length)); } });
+  const final=[]; const maxD=Math.max(...blocks.map(b=>b.length));
+  for(let i=0;i<maxD;i++) blocks.forEach(b=>{ if(i<b.length) final.push(b[i]); });
+  for(let i=0;i<ecn;i++) ecs.forEach(e=>final.push(e[i]));
+  // matrix with function patterns
+  const N=ver*4+17, M=[], F=[];
+  for(let i=0;i<N;i++){ M.push(new Array(N).fill(false)); F.push(new Array(N).fill(false)); }
+  const set=(r,c,v)=>{ M[r][c]=v; F[r][c]=true; };
+  const finder=(r,c)=>{ for(let i=-1;i<=7;i++) for(let j=-1;j<=7;j++){ const rr=r+i, cc=c+j; if(rr<0||cc<0||rr>=N||cc>=N) continue;
+    set(rr,cc,i>=0&&i<=6&&j>=0&&j<=6&&(i===0||i===6||j===0||j===6||(i>=2&&i<=4&&j>=2&&j<=4))); } };
+  finder(0,0); finder(0,N-7); finder(N-7,0);
+  for(let i=8;i<N-8;i++){ set(6,i,i%2===0); set(i,6,i%2===0); }
+  const al=AL[ver], la=al[al.length-1]; al.forEach(r=>al.forEach(c=>{ if((r===6&&c===6)||(r===6&&c===la)||(r===la&&c===6)) return; for(let i=-2;i<=2;i++) for(let j=-2;j<=2;j++) set(r+i,c+j,Math.max(Math.abs(i),Math.abs(j))!==1); }));
+  set(N-8,8,true); // dark module
+  for(let i=0;i<9;i++){ F[8][i]=F[i][8]=true; } for(let i=0;i<8;i++){ F[8][N-1-i]=F[N-1-i][8]=true; }
+  if(ver>=7){ for(let i=0;i<6;i++) for(let j=0;j<3;j++){ F[i][N-11+j]=F[N-11+j][i]=true; } }
+  // data placement (zigzag from bottom-right)
+  const dbits=[]; final.forEach(b=>{ for(let i=7;i>=0;i--) dbits.push((b>>i)&1); });
+  let bi=0, up=true;
+  for(let c=N-1;c>0;c-=2){ if(c===6) c--; for(let t=0;t<N;t++){ const r=up?N-1-t:t; for(let d=0;d<2;d++){ const cc=c-d; if(F[r][cc]) continue; M[r][cc]=bi<dbits.length?!!dbits[bi]:false; bi++; } } up=!up; }
+  const MASKS=[(r,c)=>(r+c)%2===0,(r,c)=>r%2===0,(r,c)=>c%3===0,(r,c)=>(r+c)%3===0,(r,c)=>(Math.floor(r/2)+Math.floor(c/3))%2===0,(r,c)=>r*c%2+r*c%3===0,(r,c)=>(r*c%2+r*c%3)%2===0,(r,c)=>((r+c)%2+r*c%3)%2===0];
+  const bch=(v,poly,deg)=>{ let x=v<<deg; const top=(p=>{let n=0;while(p){n++;p>>>=1;}return n;}); while(top(x)-top(poly)>=0) x^=poly<<(top(x)-top(poly)); return x; };
+  const build=m=>{
+    const A=M.map((row,r)=>row.map((v,c)=>F[r][c]?v:(v!==MASKS[m](r,c))));
+    const fmt=(((0<<3)|m)<<10|bch((0<<3)|m,0x537,10))^0x5412; // level M = 00
+    const fb=i=>((fmt>>i)&1)===1;
+    for(let i=0;i<6;i++) A[8][i]=fb(14-i); A[8][7]=fb(8); A[8][8]=fb(7); A[7][8]=fb(6); for(let i=0;i<6;i++) A[5-i][8]=fb(5-i);
+    for(let i=0;i<8;i++) A[N-1-i][8]=fb(14-i); for(let i=0;i<8;i++) A[8][N-1-i]=fb(i);
+    A[N-8][8]=true;
+    if(ver>=7){ const vi=(ver<<12)|bch(ver,0x1f25,12); for(let i=0;i<18;i++){ const b=((vi>>i)&1)===1, r=Math.floor(i/3), c=N-11+i%3; A[r][c]=b; A[c][r]=b; } }
+    return A;
+  };
+  const penalty=A=>{ let p=0;
+    for(let r=0;r<N;r++){ for(const line of [A[r],A.map(row=>row[r])]){ let run=1; for(let c=1;c<N;c++){ if(line[c]===line[c-1]){ run++; if(run===5) p+=3; else if(run>5) p++; } else run=1; }
+      const s=line.map(v=>v?1:0).join(''); let i=-1; while((i=s.indexOf('1011101',i+1))>=0){ if(s.slice(Math.max(0,i-4),i)==='0000'&&i>=4||s.slice(i+7,i+11)==='0000'&&i+11<=N) p+=40; } } }
+    for(let r=0;r<N-1;r++) for(let c=0;c<N-1;c++){ const v=A[r][c]; if(v===A[r][c+1]&&v===A[r+1][c]&&v===A[r+1][c+1]) p+=3; }
+    const dark=A.reduce((a,row)=>a+row.filter(Boolean).length,0); p+=Math.floor(Math.abs(dark*20-N*N*10)/(N*N))*10;
+    return p; };
+  if(forceMask!==undefined) return build(forceMask);
+  let best=null, bp=Infinity; for(let m=0;m<8;m++){ const A=build(m), p=penalty(A); if(p<bp){ bp=p; best=A; } }
+  return best;
+}
+/* QR as inline SVG (quiet zone 4 modules) */
+function qrSvg(text,px){
+  const A=qrMatrix(text), n=A.length, q=4, s=n+q*2; let d='';
+  A.forEach((row,r)=>row.forEach((v,c)=>{ if(v) d+=`M${c+q} ${r+q}h1v1h-1z`; }));
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${s} ${s}" width="${px||220}" height="${px||220}" shape-rendering="crispEdges" role="img" aria-label="QR code"><rect width="${s}" height="${s}" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
+}
+
 /* ---------- court tablets ---------- */
 let courtExit=false, courtSetup=false, postPending=false, lastCourtKey='', posting=false;
 const COURT_OK=new Set(['sc-topen','sc-tcancel','sc-tpick','sc-tuse','sc-tclear','sc-help','sc-pt','sc-undo','sc-dec','sc-serve','sc-swap','sc-pick','sc-reset','court-exit','court-exit-no','court-exit-ok']);
@@ -1995,18 +2123,20 @@ function applyIncoming(){
 }
 const VIEW_OK=new Set(['sc-help','go','wq-sort','ci-f','pl-f','h-f','h-r','h-v','pay-f','score','sc-close','sync-role','sync-ip','upd-check','upd-go','upd-app','export','copypay','copy']);
 if(IS_DISPLAY) document.body.classList.add('display');
-if(IS_APP){
-  if(ROLE==='main'){ try{ AndroidApp.startServer(); }catch(e){} shareState(); sharePhotos(); setInterval(applyIncoming,400); setInterval(syncHeader,3000); }
+if(IS_APP||IS_SERVED){
+  if(ROLE==='main'&&IS_APP){ try{ AndroidApp.startServer(); }catch(e){} shareState(); sharePhotos(); setInterval(applyIncoming,400); setInterval(syncHeader,3000); }
   if(ROLE==='display'||ROLE==='court'){ pollMain(); }
   if(IS_COURT){ document.body.classList.add('courtmode'); render(); }
-  syncHeader(); setTimeout(()=>checkUpdate(false),1200); setInterval(()=>checkUpdate(false),IS_COURT?3*60*1000:15*60*1000);
+  syncHeader();
+  // the Android app updates itself; a phone that scanned a QR code always gets the Main tablet's current page
+  if(IS_APP){ setTimeout(()=>checkUpdate(false),1200); setInterval(()=>checkUpdate(false),IS_COURT?3*60*1000:15*60*1000); }
 }
 
 /* a link ending in ?demo opens with sample entries on a device that has no players yet */
 try{ if(!IS_DISPLAY&&!IS_COURT&&/[?&]demo\b/.test(location.search)&&!S.players.length){ addSamples(); } }catch(e){}
 render();
 /* web / laptop / iPhone version: offline support + install. Not in the Android app (file://) or inside Claude. */
-if(!IS_APP&&'serviceWorker' in navigator&&/^https?:$/.test(location.protocol)&&!(window.claude&&window.claude.use)){
+if(!IS_APP&&!IS_SERVED&&'serviceWorker' in navigator&&/^https?:$/.test(location.protocol)&&!(window.claude&&window.claude.use)){
   window.addEventListener('load',()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
 }
 /* install prompt for the website: iPhone/iPad shows Share → Add to Home Screen steps; Android/laptop Chrome gets an Install button.
