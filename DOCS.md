@@ -263,7 +263,8 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 - Claude link: https://claude.ai/artifact/NCBtfjcXPbVzeZ8yNHivGj
 - Update source: https://github.com/archie24bagadiong-max/matchmaker-app (index.html, version.json)
 - Live website: https://archie24bagadiong-max.github.io/matchmaker-app/ (GitHub Pages from `main`, root). Works offline after the first visit and can be installed from the browser. Its data stays in that browser, separate from the tablets.
-- Android package com.badminton.matchmaker, min API 24, target API 34, debug-signed (same key each build).
+- Android package com.badminton.matchmaker, min API 24, target API 34. APK 1.7 and earlier were debug-signed elsewhere; APK 1.8 onward is built on the laptop with `android/build-apk.ps1` and signed with the key in `D:\Codes\matchmaker-keys` (not in the repo — back it up; every later APK needs the same key). An APK 1.8 cannot be installed over 1.7 (different key): existing tablets keep 1.7, which still gets every page update.
+- APK download: https://archie24bagadiong-max.github.io/matchmaker-app/MatchMaker.apk (also a button on qr.html).
 - One index.html runs every version; Excel via SheetJS 0.18.5 (bundled in APK).
 - Android shell: WebView loading the page saved in app storage; bridge `AndroidApp.saveUpdate(html)` and `AndroidApp.saveFile(base64, name)`.
 - Storage: tablet `localStorage` key `bmm_offline_v1`; Claude link online document `club/state`.
@@ -285,6 +286,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 | 7 Nov 2026 | Page v29 (1.29) | Set the serve before starting: tap the player who serves first, then the player who receives (0–0, first game); serving team can still be changed until the first point |
 | 7 Nov 2026 | Page v30 (1.30) | Payments: mark each player paid by 💵 Cash or 📱 STC Pay; Collected shows the split; Excel Payments sheet has a Method column and Daily Summary has Cash / STC Pay totals |
 | 7 Nov 2026 | Page v31 (2.0) | Export all activity: new Activity Log sheet (check-ins/outs, match start and finish with result, payments received/cancelled with amount and Cash / STC Pay, new sessions — all with date and time). Export button also in Settings |
+| 8 Nov 2026 | APK 1.8 | Rebuilt on the laptop (new signing key) with page v47 bundled; downloadable from the website and the QR page |
 | 8 Nov 2026 | Page v47 (2.16) | Level columns: guests have their own column at the end (all levels mixed, level badge shown, same rotation); members and family stay in the level columns |
 | 8 Nov 2026 | Page v46 (2.15) | Settings → Equal rounds (On by default): Auto match, Fill empty courts, auto-filled boxes and Replace with next in line take only the fewest-games players; the next round is used only when a court cannot be filled at its levels/mixing. Subscriber priority orders players within a round. Manual picks (Pick players, court boxes, substitute list) can still choose anyone |
 | 8 Nov 2026 | Page v45 (2.14) | Level columns rotate: not played on top; among the same games, whoever finished longest ago is higher; who just played goes to the bottom and moves up as others play |

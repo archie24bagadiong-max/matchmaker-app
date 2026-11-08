@@ -22,6 +22,10 @@
   .card h2 { margin: 0 0 6px; font-size: 18px; color: var(--green); }
   .card ol { margin: 0; padding-left: 20px; }
   .card li { margin: 3px 0; }
+  .apk { margin-top: 14px; text-align: left; }
+  .apk p { margin: 0 0 10px; }
+  .dl { display: inline-block; margin: 0 0 8px; padding: 11px 20px; border-radius: 999px; background: var(--green); color: #fff; font-weight: 700; text-decoration: none; }
+  @media print { .apk { display: none; } }
   .note { margin-top: 18px; font-size: 14px; color: var(--muted); }
   .print { margin-top: 20px; padding: 12px 22px; font: inherit; font-weight: 600; color: #fff; background: var(--green); border: 0; border-radius: 999px; cursor: pointer; }
   @media (max-width: 560px) { .steps { grid-template-columns: 1fr; } h1 { font-size: 23px; } }
@@ -64,6 +68,17 @@
         <li>Optional: in Chrome tap <b>⋮</b> → <b>Add to Home screen</b>.</li>
       </ol>
     </div>
+  </section>
+
+  <section class="card apk">
+    <h2>Club tablets (organizer, court and display tablets)</h2>
+    <p>The full tablet app (tablet sync, court scoring, Excel files) is an Android APK.</p>
+    <a class="dl" href="MatchMaker.apk" download>Download MatchMaker.apk</a>
+    <ol>
+      <li>Open the downloaded file → allow installing from this source → <b>Install</b>.</li>
+      <li>If Play Protect warns: <b>More details → Install anyway</b>.</li>
+      <li>It updates itself after that — no need to download it again.</li>
+    </ol>
   </section>
 
   <p class="note">Nothing to download from a file — it opens in your browser and updates by itself.</p>
