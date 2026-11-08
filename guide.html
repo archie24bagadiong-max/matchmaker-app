@@ -310,7 +310,7 @@
         <li><b>Court tablets</b> (one per court): Settings → Tablet sync → <b class="k">Court tablet</b> → address, court number, PIN → <b>Start court mode</b>.</li>
         <li><b>Display tablet</b>: Settings → Tablet sync → <b class="k">Display tablet</b> → address → <b>Connect</b>.</li>
       </ol>
-      <div class="tip">Only the Main tablet changes things. Court tablets only score; Display tablets only show. Phones without the app can still score by QR code — see <a href="#qrscore">Score with a phone</a>.</div>
+      <div class="tip">Only the Main tablet changes things. Court tablets only score; Display tablets only show. Any phone can also score just by scanning a court's QR code — see <a href="#qrscore">Score with a phone</a>.</div>
     </div>
     <a class="shot" href="guide/tab-sync.webp"><img src="guide/tab-sync.webp" alt="Settings, Tablet sync: Main tablet chosen, address 192.168.43.1, 4 displays connected" loading="lazy" width="1280" height="800"></a>
   </div>
@@ -318,14 +318,13 @@
 
 <section id="qrscore">
   <h2>📱 Score with a phone (QR code)</h2>
-  <p class="lead">Any phone, iPhone, iPad or laptop with a browser can score a court. Nothing to install on it. The Main tablet needs MatchMaker.apk 1.9 or later.</p>
+  <p class="lead">Any phone, iPhone, iPad or tablet with a camera can score a court — it just opens the Match Maker web page. Nothing to install, on the phone or anywhere else. The host can be the laptop, a tablet or a phone. Both the host and the phone need internet (club Wi-Fi or a hotspot with mobile data).</p>
   <div class="step">
     <div>
       <span class="n">1</span>
       <h3>Tap the court — its QR code is in the menu</h3>
       <ol>
-        <li>Main tablet: Settings → Tablet sync → <b class="k">Main tablet</b> (once).</li>
-        <li>Courts tab → tap a court. The menu shows <b>that court's own QR code</b>.</li>
+        <li>On the host (laptop, tablet or phone): Courts tab → <b>tap a court</b>. The menu shows <b>that court's own QR code</b>.</li>
         <li>Once a phone connects, the code is replaced by <b>📱 Phone connected</b> and a <b class="k">Disconnect</b> button.</li>
       </ol>
       <div class="tip">One phone per court. A second phone scanning the same code is refused: “connected to another device”.</div>
@@ -337,8 +336,8 @@
       <span class="n">+</span>
       <h3>All courts at once, and the Wi-Fi code</h3>
       <ul>
-        <li>Courts tab → <b class="k">📱 Score with a phone</b> shows every court's code plus a <b>Live display</b> code.</li>
-        <li>Type the hotspot name and password once — a <b>Join the hotspot</b> code appears so phones connect by scanning.</li>
+        <li>Courts tab → <b class="k">📱 Score with a phone</b> shows every court's code on one screen.</li>
+        <li>Type the club Wi-Fi / hotspot name and password once — a <b>Join the Wi-Fi</b> code appears so phones get online by scanning.</li>
       </ul>
     </div>
     <a class="shot" href="guide/tab-qr.webp"><img src="guide/tab-qr.webp" alt="Score with a phone: QR codes to join the hotspot and for Court 1, 2 and 3" loading="lazy" width="1280" height="900"></a>
@@ -348,13 +347,13 @@
       <span class="n">2</span>
       <h3>Scan and score</h3>
       <ol>
-        <li>Connect the phone to the hotspot (scan the <b>Join the hotspot</b> code, or join in Wi-Fi settings).</li>
-        <li>Scan the court's code with the <b>Camera</b> and open the link.</li>
+        <li>Make sure the phone has internet (Wi-Fi or mobile data).</li>
+        <li>Scan the court's code with the <b>Camera</b> and open the link — the Match Maker page opens in the browser.</li>
         <li>The phone shows that court only. When the organizer puts a match on it, the players appear — tap <b>Serves first</b> and score.</li>
         <li>Every point goes straight to the Main tablet. When the match ends, the organizer taps <b>Game done</b> and the next match appears on the phone.</li>
         <li>The phone can't leave or change players and team names — only the organizer can. <b>Only the organizer can disconnect it</b>; after that it needs to scan the court's new code.</li>
       </ol>
-      <div class="tip"><b>Network dropped?</b> The phone shows “Reconnecting…”, keeps scoring, and keeps retrying by itself. When it is back on the hotspot every point is sent automatically — no new scan needed. Keep the Match Maker app open on the Main tablet; some phones switch to mobile data when the Wi-Fi has no internet — keep Wi-Fi on.</div>
+      <div class="tip"><b>Network dropped?</b> The phone shows “Reconnecting…”, keeps scoring, and keeps retrying by itself. When it is back online every point is sent automatically — no new scan needed. Keep Match Maker open on the host while phones score.</div>
     </div>
     <a class="shot ph" href="guide/phone-score.webp"><img src="guide/phone-score.webp" alt="A phone scoring a court after scanning its QR code" loading="lazy" width="390" height="844"></a>
   </div>

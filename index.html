@@ -574,7 +574,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=50;
+const APP_VERSION=51;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -588,12 +588,18 @@ if(!CAN_SYNC) ROLE='off';
 const QS=(()=>{ try{ return new URLSearchParams(location.search); }catch(e){ return {get:()=>null}; } })();
 const IS_SERVED=!IS_APP&&location.protocol==='http:'&&location.port==='8787';
 if(IS_SERVED){ ROLE=QS.get('court')?'court':'display'; MAIN_IP=location.hostname; }
+/* Opened from a court QR code shown on any host (laptop, tablet, phone): the website joins that host over the internet
+   (WebRTC via PeerJS) and scores court N. Nothing is installed on the phone. */
+const JOIN_ID=(!IS_APP&&!IS_SERVED&&QS.get('join'))?String(QS.get('join')).replace(/[^\w-]/g,'').slice(0,40):'';
+const IS_JOIN=!!JOIN_ID&&!!QS.get('court');
+if(IS_JOIN) ROLE='court';
+const IS_REMOTE=IS_SERVED||IS_JOIN;   // a phone scoring by QR code (local or online)
 const IS_DISPLAY=ROLE==='display';
 const IS_COURT=ROLE==='court';
 let COURT_NO=0, COURT_PIN='';
 try{ COURT_NO=Math.max(0,(+localStorage.getItem('bmm_court')||1)-1); COURT_PIN=localStorage.getItem('bmm_pin')||''; }catch(e){}
-if(IS_SERVED){ COURT_NO=Math.min(7,Math.max(0,(parseInt(QS.get('court'),10)||1)-1)); COURT_PIN=''; }
-const LS_KEY=IS_SERVED?(IS_COURT?'bmm_qr_court_v1':'bmm_qr_display_v1'):IS_APP?(IS_DISPLAY?'bmm_display_v1':IS_COURT?'bmm_court_v1':'bmm_offline_v1'):'bmm_state_v1';
+if(IS_REMOTE){ COURT_NO=Math.min(7,Math.max(0,(parseInt(QS.get('court'),10)||1)-1)); COURT_PIN=''; }
+const LS_KEY=IS_JOIN?'bmm_join_v1':IS_SERVED?(IS_COURT?'bmm_qr_court_v1':'bmm_qr_display_v1'):IS_APP?(IS_DISPLAY?'bmm_display_v1':IS_COURT?'bmm_court_v1':'bmm_offline_v1'):'bmm_state_v1';
 const CLIENT=Math.random().toString(36).slice(2);
 
 function fresh(){
@@ -650,6 +656,7 @@ function persistNow(){
   let txt; try{ txt=JSON.stringify(S); }catch(e){ return; }
   try{localStorage.setItem(LS_KEY,txt);}catch(e){}
   if(ROLE==='main'&&CAN_SYNC){ try{ AndroidApp.setShared(txt); }catch(e){} }
+  if(typeof rtcBroadcast==='function') rtcBroadcast();   // phones scoring by QR get every change
 }
 function persistFlush(){ if(persistTimer) persistNow(); }
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') persistFlush(); });
@@ -895,7 +902,7 @@ function vCourts(){
   if(!present.length){
     h+=`<div class="card emptybox" style="margin-top:14px"><b>No one checked in yet</b>${S.players.length?'Mark today\'s attendees first.':'Add your players, then mark attendance.'}<div style="margin-top:12px"><button class="btn pri" data-act="go" data-tab="${S.players.length?'checkin':'players'}">${S.players.length?'Take attendance':'Add players'}</button></div></div>`;
   }
-  h+=`<h2>Courts <small>${S.mode==='doubles'?'Doubles':'Singles'}</small><span class="grow"></span>${CAN_SYNC&&!IS_DISPLAY?'<button class="btn sm" data-act="qr" data-k="all">📱 Score with a phone</button>':''}<button class="btn lime sm" data-act="fill-all">Fill empty courts</button></h2><div class="courts n${S.courts.length}">`;
+  h+=`<h2>Courts <small>${S.mode==='doubles'?'Doubles':'Singles'}</small><span class="grow"></span>${IS_HOST()?'<button class="btn sm" data-act="qr" data-k="all">📱 Score with a phone</button>':''}<button class="btn lime sm" data-act="fill-all">Fill empty courts</button></h2><div class="courts n${S.courts.length}">`;
   S.courts.forEach((c,i)=>{
     const lv=GROUPS.map(k=>`<button class="${c.lv.includes(k)?'on':''}" data-act="lv" data-c="${i}" data-k="${k}">${k}</button>`).join('');
     let pitch;
@@ -1151,7 +1158,7 @@ function renderScore(){
   const v=document.getElementById('scorev');
   if(IS_COURT){
     scoreOpen=COURT_NO;
-    if(IS_SERVED){
+    if(IS_REMOTE){
       // phone that scanned a court QR: only scores once the Main tablet has accepted it for this court
       const st=remoteState(), n=COURT_NO+1;
       const M={connecting:['📶','Connecting to the Main tablet…','Keep this phone on the club hotspot / Wi-Fi.'],
@@ -1254,45 +1261,36 @@ let menuCourt=null;
 const QR_OK=()=>ROLE==='main'&&CAN_SYNC&&typeof AndroidApp.pageServer==='function';
 /* court menu: this court's phone — its QR code to connect, or the connected phone with Disconnect (host only) */
 function remoteBlock(ci){
-  if(!CAN_SYNC||IS_DISPLAY||IS_COURT) return '';
-  if(!QR_OK()) return `<button class="btn" style="width:100%;margin-top:12px" data-act="qr" data-k="${ci}">📱 Score Court ${ci+1} with a phone (QR code)</button>`;
+  if(!IS_HOST()) return '';
+  rtcHost();
   const r=(S.remote||{})[ci];
   if(r) return `<div class="rblk on"><div class="rb-i">📱</div><div class="rb-t"><b>Phone connected to Court ${ci+1}</b><small>${seenText(ci)} · only this phone can score this court</small></div>
     <button class="btn sm warn" data-act="rdis" data-c="${ci}">${confirmKey==='rdis'+ci?'Tap again to disconnect':'Disconnect'}</button></div>`;
-  if(!qrHost()) return `<div class="rblk"><div class="rb-t"><b>📱 Phone scoring</b><small>No network — turn on the hotspot or Wi-Fi to show this court's QR code.</small></div></div>`;
-  return `<div class="rblk"><div class="rb-q">${qrSvg(courtUrl(ci),170)}</div><div class="rb-t"><b>📱 Score Court ${ci+1} with a phone</b>
-    <ol><li>Phone joins this tablet's hotspot / Wi-Fi</li><li>Scan this code with the camera</li><li>It scores Court ${ci+1} only; you put the players on</li></ol>
-    <small>One phone per court. Only you can disconnect it. <button class="linkbtn" data-act="qr" data-k="all">Join-Wi-Fi code &amp; all courts</button></small></div></div>`;
+  return `<div class="rblk"><div class="rb-q">${qrSvg(courtUrl(ci),180)}</div><div class="rb-t"><b>📱 Score Court ${ci+1} with a phone</b>
+    <ol><li>Scan this code with any phone or tablet camera</li><li>The Match Maker page opens — no app to install</li><li>It scores Court ${ci+1} only; you put the players on</li></ol>
+    <small>${rtcStatusText()}</small>
+    <small>One phone per court. Only you can disconnect it. Needs internet on this device and the phone.</small></div></div>`;
 }
 function qrHost(){ const ips=String(mainAddr()||'').split(/,\s*/).filter(Boolean); return ips.find(ip=>/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip))||ips[0]||''; }
 function qrWifi(){ try{ return JSON.parse(localStorage.getItem('mm_wifi')||'null'); }catch(e){ return null; } }
 const wifiEsc=s=>String(s).replace(/([\\;,:"])/g,'\\$1');
 function sheetQR(only){
-  if(!QR_OK()){
-    openSheet(`<h3>📱 Score with a phone</h3>
-    <div class="hint" style="margin:0 0 12px">Phones (Android or iPhone) can score a court by scanning a QR code — nothing to install.</div>
-    ${!CAN_SYNC?'<div class="card">This needs the Android app on the Main tablet. On a laptop or phone website it is not available.</div>'
-     :typeof AndroidApp.pageServer!=='function'?'<div class="card"><b>Install MatchMaker.apk 1.9 or later on this Main tablet</b> (from the QR page). Court tablets and phones don\'t need it.</div>'
-     :`<div class="card">Make this tablet the <b>Main tablet</b> first.<div style="margin-top:10px"><button class="btn pri" data-act="sync-role" data-k="main">Make this the Main tablet</button></div></div>`}
-    <div class="row" style="margin-top:14px"><span class="grow"></span><button class="btn" data-act="sheet-close">Close</button></div>`);
-    return;
-  }
-  const host=qrHost();
-  if(!host){ openSheet(`<h3>📱 Score with a phone</h3><div class="card">No network. Turn on the hotspot (or join Wi-Fi), then open this again.</div><div class="row" style="margin-top:14px"><span class="grow"></span><button class="btn" data-act="sheet-close">Close</button></div>`); return; }
-  const base='http://'+host+':8787/', w=qrWifi(), courts=only===null||only===undefined?S.courts.map((c,i)=>i):[only];
+  if(!IS_HOST()) return;
+  rtcHost();
+  const w=qrWifi(), courts=only===null||only===undefined?S.courts.map((c,i)=>i):[only];
   const card=(title,url,sub,big)=>`<div class="qrc"><b>${title}</b>${qrSvg(url,big?260:190)}<small>${esc(sub||url)}</small></div>`;
   const courtCard=i=>(S.remote||{})[i]
     ?`<div class="qrc"><b>${courts.length===1?'':'② '}Court ${i+1}</b><div class="rb-big">📱</div><div><b style="font-size:16px;font-family:inherit;text-transform:none">Phone connected</b></div><small>${seenText(i)}</small><button class="btn sm warn" data-act="rdis" data-c="${i}">${confirmKey==='rdis'+i?'Tap again to disconnect':'Disconnect'}</button></div>`
     :card((courts.length===1?'':'② ')+'Court '+(i+1),courtUrl(i),'Scan to score Court '+(i+1),courts.length===1);
-  const wifiBox=w&&w.s?`<div class="qrc qrw"><b>① Join the hotspot</b>${qrSvg('WIFI:T:'+(w.p?'WPA':'nopass')+';S:'+wifiEsc(w.s)+';'+(w.p?'P:'+wifiEsc(w.p)+';':'')+';',170)}<small>${esc(w.s)} · <button class="linkbtn" data-act="wifi-edit">change</button></small></div>`
-    :`<div class="qrc qrw"><b>① Join the hotspot</b><div class="hint" style="margin:4px 0 8px">Optional: save the hotspot name and password to show a "join Wi-Fi" QR code.</div>
+  const wifiBox=w&&w.s?`<div class="qrc qrw"><b>① Join the Wi-Fi</b>${qrSvg('WIFI:T:'+(w.p?'WPA':'nopass')+';S:'+wifiEsc(w.s)+';'+(w.p?'P:'+wifiEsc(w.p)+';':'')+';',170)}<small>${esc(w.s)} · <button class="linkbtn" data-act="wifi-edit">change</button></small></div>`
+    :`<div class="qrc qrw"><b>① Join the Wi-Fi</b><div class="hint" style="margin:4px 0 8px">Optional: save the club Wi-Fi / hotspot name and password to show a "join Wi-Fi" QR code.</div>
       <input type="text" id="qr-ssid" placeholder="Hotspot name" autocomplete="off" value="${esc(w&&w.s||'')}"><input type="text" id="qr-pass" placeholder="Password (blank if open)" autocomplete="off" style="margin-top:6px" value="${esc(w&&w.p||'')}">
       <button class="btn sm pri" data-act="wifi-save" style="margin-top:8px">Save</button></div>`;
   openSheet(`<h3>📱 Score with a phone${courts.length===1?' — Court '+(courts[0]+1):''}</h3>
-  <div class="hint" style="margin:0 0 10px">Android or iPhone, nothing to install: ① connect the phone to this tablet's hotspot / Wi-Fi, ② scan the court's code with the camera, ③ the scoreboard opens and the players appear when you put a match on that court. Every point comes straight back here.</div>
-  <div class="qrgrid">${courts.length===1?'':wifiBox}${courts.map(courtCard).join('')}${courts.length===1?'':card('Live display (view only)',base,'')}</div>
-  ${courts.length===1?`<div class="hint">Phone not on the hotspot yet? Open <b>Score with a phone</b> on the Courts tab for the join-Wi-Fi code.</div>`:''}
-  <div class="hint">One phone per court — another phone scanning the same code is refused. Only you can disconnect a phone (that also replaces the court's code). Keep this app open on the Main tablet while phones score.</div>
+  <div class="hint" style="margin:0 0 6px">Any phone or tablet, nothing to install: scan the court's code with the camera — the Match Maker page opens and scores that court. You put the players on; every point comes straight back here.</div>
+  <div class="hint" style="margin:0 0 10px"><b>${rtcStatusText()}</b> · needs internet on this device and the phones.</div>
+  <div class="qrgrid">${courts.length===1?'':wifiBox}${courts.map(courtCard).join('')}</div>
+  <div class="hint">One phone per court — another phone scanning the same code is refused. Only you can disconnect a phone (that also replaces the court's code). Keep Match Maker open on this device while phones score.</div>
   <div class="row" style="margin-top:14px"><span class="grow"></span><button class="btn" data-act="sheet-close">Close</button></div>`);
   sheetView={k:'qr',only};
 }
@@ -1334,9 +1332,9 @@ function vHelp(){
     <li><b>Court tablets</b> (one per court): Settings → Tablet sync → <b>Court tablet</b> → address, court number, PIN → <b>Start court mode</b>.</li>
     <li><b>Display tablet</b>: Settings → Tablet sync → <b>Display tablet</b> → address → <b>Connect</b>.</li>
     <li>Only one tablet? Leave Tablet sync <b>Off</b> and do everything on it.</li>
-    <li><b>Score with a phone (no app needed — Android, iPhone or laptop):</b> on the Main tablet tap a court — its menu shows the court's QR code. The phone joins the hotspot and scans it; it then scores that court only, with the players you put on. One phone per court; another phone is refused.</li>
+    <li><b>Score with a phone (nothing to install):</b> on the host — laptop, tablet or phone — tap a court; its menu shows the court's QR code. Any phone scans it and the Match Maker web page opens, scoring that court only with the players you put on. One phone per court; another phone is refused. Host and phone need internet.</li>
     <li><b>Only you disconnect a phone:</b> court menu → <b>Disconnect</b> (tap twice). The court gets a new QR code, so that phone can only come back by scanning again. If a phone just loses the network it keeps retrying by itself and sends its points when it reconnects — no new scan needed.</li>
-    <li>Needs MatchMaker.apk 1.9 on the Main tablet.</li></ol>
+</ol>
     <p class="hint">Only the Main tablet makes changes. Court tablets only score; Display tablets only show.</p>`)}
   ${sec('session','3. Running a session',`<ol>
     <li><b>Attendance:</b> tick everyone who arrives (Check in all, or by level).</li>
@@ -1703,7 +1701,7 @@ document.addEventListener('click',e=>{
   const a=el.dataset.act, id=el.dataset.id, ci=el.dataset.c!==undefined?+el.dataset.c:null, k=el.dataset.k;
   if(IS_COURT&&!COURT_OK.has(a)) return;
   // QR phones only score: no team names, no leaving court mode (only the host disconnects), nothing until accepted
-  if(IS_SERVED&&(remoteState()!=='ok'||/^sc-t|^court-exit/.test(a))) return;
+  if(IS_REMOTE&&(remoteState()!=='ok'||/^sc-t|^court-exit/.test(a))) return;
   if(IS_DISPLAY&&a==='court-menu') return;
   if(IS_DISPLAY&&!VIEW_OK.has(a)){ toast('Display tablet — make changes on the Main tablet'); return; }
   if(!['del','reset','wipe','h-del','h-clear','sc-reset','ph-del','team-del','demo-clear','rdis'].includes(a)) confirmKey=null;
@@ -2151,12 +2149,12 @@ function courtKey(){ const c=S.courts[COURT_NO]; return JSON.stringify([c&&c.p,c
    Each court's QR holds a secret key known only to the Main tablet. The first phone that connects with it is locked to
    that court; other phones are refused. Only the host can disconnect it, which also replaces the court's key/QR. */
 let DEV='', QR_K='';
-if(IS_SERVED){
+if(IS_REMOTE){
   try{ DEV=localStorage.getItem('mm_dev')||''; if(!DEV){ DEV=Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4); localStorage.setItem('mm_dev',DEV); } }catch(e){ DEV=Math.random().toString(36).slice(2,14); }
   QR_K=QS.get('k')||'';
 }
 function remoteState(){
-  if(!IS_SERVED) return 'ok';
+  if(!IS_REMOTE) return 'ok';
   if(!syncOk) return 'connecting';
   const r=(S.remote||{})[COURT_NO];
   if(r&&r.dev===DEV) return 'ok';
@@ -2166,23 +2164,100 @@ function remoteState(){
 }
 /* phone lost the network: keep scoring, show it, and send everything when the Main tablet answers again (same QR key) */
 function netBar(){
-  if(!IS_SERVED||!IS_COURT) return;
+  if(!IS_REMOTE||!IS_COURT) return;
   let b=document.getElementById('netbar');
   const off=remoteState()==='ok'&&Date.now()-syncOk>5000;
   if(!off){ if(b) b.remove(); return; }
   if(!b){ b=document.createElement('div'); b.id='netbar'; document.body.appendChild(b); }
-  b.textContent='📶 Reconnecting to the Main tablet… your points are saved and will be sent automatically';
+  b.textContent='📶 Reconnecting to the host… your points are saved and will be sent automatically';
 }
 function qrPing(){
-  if(!IS_SERVED||!IS_COURT||!MAIN_IP) return;
-  fetch('http://'+MAIN_IP+':8787/score',{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({t:'ping',c:COURT_NO,dev:DEV,k:QR_K})}).catch(()=>{});
+  if(!IS_REMOTE||!IS_COURT) return;
+  const m={t:'ping',c:COURT_NO,dev:DEV,k:QR_K};
+  if(IS_JOIN){ rtcSend(m); return; }
+  if(!MAIN_IP) return;
+  fetch('http://'+MAIN_IP+':8787/score',{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(m)}).catch(()=>{});
 }
+/* ---------- online link host ↔ phones (WebRTC data channel, PeerJS public broker for the first handshake) ---------- */
+const PEER_URLS=['https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js','https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'];
+let peerLib=null;
+function loadPeer(){
+  if(window.Peer) return Promise.resolve();
+  if(peerLib) return peerLib;
+  peerLib=new Promise((res,rej)=>{ let i=0; const next=()=>{ if(i>=PEER_URLS.length){ peerLib=null; rej(new Error('peerjs')); return; }
+    const s=document.createElement('script'); s.src=PEER_URLS[i++]; s.onload=()=>window.Peer?res():next(); s.onerror=()=>{ s.remove(); next(); }; document.head.appendChild(s); }; next(); });
+  return peerLib;
+}
+const RTC_IN=[];                       // messages from phones, handled by applyIncoming like the tablet server's
+let rtcPeer=null, rtcState='off'; const rtcConns=new Set();
+function hostId(){ let id=''; try{ id=localStorage.getItem('mm_host_id')||''; }catch(e){} if(!/^mm-[a-z0-9]{8,}$/.test(id)){ id='mm-'+Math.random().toString(36).slice(2,8)+Math.random().toString(36).slice(2,8); try{ localStorage.setItem('mm_host_id',id); }catch(e){} } return id; }
+const IS_HOST=()=>!IS_COURT&&!IS_DISPLAY&&!IS_REMOTE&&!(window.claude&&window.claude.use);
+function rtcSlim(){ return JSON.stringify(Object.assign({},S,{hist:[],ledger:[],log:[]})); }
+function rtcBroadcast(){ if(!rtcConns.size) return; const t=rtcSlim(); rtcConns.forEach(c=>{ try{ if(c.open) c.send(t); }catch(e){} }); }
+async function rtcHost(){
+  if(rtcPeer||!IS_HOST()) return;
+  rtcState='starting';
+  try{ await loadPeer(); }catch(e){ rtcState='offline'; refreshSheet(); setTimeout(rtcHost,10000); return; }
+  if(rtcPeer) return;
+  const p=new Peer(hostId(),{debug:0}); rtcPeer=p;
+  const retry=()=>{ if(rtcPeer!==p) return; rtcState='offline'; try{ p.destroy(); }catch(e){} rtcPeer=null; refreshSheet(); setTimeout(rtcHost,4000); };
+  p.on('open',()=>{ rtcState='online'; refreshSheet(); });
+  p.on('connection',conn=>{
+    conn.on('open',()=>{ rtcConns.add(conn); try{ conn.send(rtcSlim()); }catch(e){} });
+    conn.on('data',d=>{ if(typeof d==='string'&&d.length<200000) RTC_IN.push(d); });
+    const drop=()=>rtcConns.delete(conn); conn.on('close',drop); conn.on('error',drop);
+  });
+  p.on('disconnected',()=>{ rtcState='reconnecting'; setTimeout(()=>{ if(rtcPeer===p&&!p.destroyed){ try{ p.reconnect(); }catch(e){ retry(); } } },2000); });
+  p.on('error',e=>{ const t=e&&e.type; if(['unavailable-id','network','server-error','socket-error','socket-closed','browser-incompatible'].includes(t)) retry(); });
+}
+function rtcStatusText(){ return {online:'🟢 Online — phones can connect',starting:'⏳ Going online…',reconnecting:'⏳ Reconnecting to the internet…',offline:'🔴 No internet — phones can\'t connect until this device is online'}[rtcState]||'⏳ Going online…'; }
+// phone side
+let rtcConn=null, rtcPeerJ=null, rtcRetry=null, rtcWatch=null;
+function rtcSend(o){ if(rtcConn&&rtcConn.open){ try{ rtcConn.send(JSON.stringify(o)); return true; }catch(e){} } return false; }
+function rtcLater(ms){ clearTimeout(rtcRetry); rtcRetry=setTimeout(rtcJoin,ms); }
+async function rtcJoin(){
+  clearTimeout(rtcRetry);
+  try{ await loadPeer(); }catch(e){ rtcLater(4000); return; }
+  if(!rtcPeerJ||rtcPeerJ.destroyed){
+    rtcPeerJ=new Peer({debug:0});
+    rtcPeerJ.on('error',()=>{ if(!rtcConn||!rtcConn.open) rtcLater(3000); });
+    rtcPeerJ.on('disconnected',()=>{ setTimeout(()=>{ try{ if(!rtcPeerJ.destroyed) rtcPeerJ.reconnect(); }catch(e){} },1500); });
+  }
+  const go=()=>{
+    if(rtcConn){ try{ rtcConn.close(); }catch(e){} }
+    const c=rtcPeerJ.connect(JOIN_ID,{reliable:true}); rtcConn=c;
+    clearTimeout(rtcWatch); rtcWatch=setTimeout(()=>{ if(rtcConn===c&&!c.open){ try{ c.close(); }catch(e){} rtcConn=null; rtcLater(500); } },9000);
+    c.on('open',()=>{ qrPing(); postScore(); });
+    c.on('data',d=>{ if(typeof d==='string') rtcGotState(d); });
+    const lost=()=>{ if(rtcConn===c){ rtcConn=null; rtcLater(2000); } };
+    c.on('close',lost); c.on('error',lost);
+  };
+  if(rtcPeerJ.open) go(); else { rtcPeerJ.once('open',go); }
+}
+function rtcGotState(txt){
+  syncOk=Date.now(); syncFails=0;
+  let d; try{ d=JSON.parse(txt); }catch(e){ return; }
+  if(!d||!Array.isArray(d.players)) return;
+  const mine=S.courts[COURT_NO]||null; S=normalize(d); mergeMine(mine);
+  try{ localStorage.setItem(LS_KEY,JSON.stringify(S)); }catch(e){}
+  if(postPending) postScore();
+  const key=courtKey(); if(key!==lastCourtKey){ lastCourtKey=key; render(); }
+  syncHeader();
+}
+// a link that has gone quiet (host closed, network changed) is dropped and rebuilt
+// and a phone with no link at all (however it was lost) always tries again — same QR key, no new scan
+setInterval(()=>{
+  if(!IS_JOIN) return;
+  if(rtcConn&&rtcConn.open&&Date.now()-syncOk>15000){ try{ rtcConn.close(); }catch(e){} rtcConn=null; rtcLater(500); return; }
+  if(!rtcConn) rtcLater(200);
+},5000);
 // Main tablet side: per-court secret keys (kept only on this tablet, never shared) and when each phone was last heard
 let QRK={}; try{ QRK=JSON.parse(localStorage.getItem('mm_qr_keys')||'{}')||{}; }catch(e){ QRK={}; }
 const RSEEN={};
 function qrKey(c){ if(!QRK[c]){ QRK[c]=Math.random().toString(36).slice(2,8)+Math.random().toString(36).slice(2,8); try{ localStorage.setItem('mm_qr_keys',JSON.stringify(QRK)); }catch(e){} } return QRK[c]; }
 function qrRotate(c){ delete QRK[c]; qrKey(c); }
-function courtUrl(i){ return 'http://'+qrHost()+':8787/?court='+(i+1)+'&k='+qrKey(i); }
+const SITE_URL='https://archie24bagadiong-max.github.io/matchmaker-app/';
+function courtUrl(i){ return SITE_URL+'?join='+hostId()+'&court='+(i+1)+'&k='+qrKey(i); }
 function seenText(i){ const t=RSEEN[i]; if(!t) return 'waiting for it to check in'; const s=Math.round((Date.now()-t)/1000); return s<12?'active now':'last seen '+(s<90?s+' s':Math.round(s/60)+' min')+' ago'; }
 function mergeMine(mine){
   const c=S.courts[COURT_NO];
@@ -2190,20 +2265,24 @@ function mergeMine(mine){
   if(!c.sc||(mine.sc.seq||0)>(c.sc.seq||0)){ c.sc=mine.sc; postPending=true; }
 }
 async function postScore(){
-  const c=S.courts[COURT_NO]; if(!c||!c.sc||!MAIN_IP) return;
-  if(IS_SERVED&&remoteState()!=='ok') return;
+  const c=S.courts[COURT_NO]; if(!c||!c.sc||(!MAIN_IP&&!IS_JOIN)) return;
+  if(IS_REMOTE&&remoteState()!=='ok') return;
   if(posting){ postPending=true; return; }
+  const body=IS_REMOTE?{c:COURT_NO,p:c.p,sc:c.sc,dev:DEV,k:QR_K}:{c:COURT_NO,p:c.p,sc:c.sc};
+  if(IS_JOIN){ postPending=!rtcSend(body); if(postPending) setTimeout(postScore,1000); return; }   // kept and resent until the host has it
   posting=true; postPending=false;
-  const body=IS_SERVED?{c:COURT_NO,p:c.p,sc:c.sc,dev:DEV,k:QR_K}:{c:COURT_NO,p:c.p,sc:c.sc};
   try{ const r=await fetch('http://'+MAIN_IP+':8787/score',{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)}); if(!r.ok) postPending=true; }
   catch(e){ postPending=true; }
   posting=false;
   if(postPending) setTimeout(postScore,1000);
 }
 function applyIncoming(){
-  if(ROLE!=='main'||typeof AndroidApp.takeIncoming!=='function') return;
-  let changed=false, remoteChanged=false, msg;
-  for(let n=0;n<50&&(msg=AndroidApp.takeIncoming());n++){
+  const msgs=[];
+  if(ROLE==='main'&&IS_APP&&typeof AndroidApp.takeIncoming==='function'){ let m; for(let n=0;n<50&&(m=AndroidApp.takeIncoming());n++) msgs.push(m); }
+  while(RTC_IN.length&&msgs.length<200) msgs.push(RTC_IN.shift());
+  if(!msgs.length) return;
+  let changed=false, remoteChanged=false;
+  for(const msg of msgs){
     try{
       const x=JSON.parse(msg), ct=S.courts[x.c];
       if(!ct) continue;
@@ -2227,14 +2306,20 @@ function applyIncoming(){
 const VIEW_OK=new Set(['sc-help','go','wq-sort','ci-f','pl-f','h-f','h-r','h-v','pay-f','score','sc-close','sync-role','sync-ip','upd-check','upd-go','upd-app','export','copypay','copy']);
 if(IS_DISPLAY) document.body.classList.add('display');
 if(IS_APP||IS_SERVED){
-  if(ROLE==='main'&&IS_APP){ try{ AndroidApp.startServer(); }catch(e){} shareState(); sharePhotos(); setInterval(applyIncoming,400); setInterval(syncHeader,3000); }
+  if(ROLE==='main'&&IS_APP){ try{ AndroidApp.startServer(); }catch(e){} shareState(); sharePhotos(); setInterval(syncHeader,3000); }
   if(ROLE==='display'||ROLE==='court'){ pollMain(); }
   if(IS_COURT){ document.body.classList.add('courtmode'); render(); }
   if(IS_SERVED){ document.body.classList.add('served'); if(IS_COURT){ qrPing(); setInterval(qrPing,4000); setInterval(netBar,1000); } }
-  if(ROLE==='main'&&IS_APP) setInterval(()=>{ document.querySelectorAll('[data-rs]').forEach(el=>el.classList.toggle('live',Date.now()-(RSEEN[+el.dataset.rs]||0)<12000)); },3000);
   syncHeader();
   // the Android app updates itself; a phone that scanned a QR code always gets the Main tablet's current page
   if(IS_APP){ setTimeout(()=>checkUpdate(false),1200); setInterval(()=>checkUpdate(false),IS_COURT?3*60*1000:15*60*1000); }
+}
+/* phone scoring by QR (any host: laptop website, tablet app, phone) */
+if(IS_JOIN){ document.body.classList.add('courtmode','served'); render(); rtcJoin(); setInterval(qrPing,4000); setInterval(netBar,1000); setInterval(syncHeader,3000); }
+if(IS_HOST()){
+  setInterval(applyIncoming,400);
+  setInterval(()=>{ rtcBroadcast(); document.querySelectorAll('[data-rs]').forEach(el=>el.classList.toggle('live',Date.now()-(RSEEN[+el.dataset.rs]||0)<12000)); },4000);
+  if(Object.keys(S.remote||{}).length) rtcHost();     // phones that were scoring reconnect after the host reloads
 }
 
 /* a link ending in ?demo opens with sample entries on a device that has no players yet */

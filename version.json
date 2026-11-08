@@ -1,1 +1,1 @@
-{"version": 50, "notes": "Phone scoring: each court's QR code in its menu, one phone per court, only the host disconnects, phones reconnect by themselves and send missed points"}
+{"version": 51, "notes": "Phone scoring from any host (laptop, tablet, phone): tap a court for its QR code; phones open the web page, nothing to install"}
