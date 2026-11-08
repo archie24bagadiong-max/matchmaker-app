@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Match Maker Guide</title>
+<meta name="description" content="How to install and use Match Maker on PC, Android tablets, Android phones and iPhone.">
+<meta name="theme-color" content="#0f3d2e">
+<link rel="icon" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+  :root { --green:#0f3d2e; --green2:#145a42; --lime:#c8f169; --ink:#15211b; --muted:#5d6b63; --card:#ffffff; --bg:#f3f6f2; --border:#dfe6e0; }
+  * { box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; scroll-behavior:smooth; scroll-padding-top:64px; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  header { background:var(--green); color:#fff; padding:calc(env(safe-area-inset-top) + 22px) 16px 22px; }
+  .wrap { max-width:980px; margin:0 auto; padding-left:max(16px,env(safe-area-inset-left)); padding-right:max(16px,env(safe-area-inset-right)); }
+  header .wrap { padding:0; display:flex; gap:14px; align-items:center; }
+  header img { width:52px; height:52px; border-radius:12px; flex:none; }
+  h1 { margin:0; font-size:26px; line-height:1.15; }
+  h1 span { color:var(--lime); }
+  header p { margin:4px 0 0; opacity:.85; }
+  nav.toc { position:sticky; top:0; z-index:5; background:#fff; border-bottom:1px solid var(--border); }
+  nav.toc .wrap { display:flex; gap:6px; overflow-x:auto; padding-top:8px; padding-bottom:8px; scrollbar-width:none; }
+  nav.toc a { flex:none; text-decoration:none; color:var(--ink); font-weight:600; font-size:14px; padding:7px 12px; border:1px solid var(--border); border-radius:999px; background:#fff; }
+  nav.toc a:hover { border-color:var(--green2); }
+  main { padding:8px 0 48px; }
+  h2 { font-size:24px; margin:36px 0 6px; color:var(--green); }
+  h3 { font-size:19px; margin:0 0 6px; }
+  .lead { color:var(--muted); margin:0 0 14px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; }
+  .dev .ic { font-size:28px; line-height:1; }
+  .dev h3 { margin-top:8px; }
+  .dev p { margin:4px 0 0; color:var(--muted); font-size:15px; }
+  .dev a { color:var(--green2); font-weight:700; }
+  .step { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.35fr); gap:20px; align-items:start; background:#fff; border:1px solid var(--border); border-radius:18px; padding:18px; margin-top:14px; }
+  .step.phone { grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); }
+  .step .n { display:inline-flex; width:30px; height:30px; border-radius:50%; background:var(--lime); color:var(--green); font-weight:800; align-items:center; justify-content:center; margin-bottom:6px; }
+  .step ol, .step ul { margin:6px 0 0; padding-left:20px; }
+  .step li { margin:4px 0; }
+  .shot { display:block; }
+  .shot img { display:block; width:100%; height:auto; border-radius:12px; border:1px solid var(--border); box-shadow:0 6px 22px rgba(15,61,46,.12); background:#fff; }
+  .shot.ph img { max-width:300px; margin:0 auto; border-radius:26px; border:6px solid #1b1f1d; }
+  .cap { font-size:13px; color:var(--muted); text-align:center; margin-top:6px; }
+  .pair { display:grid; grid-template-columns:minmax(0,2.2fr) minmax(0,1fr); gap:14px; align-items:end; }
+  b.k { background:#eef3ef; border:1px solid var(--border); border-radius:6px; padding:0 6px; font-weight:700; white-space:nowrap; }
+  .tip { background:#f7fbe9; border:1px solid #dbe9b4; border-radius:12px; padding:10px 14px; margin-top:10px; font-size:15px; }
+  .warn { background:#fff5f4; border-color:#f0c9c6; }
+  .btn { display:inline-block; margin-top:10px; padding:10px 18px; border-radius:999px; background:var(--green); color:#fff; font-weight:700; text-decoration:none; }
+  table { width:100%; border-collapse:collapse; font-size:15px; }
+  td, th { text-align:left; padding:8px 6px; border-bottom:1px solid var(--border); vertical-align:top; }
+  th { color:var(--muted); font-size:13px; font-weight:600; }
+  footer { text-align:center; color:var(--muted); font-size:14px; padding:24px 16px 40px; }
+  @media (max-width:720px) {
+    .step, .step.phone, .pair { grid-template-columns:1fr; }
+    h1 { font-size:22px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <img src="icons/icon-192.png" alt="">
+    <div>
+      <h1>Match<span>Maker</span> — How to use</h1>
+      <p>JAMREIBIZ Badminton Club · PC, Android and iPhone</p>
+    </div>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+  <a href="#devices">Which version?</a>
+  <a href="#pc">PC / laptop</a>
+  <a href="#android">Android tablet</a>
+  <a href="#phone">Android phone</a>
+  <a href="#iphone">iPhone</a>
+  <a href="#session">Running a session</a>
+  <a href="#tablets">Several tablets</a>
+  <a href="#updates">Updates &amp; data</a>
+</div></nav>
+
+<main class="wrap">
+
+<section id="devices">
+  <h2>Which version should I use?</h2>
+  <p class="lead">It is the same app everywhere. Pick the way that suits the device.</p>
+  <div class="grid">
+    <div class="card dev"><div class="ic">💻</div><h3>PC / laptop</h3><p>Open the website in Chrome or Edge and install it. Good for preparing players and reports.</p><a href="#pc">Steps →</a></div>
+    <div class="card dev"><div class="ic">📟</div><h3>Club tablets</h3><p>Install the Android app (APK). Needed for tablet sync, court tablets and the display screen.</p><a href="#android">Steps →</a></div>
+    <div class="card dev"><div class="ic">📱</div><h3>Android phone</h3><p>Scan the QR code and tap Install. No file to download.</p><a href="#phone">Steps →</a></div>
+    <div class="card dev"><div class="ic">📲</div><h3>iPhone / iPad</h3><p>Scan the QR code in Safari and Add to Home Screen.</p><a href="#iphone">Steps →</a></div>
+  </div>
+  <div class="tip">Website: <b>archie24bagadiong-max.github.io/matchmaker-app</b> · QR code and APK download: <a href="qr.html">qr.html</a></div>
+</section>
+
+<section id="pc">
+  <h2>💻 PC / laptop</h2>
+  <div class="step">
+    <div>
+      <span class="n">1</span>
+      <h3>Open and install</h3>
+      <ol>
+        <li>Open <b>archie24bagadiong-max.github.io/matchmaker-app</b> in <b>Chrome</b> or <b>Edge</b>.</li>
+        <li>Click the <b>Install</b> icon at the right end of the address bar (a screen with a ⊕ / arrow), or tap <b class="k">Install</b> on the green bar at the bottom of the app.</li>
+        <li>Match Maker now opens from the Start menu / desktop like a normal program, also without internet.</li>
+      </ol>
+      <div class="tip">On a big screen the courts sit side by side and the waiting queue shows a column per level.</div>
+    </div>
+    <a class="shot" href="guide/pc-courts.webp"><img src="guide/pc-courts.webp" alt="Match Maker on a laptop: three courts side by side and the waiting queue in level columns" loading="lazy" width="1440" height="900"></a>
+  </div>
+</section>
+
+<section id="android">
+  <h2>📟 Android tablet (APK)</h2>
+  <div class="step">
+    <div>
+      <span class="n">1</span>
+      <h3>Install the tablet app</h3>
+      <ol>
+        <li>On the tablet open <a href="qr.html">qr.html</a> and tap <b class="k">Download MatchMaker.apk</b>.</li>
+        <li>Open the downloaded file → allow installing from this source → <b class="k">Install</b>.</li>
+        <li>Play Protect warning? <b>More details → Install anyway</b>.</li>
+        <li>Open <b>Match Maker</b>. It updates itself from then on.</li>
+      </ol>
+      <div class="tip warn">Tablets that already have the app: don't install the new APK over it — it already gets every update.</div>
+    </div>
+    <a class="shot" href="guide/tab-courts.webp"><img src="guide/tab-courts.webp" alt="Match Maker on a tablet in landscape: courts with players, Keep score and Game done buttons" loading="lazy" width="1280" height="800"></a>
+  </div>
+  <p class="lead" style="margin-top:12px">Using several tablets at the court (Main, court scoring, display)? See <a href="#tablets">Several tablets</a>.</p>
+</section>
+
+<section id="phone">
+  <h2>📱 Android phone</h2>
+  <div class="step phone">
+    <div>
+      <span class="n">1</span>
+      <h3>Scan and install</h3>
+      <ol>
+        <li>Open the <b>Camera</b> (or Google Lens) and point it at the QR code.</li>
+        <li>Tap the link — the app opens in Chrome.</li>
+        <li>Tap <b class="k">Install</b> on the green bar at the bottom (or Chrome <b>⋮ → Add to Home screen</b>).</li>
+        <li>Open it from the new <b>Match Maker</b> icon.</li>
+      </ol>
+      <div class="tip">On a phone the waiting-queue columns scroll sideways — swipe left and right.</div>
+    </div>
+    <a class="shot ph" href="guide/phone-courts.webp"><img src="guide/phone-courts.webp" alt="Match Maker on a phone: stats and court 1 with players" loading="lazy" width="390" height="844"></a>
+  </div>
+</section>
+
+<section id="iphone">
+  <h2>📲 iPhone / iPad</h2>
+  <div class="step phone">
+    <div>
+      <span class="n">1</span>
+      <h3>Scan and Add to Home Screen</h3>
+      <ol>
+        <li>Open the <b>Camera</b> and point it at the QR code. Tap the yellow link — it opens in <b>Safari</b>.</li>
+        <li>After a moment a green bar shows <b>“Install Match Maker on your iPhone”</b>.</li>
+        <li>Tap <b>Share</b> <svg width="15" height="17" viewBox="0 0 16 18" style="vertical-align:-3px" aria-label="Share icon"><path d="M8 1v11M4 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 8H2v9h12V8h-1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> at the bottom of Safari.</li>
+        <li>Scroll down and tap <b class="k">Add to Home Screen</b> → <b class="k">Add</b>.</li>
+        <li>Open <b>Match Maker</b> from the home screen: full screen, works offline.</li>
+      </ol>
+      <div class="tip">Opened the link inside WhatsApp or Instagram? Tap “Open in Safari” first — only Safari can add it to the home screen. Apple does not allow APK-style installer files.</div>
+    </div>
+    <a class="shot ph" href="guide/iphone-install.webp"><img src="guide/iphone-install.webp" alt="Match Maker in Safari on iPhone with the install banner: Tap Share then Add to Home Screen" loading="lazy" width="390" height="844"></a>
+  </div>
+</section>
+
+<section id="session">
+  <h2>🏸 Running a session</h2>
+  <p class="lead">The same on every device. Screens below are from a tablet; phones show the same things stacked.</p>
+
+  <div class="step">
+    <div>
+      <span class="n">1</span>
+      <h3>Attendance</h3>
+      <ul>
+        <li>Tab <b>Attendance</b>: tick everyone who arrives.</li>
+        <li><b>Check in all</b>, or by level / team. Search by name.</li>
+        <li>First time? Add players on <b>Players</b> (one by one, a list, or an Excel file).</li>
+      </ul>
+    </div>
+    <a class="shot" href="guide/tab-attend.webp"><img src="guide/tab-attend.webp" alt="Attendance tab with tick list of players" loading="lazy" width="1280" height="800"></a>
+  </div>
+
+  <div class="step">
+    <div>
+      <span class="n">2</span>
+      <h3>Put players on the courts</h3>
+      <ul>
+        <li><b class="k">Auto match</b> fills one court with fair, balanced teams.</li>
+        <li><b class="k">Fill empty courts</b> does all courts at once.</li>
+        <li><b class="k">Pick players</b> lets you choose 4 yourself.</li>
+        <li><b>Equal rounds</b>: automatic picks take the players with the fewest games first — someone on 3 games waits until everyone has 3. You can still put anyone on by hand.</li>
+      </ul>
+    </div>
+    <a class="shot" href="guide/tab-courts.webp"><img src="guide/tab-courts.webp" alt="Courts tab: two courts playing, one empty with Auto match and Pick players" loading="lazy" width="1280" height="800"></a>
+  </div>
+
+  <div class="step">
+    <div>
+      <span class="n">3</span>
+      <h3>Fill a box by hand</h3>
+      <ul>
+        <li>On an empty court tap <b>+ Assign player</b>.</li>
+        <li>Sort the list with <b class="k">Played</b> (not played first, then 1, 2, 3…), <b class="k">Level</b> or <b class="k">Guest</b>, or search by name.</li>
+        <li>The game starts when every box is filled.</li>
+      </ul>
+    </div>
+    <a class="shot" href="guide/tab-pick.webp"><img src="guide/tab-pick.webp" alt="Pop-up list to fill a court box, with Played, Level and Guest sort buttons" loading="lazy" width="1280" height="800"></a>
+  </div>
+
+  <div class="step">
+    <div>
+      <span class="n">4</span>
+      <h3>Waiting queue</h3>
+      <ul>
+        <li><b>Level columns</b>: a column per level A+ … D-, and guests in their own column.</li>
+        <li>Each column rotates: not played on top, whoever just played goes to the bottom and moves up as others play.</li>
+        <li>Other views under <b>Arrange</b>: Played · Level, Level, Next up (the order Auto match uses).</li>
+        <li>Tap a name to rest someone, send them home, or add them to a court.</li>
+      </ul>
+    </div>
+    <a class="shot" href="guide/tab-queue.webp"><img src="guide/tab-queue.webp" alt="Waiting queue in level columns with a separate guests column" loading="lazy" width="1280" height="800"></a>
+  </div>
+
+  <div class="step">
+    <div>
+      <span class="n">5</span>
+      <h3>Court menu</h3>
+      <ul>
+        <li>Tap a court's name (or ⋯) for its menu: <b>Game done</b>, <b>Keep score</b>, <b>Reshuffle</b>, <b>Clear court</b>, and the levels allowed on it.</li>
+        <li>Tap a player to swap them, rest them (<b>Can't play</b>) or pick a substitute.</li>
+      </ul>
+    </div>
+    <a class="shot" href="guide/tab-courtmenu.webp"><img src="guide/tab-courtmenu.webp" alt="Court 1 menu with Game done, Keep score, Reshuffle, Clear court and levels" loading="lazy" width="1280" height="800"></a>
+  </div>
+
+  <div class="step">
+    <div>
+      <span class="n">6</span>
+      <h3>Keep score</h3>
+      <ol>
+        <li>Tap <b class="k">Keep score</b>. After the toss tap <b>Serves first</b>; <b>⇄ Swap</b> so names match where players stand (only at 0–0).</li>
+        <li>Tap the big number of the team that wins each rally.</li>
+        <li>The top line says who serves, from which side, and who receives (orange).</li>
+        <li><b>↶ Undo</b> fixes a wrong tap. Sides swap by themselves at change of ends.</li>
+      </ol>
+    </div>
+    <div class="pair">
+      <a class="shot" href="guide/tab-score.webp"><img src="guide/tab-score.webp" alt="Scoreboard on a tablet: 14 to 9, server and receiver shown on the court" loading="lazy" width="1280" height="800"></a>
+      <a class="shot ph" href="guide/phone-score.webp"><img src="guide/phone-score.webp" alt="Scoreboard on a phone: game 2, games won 0 to 1" loading="lazy" width="390" height="844"></a>
+    </div>
+  </div>
+
+  <div class="step">
+    <div>
+      <span class="n">7</span>
+      <h3>Game done</h3>
+      <ul>
+        <li>When the match is over, <b>Game done</b> blinks red with a “ting ting”.</li>
+        <li>Tap it: the winner is taken from the score and saved in <b>History</b>; the court empties.</li>
+        <li>Put the next players on and repeat.</li>
+      </ul>
+    </div>
+    <a class="shot" href="guide/tab-hist.webp"><img src="guide/tab-hist.webp" alt="History tab with matches, teams and winners" loading="lazy" width="1280" height="800"></a>
+  </div>
+
+  <div class="step">
+    <div>
+      <span class="n">8</span>
+      <h3>Payments</h3>
+      <ul>
+        <li>Fees count up by themselves as games are played.</li>
+        <li>Tap <b class="k">Cash</b> or <b class="k">STC Pay</b> when a player pays. <b>Unpaid</b> shows who is left.</li>
+        <li><b>Copy summary</b> for WhatsApp, <b>Export Excel report</b> for the record.</li>
+      </ul>
+    </div>
+    <a class="shot" href="guide/tab-pay.webp"><img src="guide/tab-pay.webp" alt="Payments: totals due and collected with cash and STC Pay, fees per player" loading="lazy" width="1280" height="800"></a>
+  </div>
+
+  <div class="step">
+    <div>
+      <span class="n">9</span>
+      <h3>Settings</h3>
+      <ul>
+        <li>Courts, Doubles/Singles, match format, skill mixing, subscriber priority, <b>Equal rounds</b>, fees.</li>
+        <li><b>Update app</b> at the top checks for a new version.</li>
+      </ul>
+      <h3 style="margin-top:14px">End of the day</h3>
+      <ol>
+        <li>Payments → <b>Unpaid</b>: collect what's left.</li>
+        <li><b>Export Excel report</b> and keep it.</li>
+        <li>Settings → <b>Start new session</b> (tap twice). Players, photos and history stay.</li>
+      </ol>
+    </div>
+    <a class="shot" href="guide/tab-rounds.webp"><img src="guide/tab-rounds.webp" alt="Settings: Equal rounds on, fees, start new session" loading="lazy" width="1280" height="800"></a>
+  </div>
+</section>
+
+<section id="tablets">
+  <h2>📟📟 Several tablets at the court</h2>
+  <div class="step">
+    <div>
+      <ol>
+        <li>Turn on a <b>hotspot</b> (phone or Main tablet) and connect all tablets. No internet needed.</li>
+        <li><b>Main tablet</b> (organizer): Settings → Tablet sync → <b class="k">Main tablet</b>. Note the address, e.g. <b>192.168.43.1</b>.</li>
+        <li><b>Court tablets</b> (one per court): Settings → Tablet sync → <b class="k">Court tablet</b> → address, court number, PIN → <b>Start court mode</b>.</li>
+        <li><b>Display tablet</b>: Settings → Tablet sync → <b class="k">Display tablet</b> → address → <b>Connect</b>.</li>
+      </ol>
+      <div class="tip">Only the Main tablet changes things. Court tablets only score; Display tablets only show. Tablet sync needs the Android app (APK) — the website version on phones and laptops can't join.</div>
+    </div>
+    <a class="shot" href="guide/tab-sync.webp"><img src="guide/tab-sync.webp" alt="Settings, Tablet sync: Main tablet chosen, address 192.168.43.1, 4 displays connected" loading="lazy" width="1280" height="800"></a>
+  </div>
+</section>
+
+<section id="updates">
+  <h2>🔄 Updates and your data</h2>
+  <table>
+    <tr><th>Device</th><th>Updates</th><th>Data</th></tr>
+    <tr><td>Android tablet (APK)</td><td>“New version available — Update” bar, or Settings → Update app. Court tablets update themselves while waiting.</td><td>Kept on that tablet</td></tr>
+    <tr><td>PC, Android phone, iPhone</td><td>New version shows the next time the app is opened</td><td>Kept in that browser / app</td></tr>
+  </table>
+  <div class="tip warn">Each device keeps its own players, attendance and payments — they don't sync with each other (except tablets using Tablet sync). Back up with <b>Export Excel report</b>. Uninstalling or clearing app data erases it.</div>
+</section>
+
+</main>
+<footer>Match Maker · JAMREIBIZ Badminton Club · Developer: Archie Martinez Bagadiong “Baggy” · 0542873115</footer>
+</body>
+</html>

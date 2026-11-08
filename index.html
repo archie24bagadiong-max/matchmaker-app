@@ -492,6 +492,9 @@ input.stsel{padding-right:40px}
 .wtn{color:#4b3fa8}
 .emptybox{text-align:center;padding:26px 14px;color:var(--muted)}
 .emptybox b{display:block;color:var(--ink);font-size:17px;margin-bottom:6px}
+.guidelink{display:flex;align-items:center;gap:12px;background:var(--court);color:#fff;text-decoration:none;border-radius:14px;padding:12px 16px;margin:0 0 12px;font-size:26px}
+.guidelink span{display:flex;flex-direction:column;font-size:16px;line-height:1.3}
+.guidelink small{font-size:13px;opacity:.85}
 /* ---- iPhone / tablet fit (kept last so it wins) ---- */
 /* landscape iPhone: keep content clear of the notch and rounded corners */
 header{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
@@ -547,7 +550,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=47;
+const APP_VERSION=48;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1218,12 +1221,20 @@ function sheetWinner(ci){
 let histCourt='All', histRange='today', histView='matches';
 let scHelp=false, helpOpen='session';
 const DEV_CARD=()=>`<div class="devcard"><div class="devk">Developer</div><div class="devn">Archie Martinez Bagadiong</div><div class="devnick">“Baggy”</div><span class="devtel">📞 0542873115</span><br><a class="devtel" href="mailto:archie24bagadiong@gmail.com">✉ archie24bagadiong@gmail.com</a><div class="devv">Match Maker · JAMREIBIZ Badminton Club · version ${fmtVer(APP_VERSION)}</div></div>`;
+const GUIDE_URL='https://archie24bagadiong-max.github.io/matchmaker-app/guide.html';
 function vHelp(){
   const sec=(id,title,body)=>`<div class="hsec ${helpOpen===id?'open':''}"><button class="hhead" data-act="help-sec" data-k="${id}"><span>${title}</span><span class="chev">${helpOpen===id?'−':'+'}</span></button>${helpOpen===id?`<div class="hbody">${body}</div>`:''}</div>`;
   return `<div class="row" style="margin:4px 0 10px"><h2 style="margin:0;flex:1">How to use</h2><button class="btn sm" data-act="go" data-tab="courts">← Back</button></div>
+  <a class="guidelink" href="${GUIDE_URL}" target="_blank" rel="noopener">📖 <span><b>Picture guide</b><small>Screenshots for PC, Android tablet, Android phone and iPhone</small></span></a>
   <p class="hint" style="margin:0 0 12px">Tap a topic to open it. ${IS_DISPLAY?'This tablet is a <b>Display</b>: it shows the Main tablet live and cannot change anything.':''}</p>
+  ${sec('install','0. Install on PC, Android or iPhone',`<ul>
+    <li><b>Club tablets (Android):</b> download <b>MatchMaker.apk</b> from the QR page → Install (Play Protect: More details → Install anyway). Needed for Tablet sync and court tablets.</li>
+    <li><b>PC / laptop:</b> open the website in Chrome or Edge → <b>Install</b> (address bar icon or the green bar at the bottom).</li>
+    <li><b>Android phone:</b> scan the QR code → tap <b>Install</b> on the green bar.</li>
+    <li><b>iPhone / iPad:</b> scan the QR code → it opens in Safari → <b>Share</b> → <b>Add to Home Screen</b>.</li></ul>
+    <p class="hint">Website: archie24bagadiong-max.github.io/matchmaker-app · QR code &amp; APK: …/qr.html. Each device keeps its own data.</p>`)}
   ${sec('first','1. First time setup',`<ol>
-    <li>Install <b>MatchMaker.apk</b> on every tablet. A newer APK installs over the old one and keeps your data — don't uninstall.</li>
+    <li>Install the app (see 0). A newer version updates by itself and keeps your data — don't uninstall.</li>
     <li>Put your players in the Excel template (Players sheet: <b>Name</b>, <b>Level</b> A+ to D-, <b>Type</b> Member/Family/Guest, optional <b>Active</b> (Reg, A-SUB, No), <b>Gender</b>, <b>Full Name</b> and <b>Team</b>; a <b>Teams</b> sheet adds custom team names).</li>
     <li>Copy the file to the Main tablet, then <b>Players → Choose file</b>.</li>
     <li>Check <b>Settings</b>: number of courts, Doubles, skill mixing, subscriber priority and fees.</li>
@@ -1237,7 +1248,9 @@ function vHelp(){
     <p class="hint">Only the Main tablet makes changes. Court tablets only score; Display tablets only show.</p>`)}
   ${sec('session','3. Running a session',`<ol>
     <li><b>Attendance:</b> tick everyone who arrives (Check in all, or by level).</li>
-    <li><b>Courts:</b> tap <b>Auto match</b> (fair, balanced teams) or <b>Pick players</b> (choose 4 yourself). <b>Fill empty courts</b> does all courts.</li>
+    <li><b>Courts:</b> tap <b>Auto match</b> (fair, balanced teams) or <b>Pick players</b> (choose 4 yourself). <b>Fill empty courts</b> does all courts. Or tap <b>+ Assign player</b> on a box and sort the list by <b>Played</b>, <b>Level</b> or <b>Guest</b>.</li>
+    <li><b>Equal rounds</b> (Settings): automatic picks take the fewest-games players first — someone on 3 games waits until everyone has 3. You can still put anyone on by hand.</li>
+    <li><b>Waiting queue → Level columns:</b> a column per level and one for guests; whoever just played goes to the bottom and moves up as others play.</li>
     <li>Scores are kept on the court tablet, or tap <b>🏸 Keep score</b> on the court card.</li>
     <li>Someone can't play? Tap their name → <b>Can't play</b>, or pick a substitute. Later tap <b>Back to play</b>.</li>
     <li>Tap any court (its name or empty space) to open its menu: Game done, scoreboard, reshuffle, clear, players and levels.</li>
@@ -1275,7 +1288,7 @@ function vHelp(){
     <tr><td>Leave court mode</td><td>⚙ on the court tablet + PIN</td></tr>
     <tr><td>Display says offline</td><td>Same hotspot? Re-enter the Main address</td></tr>
     <tr><td>New version</td><td>Tap Update on the top bar</td></tr></table>`)}
-  <p class="hint" style="margin-top:14px">Full guide with pictures: the Match Maker documentation (ask the organizer for the link).</p>
+  <p class="hint" style="margin-top:14px">Full guide with pictures: <a href="${GUIDE_URL}" target="_blank" rel="noopener">archie24bagadiong-max.github.io/matchmaker-app/guide.html</a> (needs internet).</p>
   ${DEV_CARD()}`;
 }
 function todayRows(){
