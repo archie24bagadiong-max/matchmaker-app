@@ -4,6 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Match Maker - JAMREIBIZ Badminton Club</title>
+<!-- installable app on laptops (Chrome/Edge: Install) and iPhone/iPad (Safari: Add to Home Screen) -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f3d2e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Match Maker">
+<meta name="format-detection" content="telephone=no">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -444,7 +454,7 @@ input.stsel{padding-right:40px}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=31;
+const APP_VERSION=32;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1115,10 +1125,19 @@ async function exportReport(){
   }
   try{
     const dl=window.claude&&window.claude.use?await window.claude.use('downloads'):null;
-    if(!dl){ toast('Export is not available here'); return; }
     const bin=atob(b64), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
+    if(!dl){ await browserSave(u,name,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); return; }
     await dl.save({filename:name,data:u}); toast('Report saved');
-  }catch(e){ if(!e||e.code!=='declined') toast('Could not save the report'); }
+  }catch(e){ if(!e||(e.code!=='declined'&&e.name!=='AbortError')) toast('Could not save the report'); }
+}
+/* web / laptop / iPhone: iPhone opens the Share sheet (Save to Files, WhatsApp…); laptops download the file */
+async function browserSave(bytes,name,type){
+  const file=new File([bytes],name,{type});
+  const ios=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  if(ios&&navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:name}); return; }
+  const url=URL.createObjectURL(file), a=document.createElement('a');
+  a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000); toast('Report saved to Downloads');
 }
 function dayKey(t){const d=new Date(t);return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
 function fmtTime(t){try{return new Date(t).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});}catch(e){return '';}}
@@ -1633,6 +1652,10 @@ if(IS_APP){
 }
 
 render();
+/* web / laptop / iPhone version: offline support + install. Not in the Android app (file://) or inside Claude. */
+if(!IS_APP&&'serviceWorker' in navigator&&/^https?:$/.test(location.protocol)&&!(window.claude&&window.claude.use)){
+  window.addEventListener('load',()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
 })();
 </script>
 </body>
