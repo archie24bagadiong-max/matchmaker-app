@@ -160,6 +160,9 @@ body.display .cmenu{display:none}
 .wq-p small{flex:none;color:var(--muted);font-weight:600;font-size:12px}
 .wq-p.z{border-color:#cfe7a6;background:#fbfff3}
 .wq-p.z small{color:#3d6b00}
+.wq-gst{background:#fff9ec;border-color:#f0d49a}
+.wq-gst .wq-h .gb{font-size:12px;padding:2px 8px}
+.wq-gst .wq-p .cat{min-width:24px;height:20px;font-size:11px}
 .wgrp small{font-family:Barlow,sans-serif;font-weight:600;color:var(--muted);font-size:12px;margin-left:4px}
 .wp.rest{border-style:dashed}
 input[type=text],input[type=search],select,textarea{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fff;width:100%}
@@ -544,7 +547,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=46;
+const APP_VERSION=47;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -907,14 +910,18 @@ if(!WQ_SORTS[wqSort]) wqSort='grid';
 /* one column per level (only levels with someone waiting); inside each column: fewest games first, then next-up order */
 function wqGrid(w){
   const pos=new Map(w.map((p,i)=>[p.id,i])), gm=p=>S.games[p.id]||0;
-  const cols=CATS.map(c=>({c,list:w.filter(p=>p.c===c)})).filter(x=>x.list.length);
-  const odd=w.filter(p=>!CATS.includes(p.c)); if(odd.length) cols.push({c:'?',list:odd});
-  return `<div class="hint" style="margin:0 2px 8px">Only Guest and Family are tagged; everyone else is a Member.</div><div class="wq-scroll"><div class="wq-grid" style="--n:${cols.length}">${cols.map(col=>{
+  // members & family in a column per level; guests in their own column (all levels mixed), last
+  const mem=w.filter(p=>p.t!=='G'), gst=w.filter(p=>p.t==='G');
+  const cols=CATS.map(c=>({c,list:mem.filter(p=>p.c===c)})).filter(x=>x.list.length);
+  const odd=mem.filter(p=>!CATS.includes(p.c)); if(odd.length) cols.push({c:'?',list:odd});
+  if(gst.length) cols.push({c:'G',list:gst});
+  return `<div class="hint" style="margin:0 2px 8px">Guests have their own column (all levels). Family is tagged; everyone else is a Member.</div><div class="wq-scroll"><div class="wq-grid" style="--n:${cols.length}">${cols.map(col=>{
     // rotation: not played on top; same games → whoever finished longest ago first; who just played goes to the bottom
     const le=p=>S.lastEnd[p.id]||0;
     const list=col.list.slice().sort((a,b)=>gm(a)-gm(b)||le(a)-le(b)||pos.get(a.id)-pos.get(b.id));
-    return `<div class="wq-col"><div class="wq-h">${col.c==='?'?'<b>No level</b>':catBadge(col.c)}<small>${list.length}</small></div>${list.map(p=>{ const g=gm(p);
-      return `<button class="wq-p ${g?'':'z'}" data-act="wait-pl" data-id="${p.id}"><span class="nm">${esc(p.n)}</span>${p.t==='G'||p.t==='F'?typeBadge(p):''}<small>${g}g</small></button>`; }).join('')}</div>`;
+    const isG=col.c==='G';
+    return `<div class="wq-col ${isG?'wq-gst':''}"><div class="wq-h">${isG?'<span class="gb">Guests</span>':col.c==='?'?'<b>No level</b>':catBadge(col.c)}<small>${list.length}</small></div>${list.map(p=>{ const g=gm(p);
+      return `<button class="wq-p ${g?'':'z'}" data-act="wait-pl" data-id="${p.id}">${isG?catBadge(p.c):''}<span class="nm">${esc(p.n)}</span>${p.t==='F'?typeBadge(p):''}<small>${g}g</small></button>`; }).join('')}</div>`;
   }).join('')}</div></div>`;
 }
 function wqGroups(w){
