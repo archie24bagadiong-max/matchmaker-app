@@ -116,6 +116,10 @@ body.display .cmenu{display:none}
 .pl .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pl .g{font-size:11px;color:var(--muted);font-weight:500;flex:none}
 .pl .gb{font-size:9px;padding:1px 4px}
+.pl.slot{background:transparent;color:#fff;border:2px dashed rgba(255,255,255,.55);justify-content:center;font-weight:600;font-size:14px}
+.pl.slot .nm{flex:none;opacity:.9}
+.pl.slot:active,.pl.slot:hover{background:rgba(255,255,255,.12)}
+.pl.slotf{box-shadow:inset 0 0 0 2px var(--lime)}
 .empty-court{grid-column:1/-1;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.7);font-size:14px;padding:20px;text-align:center}
 .court-f{display:flex;gap:8px;padding:12px}
 .court-f .btn{flex:1;padding:10px 8px}
@@ -454,7 +458,7 @@ input.stsel{padding-right:40px}
 (function(){
 const CATS=['A','B','C','D'];
 const RATE={A:4,B:3,C:2,D:1};
-const APP_VERSION=34;
+const APP_VERSION=35;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -485,7 +489,7 @@ function normalize(s){
   if(!Array.isArray(s.players)) s.players=[];
   s.players=s.players.filter(p=>p&&p.id&&typeof p.n==='string').map(p=>({id:String(p.id),n:p.n.slice(0,40),c:CATS.includes(p.c)?p.c:'C',t:p.t==='G'?'G':'S',tm:typeof p.tm==='string'?p.tm.trim().slice(0,40):''}));
   if(!Array.isArray(s.courts)||!s.courts.length) s.courts=d.courts;
-  s.courts=s.courts.map(c=>({lv:Array.isArray(c&&c.lv)?c.lv.filter(x=>CATS.includes(x)):CATS.slice(),p:Array.isArray(c&&c.p)?c.p.map(String):[],t:+(c&&c.t)||0,sc:(c&&c.sc&&typeof c.sc==='object'&&c.sc.pos)?c.sc:null}));
+  s.courts=s.courts.map(c=>({lv:Array.isArray(c&&c.lv)?c.lv.filter(x=>CATS.includes(x)):CATS.slice(),p:Array.isArray(c&&c.p)?c.p.map(String):[],t:+(c&&c.t)||0,sc:(c&&c.sc&&typeof c.sc==='object'&&c.sc.pos)?c.sc:null,d:Array.isArray(c&&c.d)?c.d.slice(0,4).map(x=>typeof x==='string'&&x?x:null):[]}));
   if(!Array.isArray(s.teams)) s.teams=[];
   s.teams=[...new Set(s.teams.filter(x=>typeof x==='string').map(x=>x.trim().slice(0,40)).filter(Boolean))];
   if(!Array.isArray(s.hist)) s.hist=[];
@@ -587,8 +591,22 @@ function fee(p){
 }
 const sr=v=>(Math.round(v*100)/100).toFixed(2).replace(/\.00$/,'')+' SR';
 function waiting(){
-  const oc=onCourt();
-  return prioritySort(S.players.filter(p=>S.present[p.id]&&!S.resting[p.id]&&oc[p.id]===undefined));
+  const oc=onCourt(), dr=drafted();
+  return prioritySort(S.players.filter(p=>S.present[p.id]&&!S.resting[p.id]&&oc[p.id]===undefined&&!dr.has(p.id)));
+}
+/* empty court boxes: players placed in a box (c.d) before the game starts.
+   Box order = c.p order: first half is the left team, second half the right team. */
+function slots(c){
+  const n=need(), oc=onCourt(), seen=new Set();
+  if(!Array.isArray(c.d)) c.d=[];
+  const d=[]; for(let k=0;k<n;k++){ const id=c.d[k]; d.push(id&&byId(id)&&S.present[id]&&!S.resting[id]&&oc[id]===undefined&&!seen.has(id)?(seen.add(id),id):null); }
+  return d;
+}
+function drafted(){ const s=new Set(); S.courts.forEach(c=>{ if(!c.p.length&&Array.isArray(c.d)) c.d.forEach(id=>{ if(id) s.add(id); }); }); return s; }
+function startFromSlots(i){
+  const c=S.courts[i], d=slots(c);
+  if(d.some(x=>!x)) return false;
+  c.p=d; c.d=[]; c.t=Date.now(); c.sc=null; return true;
 }
 function dist(a,b){return Math.abs(RATE[a]-RATE[b]);}
 function allowed(d){return S.mix==='strict'?d===0:S.mix==='adjacent'?d<=1:true;}
@@ -620,6 +638,17 @@ function arrange(ids){
 }
 function fillCourt(i,quiet,exclude){
   const c=S.courts[i]; if(c.p.length) return true;
+  const d=slots(c);
+  if(d.some(Boolean)){
+    // some boxes already chosen by hand: keep them where they are and fill only the empty boxes
+    const chosen=d.filter(Boolean).map(byId), avg=chosen.reduce((a,p)=>a+RATE[p.c],0)/chosen.length;
+    const pool=waiting().filter(p=>c.lv.includes(p.c)&&!(exclude&&exclude.includes(p.id)))
+      .map((p,k)=>({p,score:(S.prio==='strong'&&isG(p)?100000:0)+Math.abs(RATE[p.c]-avg)*1000+k})).sort((a,b)=>a.score-b.score).map(x=>x.p);
+    const free=d.filter(x=>!x).length;
+    if(pool.length<free){ if(!quiet) toast(`Court ${i+1}: not enough waiting players to fill the empty boxes`); return false; }
+    let j=0; c.d=d.map(x=>x||pool[j++].id);
+    return startFromSlots(i);
+  }
   const pool=waiting().filter(p=>c.lv.includes(p.c)&&!(exclude&&exclude.includes(p.id)));
   const g=pickGroup(pool,need());
   if(!g){ if(!quiet) toast(`Court ${i+1}: not enough waiting players for its levels`); return false; }
@@ -715,7 +744,15 @@ function vCourts(){
   S.courts.forEach((c,i)=>{
     const lv=CATS.map(k=>`<button class="${c.lv.includes(k)?'on':''}" data-act="lv" data-c="${i}" data-k="${k}">${k}</button>`).join('');
     let pitch;
-    if(!c.p.length) pitch=`<div class="empty-court">Empty — Auto match or Pick players</div>`;
+    const d=c.p.length?null:slots(c), hasD=d&&d.some(Boolean);
+    if(!c.p.length){
+      const half=S.mode==='doubles'?2:1;
+      const box=k=>{ const id=d[k], p=id&&byId(id);
+        return p?`<button class="pl slotf" data-act="slot" data-c="${i}" data-k="${k}">${av(id,'',true)}${catBadge(p.c)}<span class="nm">${esc(p.n)}</span>${typeBadge(p)}<span class="g">${S.games[id]||0}g</span></button>`
+          :`<button class="pl slot" data-act="slot" data-c="${i}" data-k="${k}"><span class="nm">＋ Assign player</span></button>`; };
+      const ks=[...Array(need()).keys()];
+      pitch=`<div class="side">${ks.slice(0,half).map(box).join('')}</div><div class="net"></div><div class="side">${ks.slice(half).map(box).join('')}</div>`;
+    }
     else{
       const half=S.mode==='doubles'?2:1;
       let L=c.p.slice(0,half), R=c.p.slice(half); if(c.sc&&c.sc.flip){ const t=L; L=R; R=t; }
@@ -729,6 +766,7 @@ function vCourts(){
       ${c.p.length?scoreStrip(i):''}
       <div class="court-f">${c.p.length
         ?`<button class="btn ${c.sc&&c.sc.done?'gdone':'lime'}" data-act="finish" data-c="${i}">${c.sc&&c.sc.done?'🔔 Game done':'Game done'}</button><button class="btn ghost" data-act="reshuffle" data-c="${i}">Reshuffle</button><button class="btn ghost" data-act="cancel" data-c="${i}">Clear</button>`
+        :hasD?`<button class="btn lime" data-act="gen" data-c="${i}">Auto fill rest</button><button class="btn ghost" data-act="slot-clear" data-c="${i}">Empty boxes</button>`
         :`<button class="btn lime" data-act="gen" data-c="${i}">Auto match</button><button class="btn ghost" data-act="pick" data-c="${i}">Pick players</button>`}</div>
     </div>`;
   });
@@ -1298,6 +1336,21 @@ function sheetCourtPlayer(ci,id){
   <div class="list">${ok.map(s=>pickRow(s,`data-act="sub-pick" data-c="${ci}" data-id="${id}" data-in="${s.id}"`)).join('')||'<div class="hint">No one waiting at this court\'s levels.</div>'}</div>
   ${other.length?`<h2>Other levels waiting</h2><div class="list">${other.map(s=>pickRow(s,`data-act="sub-pick" data-c="${ci}" data-id="${id}" data-in="${s.id}"`)).join('')}</div>`:''}`);
 }
+function sheetSlot(ci,k){
+  const c=S.courts[ci]; if(!c||c.p.length) return;
+  const d=slots(c), cur=d[k]&&byId(d[k]), half=need()/2;
+  const side=k<half?'Left side':'Right side';
+  const inBox=d.map((id,j)=>id&&j!==k?byId(id):null).filter(Boolean);
+  const w=waiting(), ok=w.filter(p=>c.lv.includes(p.c)), other=w.filter(p=>!c.lv.includes(p.c));
+  const row=s=>pickRow(s,`data-act="slot-set" data-c="${ci}" data-k="${k}" data-id="${s.id}"`);
+  openSheet(`<h3>Court ${ci+1} — ${side}, box ${k%half+1}</h3>
+  <div class="hint" style="margin:0 0 10px">${cur?`Now: <b>${esc(cur.n)}</b>. Tap someone to put them here instead.`:'Tap a player to put them in this box. The game starts when every box is filled.'}</div>
+  ${cur?`<div class="acts" style="margin-top:0"><button class="btn warn" data-act="slot-set" data-c="${ci}" data-k="${k}">Empty this box</button></div>`:''}
+  <h2 style="margin-top:4px">Waiting <small>fewest games first</small></h2>
+  <div class="list">${ok.map(row).join('')||'<div class="hint">No one waiting at this court\'s levels.</div>'}</div>
+  ${other.length?`<h2>Other levels waiting</h2><div class="list">${other.map(row).join('')}</div>`:''}
+  ${inBox.length?`<h2>Move from another box on this court</h2><div class="list">${inBox.map(row).join('')}</div>`:''}`);
+}
 let pickCourt=null, pickSel=[], pickCat='All';
 function sheetPick(){
   const ci=pickCourt; const c=S.courts[ci]; const n=need();
@@ -1411,7 +1464,7 @@ document.addEventListener('click',e=>{
       S.courts.forEach(c=>c.p=c.p.filter(x=>x!==id)); save(); render(); break;
     case 'courts+': S.courts.push({lv:CATS.slice(),p:[],t:0}); save(); render(); break;
     case 'courts-':{ const last=S.courts[S.courts.length-1]; if(last.p.length){toast('Clear the last court first');break;} S.courts.pop(); save(); render(); break;}
-    case 'mode': if(S.courts.some(c=>c.p.length)){toast('Finish or clear all courts first');break;} S.mode=k; save(); render(); break;
+    case 'mode': if(S.courts.some(c=>c.p.length)){toast('Finish or clear all courts first');break;} S.mode=k; S.courts.forEach(c=>c.d=[]); save(); render(); break;
     case 'mix': S.mix=k; save(); render(); break;
     case 'auto': S.autoNext=k==='1'; save(); render(); break;
     case 'reset':
@@ -1420,6 +1473,13 @@ document.addEventListener('click',e=>{
     case 'wipe':
       if(confirmKey!=='wipe'){confirmKey='wipe';render();break;}
       confirmKey=null; const keep=S.courts.length; S=fresh(); S.courts=Array.from({length:keep},()=>({lv:CATS.slice(),p:[],t:0})); save(); render(); break;
+    case 'slot': sheetSlot(ci,+k); break;
+    case 'slot-set':{ const c=S.courts[ci]; if(!c||c.p.length) { closeSheet(); break; }
+      const d=slots(c); if(id){ const j=d.indexOf(id); if(j>=0) d[j]=null; } d[+k]=id||null; c.d=d;
+      closeSheet();
+      if(startFromSlots(ci)) toast(`Court ${ci+1}: game started`);
+      save(); render(); break;}
+    case 'slot-clear': S.courts[ci].d=[]; save(); render(); break;
     case 'pick': pickCourt=ci; pickSel=[]; pickCat='All'; sheetPick(); break;
     case 'pick-f': pickCat=k; sheetPick(); break;
     case 'pick-t':{ const i=pickSel.indexOf(id); if(i>=0) pickSel.splice(i,1); else if(pickSel.length<need()) pickSel.push(id); else toast('Already '+need()+' selected — tap one to remove'); sheetPick(); break;}
