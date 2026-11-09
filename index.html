@@ -624,7 +624,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=64;
+const APP_VERSION=65;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -710,6 +710,16 @@ function persistNow(){
   if(typeof rtcBroadcast==='function') rtcBroadcast();   // phones scoring by QR get every change
 }
 function persistFlush(){ if(persistTimer) persistNow(); }
+/* ask the browser to keep this site's data (never auto-cleared when the device is low on space) and measure what is used */
+let STG={persist:null,mb:null};
+async function storageCheck(ask){
+  try{ if(navigator.storage){
+    if(navigator.storage.persisted) STG.persist=await navigator.storage.persisted();
+    if(ask&&!STG.persist&&navigator.storage.persist) STG.persist=await navigator.storage.persist();
+    if(navigator.storage.estimate){ const e=await navigator.storage.estimate(); STG.mb=e&&e.usage?Math.round(e.usage/1e5)/10:null; } } }catch(e){}
+  if(tab==='settings') render();
+}
+if(!IS_APP) setTimeout(()=>storageCheck(true),1500);
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') persistFlush(); });
 window.addEventListener('pagehide',persistFlush);
 window.addEventListener('beforeunload',persistFlush);
@@ -1651,6 +1661,7 @@ function vSettings(){
   </div>
   <h2>Backup &amp; restore</h2>
   <div class="card">
+    <div class="daybar" style="background:#eef8ef;border-color:#bfe3c4;color:#1d5a2a">💾 Saved on this device — works with no internet.${IS_APP?' Kept inside the Match Maker app until it is uninstalled or its data is cleared.':STG.persist===true?' Protected: the browser will not auto-delete it.':STG.persist===false?' Not protected yet — install the app (Install / Add to Home Screen) so the browser keeps it.':''}${STG.mb!=null?' · '+STG.mb+' MB used':''}${IS_APP?'':`<span class="grow"></span><button class="btn sm" data-act="stg-check">Check</button>`}</div>
     <p class="hint" style="margin-top:0">Each device keeps its own data. Every Excel report has a hidden <b>Backup</b> sheet with everything: players, photos, attendance, courts, payments, history and settings. Export after each session and keep the file safe (Google Drive, email, WhatsApp to yourself). If a device breaks or the app is reinstalled, open Match Maker on any device and restore the file here — all data comes back.</p>
     <div class="row"><button class="btn pri" data-act="export">⬇ Export report + backup</button>${IS_DISPLAY||IS_COURT?'':`<div class="filebtn btn">⟲ Restore from backup file<input type="file" id="restore-in" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" aria-label="Choose a Match Maker report to restore"></div>`}</div>
     <p class="hint">Restore replaces all data on this device. With Tablet sync, restore on the Main tablet; the others follow it.</p>
@@ -1806,6 +1817,7 @@ document.addEventListener('click',e=>{
   switch(a){
     case 'court-menu': if(!IS_DISPLAY) sheetCourt(ci); break;
     case 'sheet-close': break;
+    case 'stg-check': storageCheck(true).then(()=>toast(STG.persist?'Data is protected on this device':'Browser did not protect it — install the app to keep data safe')); break;
     case 'restore-go':{ const d=restorePending; restorePending=null; closeSheet(); if(!d||IS_DISPLAY||IS_COURT) break;
       try{ S=normalize(JSON.parse(JSON.stringify(d.state))); }catch(e){ toast('Backup could not be read'); break; }
       if(d.photos&&typeof d.photos==='object'&&!Array.isArray(d.photos)){ PH={}; Object.keys(d.photos).forEach(k=>{ if(typeof d.photos[k]==='string'&&d.photos[k].slice(0,5)==='data:') PH[k]=d.photos[k]; }); persistPhotos(); }
@@ -2437,7 +2449,7 @@ function applyIncoming(){
   }
   if(changed){ save(); render(); if(remoteChanged) refreshSheet(); }
 }
-const VIEW_OK=new Set(['sc-help','go','wq-sort','pay-gone','rep-mode','ci-f','pl-f','h-f','h-r','h-v','pay-f','score','sc-close','sync-role','sync-ip','upd-check','upd-go','upd-app','export','copypay','copy']);
+const VIEW_OK=new Set(['sc-help','go','wq-sort','pay-gone','rep-mode','stg-check','ci-f','pl-f','h-f','h-r','h-v','pay-f','score','sc-close','sync-role','sync-ip','upd-check','upd-go','upd-app','export','copypay','copy']);
 if(IS_DISPLAY) document.body.classList.add('display');
 if(IS_APP||IS_SERVED){
   if(ROLE==='main'&&IS_APP){ try{ AndroidApp.startServer(); }catch(e){} shareState(); sharePhotos(); setInterval(syncHeader,3000); }
