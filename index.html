@@ -160,6 +160,14 @@ body.display .cmenu{display:none}
 .ng-a{display:flex;gap:6px;margin-left:auto}
 .ng-f{width:100%;margin:0;font-size:13px}
 .toast.act{pointer-events:auto}
+/* drag a player onto another to swap them (court teams, planned games) */
+[data-dd]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+@media (hover:hover){[data-dd]{cursor:grab}}
+.ddghost{position:fixed;z-index:200;pointer-events:none;opacity:.95;box-shadow:0 10px 28px rgba(0,0,0,.4);transform:scale(1.05);margin:0}
+.ddsrc{opacity:.3}
+.ddover{outline:3px solid var(--lime);outline-offset:2px}
+.wp.ddover{outline-color:var(--C)}
+html.dragging,html.dragging *{cursor:grabbing!important;user-select:none}
 .toast .tbtn{margin-left:12px;background:var(--lime);color:var(--court);border:0;border-radius:8px;padding:5px 12px;font-weight:700;font-size:14px}
 .wgrp{flex:0 0 100%;font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.5px;color:var(--court2);margin:8px 2px 0;padding-bottom:4px;border-bottom:1px solid var(--border)}
 .wgrp:first-child{margin-top:0}
@@ -665,7 +673,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=70;
+const APP_VERSION=71;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1057,7 +1065,7 @@ function render(){
 function elapsed(t){if(!t)return'';const m=Math.floor((Date.now()-t)/60000);return m<1?'just started':m+' min';}
 function plBtn(id,ci){
   const p=byId(id); if(!p) return '';
-  return `<button class="pl" data-act="court-pl" data-c="${ci}" data-id="${id}">${av(id,'',true)}${catBadge(p.c)}<span class="nm">${esc(p.n)}</span>${typeBadge(p)}<span class="g">${S.games[id]||0}g</span></button>`;
+  return `<button class="pl" data-act="court-pl" data-dd="c:${ci}" data-c="${ci}" data-id="${id}">${av(id,'',true)}${catBadge(p.c)}<span class="nm">${esc(p.n)}</span>${typeBadge(p)}<span class="g">${S.games[id]||0}g</span></button>`;
 }
 function vCourts(){
   if(CAN_PLAN()) nextFix();
@@ -1122,7 +1130,7 @@ function vCourts(){
 }
 function vNext(){
   const nx=S.next||[];
-  const pl=(id,j)=>{ const p=byId(id); return p?`<button class="wp" data-act="nx-pl" data-k="${j}" data-id="${id}" title="Replace ${esc(p.n)}">${catBadge(p.c)}${esc(p.n)} ${typeBadge(p)}<small>${S.games[id]||0}g</small></button>`:''; };
+  const pl=(id,j)=>{ const p=byId(id); return p?`<button class="wp" data-act="nx-pl" data-dd="n:${j}" data-k="${j}" data-id="${id}" title="Tap to replace · drag onto another player to swap">${catBadge(p.c)}${esc(p.n)} ${typeBadge(p)}<small>${S.games[id]||0}g</small></button>`:''; };
   const side=(ids,j)=>'<span class="ng-s">'+ids.map(id=>id?pl(id,j):'<span class="ng-hole">needs a player</span>').join('')+'</span>';
   let h=`<h2>Next games <small>${nx.length?nx.length+' planned':'none planned'}</small><span class="grow"></span><button class="btn sm" data-act="nx-pick">Pick players</button><button class="btn lime sm" data-act="nx-plan">+ Plan next game</button></h2><div class="card">`;
   if(!nx.length) return h+`<div class="hint" style="margin:0">Plan games ahead: tap <b>+ Plan next game</b> (same rules as Auto match) or <b>Pick players</b>. When a court finishes, <b>Game done</b> puts Next 1 straight on that court. Players in a planned game wait here, not in the queue.</div></div>`;
@@ -1532,6 +1540,7 @@ function vHelp(){
     <li><b>Waiting queue → Level columns:</b> a column per level and one for guests; whoever just played goes to the bottom and moves up as others play. Type in <b>Search waiting players</b> to find someone fast, tap them → <b>Court N</b> to put them in that court's next empty box.${shot('tab-queue','Waiting queue in level columns, with guests in their own column')}</li>
     <li>Scores are kept on the court tablet, or tap <b>🏸 Keep score</b> on the court card.</li>
     <li>Someone can't play? Tap their name → <b>Can't play</b>, or pick a substitute. Later tap <b>Back to play</b>.</li>
+    <li><b>Change the teams:</b> drag a player onto another player on the same court to swap them (on a tablet or phone: press and hold a moment, then drag). Across the net this changes the teams. Works until the first point is scored. Same in Next games.</li>
     <li>Tap any court (its name or empty space) to open its menu: Game done, scoreboard, reshuffle, clear, players and levels.</li>
     <li>Match over? The <b>Game done</b> button blinks red with a “ting ting” sound when the score shows the match is finished. Tap <b>Game done</b>. The winner is picked from the score and saved to History. The court empties — or the next planned game goes straight on (see below).</li>
     <li><b>Next games:</b> while courts are busy, tap <b>+ Plan next game</b> (same rules as Auto match) or <b>Pick players</b> under the courts. When a match ends, <b>Game done</b> puts Next 1 on that court at once — tap <b>Undo</b> on the message if it was wrong. If a planned player goes home or rests, the gap is filled with the closest-level waiting player. Tap a player in a planned game to replace them: search the waiting players or swap with someone in another planned game. ↑ moves a game up, Reshuffle picks new players, ✕ sends them back to the queue.</li>
@@ -1963,6 +1972,62 @@ function sheetRename(id){
   <div style="flex:1;min-width:110px">${L('Active')}<select id="ren-st"><option value="">—</option>${STATUS.map(s=>`<option value="${s}" ${p.st===s?'selected':''}>${s==='No'?'No (inactive)':s}</option>`).join('')}</select></div></div>${L('Playing days')}<div class="daypick">${DAYS.map(d=>`<label><input type="checkbox" id="ren-dy-${d}" ${(p.dy||[]).includes(d)?'checked':''}><span>${d}</span></label>`).join('')}</div><label style="font-weight:600;font-size:14px">Team</label><input type="text" id="ren-tm" list="teamlist" maxlength="40" placeholder="No team" value="${esc(p.tm||'')}">${teamDatalist()}<button class="btn pri">Save</button></form>`);
   setTimeout(()=>{const i=$('#ren-n');i&&i.focus();},250);
 }
+
+/* ---------- drag to rearrange teams ----------
+   Mouse: drag a player onto another. Touch: press and hold a moment, then drag (a quick swipe still scrolls,
+   a tap still opens the player). Dropping swaps the two — across the net that changes the teams. */
+let dnd=null, dndBlock=0;
+function dndStart(){
+  const r=dnd.el.getBoundingClientRect(), gh=dnd.el.cloneNode(true);
+  gh.classList.add('ddghost'); gh.style.width=r.width+'px'; gh.style.left=r.left+'px'; gh.style.top=r.top+'px';
+  document.body.appendChild(gh); dnd.gh=gh; dnd.ox=dnd.x-r.left; dnd.oy=dnd.y-r.top; dnd.on=true;
+  dnd.el.classList.add('ddsrc'); document.documentElement.classList.add('dragging');
+  try{ if(dnd.touch&&navigator.vibrate) navigator.vibrate(25); }catch(e){}
+}
+function dndEnd(){ if(!dnd) return; clearTimeout(dnd.timer); if(dnd.gh) dnd.gh.remove(); dnd.el.classList.remove('ddsrc');
+  document.querySelectorAll('.ddover').forEach(x=>x.classList.remove('ddover')); document.documentElement.classList.remove('dragging'); dnd=null; }
+function dndTarget(x,y){
+  dnd.gh.style.display='none'; const el=document.elementFromPoint(x,y); dnd.gh.style.display='';
+  const t=el&&el.closest('[data-dd]'); return t&&t.dataset.id!==dnd.id&&t.dataset.dd===dnd.g?t:null;
+}
+function dndSwap(grpKey,a,b){
+  const [kind,n]=grpKey.split(':'), i=+n;
+  if(kind==='c'){
+    const c=S.courts[i]; if(!c) return; const ia=c.p.indexOf(a), ib=c.p.indexOf(b); if(ia<0||ib<0) return;
+    const sc=c.sc; if(sc&&(sc.a||sc.b||(sc.g&&sc.g.length))){ toast("Scoring has started — teams can't change now (reset the score first)"); return; }
+    c.p[ia]=b; c.p[ib]=a;
+    if(sc){ const seq=sc.seq||0; c.sc=null; scEnsure(i).seq=seq+1; }   // scoreboard not started yet: rebuild it with the new teams
+    const half=c.p.length/2; save(); render();
+    toast(Math.floor(ia/half)===Math.floor(ib/half)?`Court ${i+1}: ${pnm(a)} and ${pnm(b)} swapped places`:`Court ${i+1}: teams changed — ${pnm(a)} ⇄ ${pnm(b)}`);
+  } else if(kind==='n'){
+    const g=S.next[i]; if(!g) return; const ia=g.p.indexOf(a), ib=g.p.indexOf(b); if(ia<0||ib<0) return;
+    g.p[ia]=b; g.p[ib]=a; save(); render(); toast(`Next ${i+1}: ${pnm(a)} ⇄ ${pnm(b)}`);
+  }
+}
+document.addEventListener('pointerdown',e=>{
+  if(IS_DISPLAY||IS_COURT||IS_REMOTE||e.button>0) return;
+  const el=e.target.closest('[data-dd]'); if(!el||el.closest('#sheet')) return;
+  dndEnd();
+  dnd={el,g:el.dataset.dd,id:el.dataset.id,x:e.clientX,y:e.clientY,pid:e.pointerId,on:false,touch:e.pointerType!=='mouse',timer:null};
+  if(dnd.touch) dnd.timer=setTimeout(()=>{ if(dnd&&!dnd.on) dndStart(); },300);
+});
+document.addEventListener('pointermove',e=>{
+  if(!dnd||e.pointerId!==dnd.pid) return;
+  if(!dnd.on){ const dx=e.clientX-dnd.x, dy=e.clientY-dnd.y; if(dx*dx+dy*dy<64) return; if(dnd.touch){ dndEnd(); return; } dndStart(); }
+  dnd.gh.style.left=(e.clientX-dnd.ox)+'px'; dnd.gh.style.top=(e.clientY-dnd.oy)+'px';
+  const t=dndTarget(e.clientX,e.clientY);
+  document.querySelectorAll('.ddover').forEach(x=>{ if(x!==t) x.classList.remove('ddover'); }); if(t) t.classList.add('ddover');
+});
+document.addEventListener('pointerup',e=>{
+  if(!dnd||e.pointerId!==dnd.pid) return;
+  if(!dnd.on){ dndEnd(); return; }
+  const t=dndTarget(e.clientX,e.clientY), g=dnd.g, a=dnd.id; dndBlock=Date.now(); dndEnd();
+  if(t) dndSwap(g,a,t.dataset.id);
+});
+document.addEventListener('pointercancel',()=>dndEnd());
+document.addEventListener('touchmove',e=>{ if(dnd&&dnd.on) e.preventDefault(); },{passive:false});   // no page scroll while dragging
+document.addEventListener('click',e=>{ if(Date.now()-dndBlock<450){ e.stopPropagation(); e.preventDefault(); } },true);   // the drop is not a tap
+document.addEventListener('contextmenu',e=>{ if(e.target.closest&&e.target.closest('[data-dd]')) e.preventDefault(); });
 
 /* ---------- events ---------- */
 document.getElementById('nav').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;tab=b.dataset.tab;confirmKey=null;render();window.scrollTo(0,0);});
