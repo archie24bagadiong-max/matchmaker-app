@@ -624,7 +624,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=60;
+const APP_VERSION=61;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1094,16 +1094,17 @@ let payFilter='All';
 const PM={cash:'Cash',stc:'STC Pay'};
 const payM=id=>{ const v=S.paid[id]; return !v?'':(v==='stc'?'stc':'cash'); };
 function vPay(){
-  const rows=S.players.filter(p=>S.present[p.id]||(S.games[p.id]||0)>0);
+  const allRows=S.players.filter(p=>S.present[p.id]||(S.games[p.id]||0)>0), rows=allRows.filter(dayOk);
+  const dc=dayCur(), hidRows=allRows.length-rows.length, hidDue=allRows.filter(p=>!dayOk(p)).reduce((a,p)=>a+fee(p),0);
   const subs=rows.filter(p=>p.t!=='G'), gs=rows.filter(p=>p.t==='G');
   const tot=l=>l.reduce((a,p)=>a+fee(p),0);
   const got=rows.filter(p=>S.paid[p.id]).reduce((a,p)=>a+fee(p),0);
   const gotM=m=>rows.filter(p=>payM(p.id)===m).reduce((a,p)=>a+fee(p),0);
-  const games=S.players.reduce((a,p)=>a+(S.games[p.id]||0),0)/(need());
+  const games=rows.reduce((a,p)=>a+(S.games[p.id]||0),0)/(need());
   let list=rows.filter(p=>payFilter==='All'||(payFilter==='Guests'?p.t==='G':payFilter==='Unpaid'?!S.paid[p.id]&&fee(p)>0:p.t!=='G'));
   list.sort((a,b)=>((S.games[b.id]||0)-(S.games[a.id]||0))||a.n.localeCompare(b.n));
-  return `<div class="stats" style="grid-template-columns:repeat(2,1fr)">
-    <div class="stat"><b class="money">${sr(tot(rows))}</b><span>Total due today</span></div>
+  return `${dc?`<div class="daybar" style="margin-top:10px">📅 Payments for <b>${DAY_L[dc]}</b> players only${S.dayView==='Today'?' (today)':''}${hidRows?` · ${hidRows} player${hidRows===1?'':'s'} from other days hidden (${sr(hidDue)} due)`:''}<span class="grow"></span><button class="btn sm" data-act="day-view" data-k="All">Show all days</button></div>`:''}<div class="stats" style="grid-template-columns:repeat(2,1fr)">
+    <div class="stat"><b class="money">${sr(tot(rows))}</b><span>Total due today${dc?' · '+DAY_L[dc]:''}</span></div>
     <div class="stat"><b class="money">${sr(got)}</b><span>Collected</span><span class="pmsplit">💵 Cash ${sr(gotM('cash'))}<br>📱 STC Pay ${sr(gotM('stc'))}</span></div>
     <div class="stat"><b class="money">${sr(tot(subs))}</b><span>${subs.length} members &amp; family</span></div>
     <div class="stat"><b class="money">${sr(tot(gs))}</b><span>${gs.length} guests</span></div></div>
@@ -1118,14 +1119,14 @@ function vPay(){
         <div class="pg"><b>${g}</b></div>
         <div class="pfee"><b>${f?sr(f):'0 SR'}</b><div class="pmb">${Object.keys(PM).map(m=>`<button class="paidb ${m} ${payM(p.id)===m?'on':''}" data-act="paid" data-id="${p.id}" data-k="${m}" ${f?'':'disabled'}>${m==='cash'?'💵':'📱'} ${PM[m]}</button>`).join('')}</div>${f&&!S.paid[p.id]?'<span class="unpaid">Unpaid</span>':''}</div>
       </div>`;}).join('')}</div>`
-    :`<div class="emptybox"><b>No players to show</b>Only players checked in today appear here.<div style="margin-top:12px"><button class="btn pri" data-act="go" data-tab="checkin">Take attendance</button></div></div>`}
+    :`<div class="emptybox"><b>No players to show</b>${dc&&hidRows?'No '+DAY_L[dc]+' players checked in. Choose All days to see everyone.':'Only players checked in today appear here.'}<div style="margin-top:12px"><button class="btn pri" data-act="go" data-tab="checkin">Take attendance</button></div></div>`}
     <p class="hint">Games are counted automatically when you tap “Game done” on a court.</p>
   </div>
   <h2>Excel report</h2>
   <div class="card"><p class="hint" style="margin-top:0">One Excel file with everything: <b>Activity Log</b> (check-ins, matches and payments with time and Cash / STC Pay), Payments (all days), Match History, Team and Win Statistics, Daily Summary and Players.</p>
   <button class="btn pri" data-act="export">⬇ Export all activity (Excel)</button></div>
   <h2>Summary to share</h2>
-  <div class="card"><textarea readonly id="paytxt">${esc(rows.slice().sort((a,b)=>a.n.localeCompare(b.n)).map(p=>`${p.n}${p.t==='G'?' (Guest)':''} – ${S.games[p.id]||0} games – ${fee(p)?sr(fee(p)):'0 SR'}${S.paid[p.id]?' ✓ paid ('+PM[payM(p.id)]+')':''}`).join('\n')+(rows.length?`\n\nTotal: ${sr(tot(rows))}`:''))}</textarea>
+  <div class="card"><textarea readonly id="paytxt">${esc(rows.slice().sort((a,b)=>a.n.localeCompare(b.n)).map(p=>`${p.n}${p.t==='G'?' (Guest)':''} – ${S.games[p.id]||0} games – ${fee(p)?sr(fee(p)):'0 SR'}${S.paid[p.id]?' ✓ paid ('+PM[payM(p.id)]+')':''}`).join('\n')+(rows.length?`\n\nTotal${dc?' ('+DAY_L[dc]+' players)':''}: ${sr(tot(rows))}`:''))}</textarea>
   <div class="row" style="margin-top:8px"><button class="btn" data-act="copypay">Copy summary</button></div></div>`;
 }
 /* ---------- scoring (BWF: 21 pts, win by 2, cap 30, best of 3) ---------- */
@@ -1577,7 +1578,7 @@ function vSettings(){
   <div class="card set">
     <div><label>Show day (schedule)</label>
       <div class="seg dayseg">${['All','Today'].concat(DAYS).map(k=>`<button class="${S.dayView===k?'on':''}" data-act="day-view" data-k="${k}">${k==='All'?'All days':k==='Today'?'Today ('+dayToday()+')':k}</button>`).join('')}</div>
-      <p class="hint">${dayCur()?`Attendance, Players and the Waiting queue show only <b>${DAY_L[dayCur()]}</b> players (${S.players.filter(dayOk).length} of ${S.players.length}).`:'Attendance, Players and the Waiting queue show everyone; lists are sorted Monday → Sunday by each player\'s first day.'} Set days with a <b>Days</b> column in Excel (Monday, Mon, Wed, Mon-Fri, Weekend, Daily) or Players → Edit. Auto match and Fill empty courts use only that day's players; anyone already on a court finishes their game. Choose All days to bring everyone back.</p></div>
+      <p class="hint">${dayCur()?`Attendance, Players, the Waiting queue and Payments show only <b>${DAY_L[dayCur()]}</b> players (${S.players.filter(dayOk).length} of ${S.players.length}).`:'Attendance, Players, the Waiting queue and Payments show everyone; lists are sorted Monday → Sunday by each player\'s first day.'} Set days with a <b>Days</b> column in Excel (Monday, Mon, Wed, Mon-Fri, Weekend, Daily) or Players → Edit. Auto match and Fill empty courts use only that day's players; anyone already on a court finishes their game. Choose All days to bring everyone back.</p></div>
     <div><label>Number of courts</label><div class="stepper"><button class="btn sm" data-act="courts-" ${S.courts.length<=1?'disabled':''}>−</button><b>${S.courts.length}</b><button class="btn sm" data-act="courts+" ${S.courts.length>=8?'disabled':''}>+</button></div></div>
     <div><label>Match format (scoring)</label>
       <div class="row"><span style="min-width:120px">Games per match</span><div class="seg" style="flex:1">${[1,2,3,4,5].map(n=>`<button class="${S.match.n===n?'on':''}" data-act="mf-n" data-k="${n}">${n}</button>`).join('')}</div></div>
