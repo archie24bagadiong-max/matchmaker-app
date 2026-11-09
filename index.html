@@ -624,7 +624,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=59;
+const APP_VERSION=60;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -790,7 +790,7 @@ function fee(p){
 const sr=v=>(Math.round(v*100)/100).toFixed(2).replace(/\.00$/,'')+' SR';
 function waiting(){
   const oc=onCourt(), dr=drafted();
-  return prioritySort(S.players.filter(p=>S.present[p.id]&&!S.resting[p.id]&&oc[p.id]===undefined&&!dr.has(p.id)));
+  return prioritySort(S.players.filter(p=>S.present[p.id]&&!S.resting[p.id]&&oc[p.id]===undefined&&!dr.has(p.id)&&dayOk(p)));
 }
 /* empty court boxes: players placed in a box (c.d) before the game starts.
    Box order = c.p order: first half is the left team, second half the right team. */
@@ -985,6 +985,8 @@ function vCourts(){
   });
   h+=`</div>`;
   h+=`<h2>Waiting queue <small>${WQ_SORTS[wqSort][1]} · tap to manage</small></h2><div class="card">`;
+  if(dayCur()){ const oc2=onCourt(), dr2=drafted(), hid=S.players.filter(p=>S.present[p.id]&&!S.resting[p.id]&&oc2[p.id]===undefined&&!dr2.has(p.id)&&!dayOk(p)).length;
+    h+=`<div class="daybar">📅 <b>${DAY_L[dayCur()]}</b> players only${S.dayView==='Today'?' (today)':''}${hid?` · ${hid} checked-in player${hid===1?'':'s'} from other days hidden (not used by Auto match)`:''}<span class="grow"></span><button class="btn sm" data-act="day-view" data-k="All">Show all days</button></div>`; }
   h+=`<div class="chips" style="margin:0 0 10px;align-items:center"><span class="hint" style="margin:0 4px 0 0">Arrange:</span>${Object.keys(WQ_SORTS).map(k=>`<button class="chip ${wqSort===k?'on':''}" data-act="wq-sort" data-k="${k}">${WQ_SORTS[k][0]}</button>`).join('')}</div>`;
   const wq=wqSearch.trim().toLowerCase(), wv=wq?w.filter(p=>(p.n+' '+(p.fn||'')).toLowerCase().includes(wq)):w;
   if(w.length) h+=`<div class="row" style="margin:0 0 10px"><input type="search" id="wq-s" style="flex:1;min-width:150px" placeholder="Search waiting players…" aria-label="Search waiting players" autocomplete="off" value="${esc(wqSearch)}">${wq?`<span class="hint" style="margin:0 0 0 8px;white-space:nowrap">${wv.length} of ${w.length}</span>`:''}</div>`;
@@ -1575,7 +1577,7 @@ function vSettings(){
   <div class="card set">
     <div><label>Show day (schedule)</label>
       <div class="seg dayseg">${['All','Today'].concat(DAYS).map(k=>`<button class="${S.dayView===k?'on':''}" data-act="day-view" data-k="${k}">${k==='All'?'All days':k==='Today'?'Today ('+dayToday()+')':k}</button>`).join('')}</div>
-      <p class="hint">${dayCur()?`Attendance and Players show only <b>${DAY_L[dayCur()]}</b> players (${S.players.filter(dayOk).length} of ${S.players.length}).`:'Attendance and Players show everyone, sorted Monday → Sunday by each player\'s first day.'} Set days with a <b>Days</b> column in Excel (Monday, Mon, Wed, Mon-Fri, Weekend, Daily) or Players → Edit. Players already checked in keep playing whatever the day.</p></div>
+      <p class="hint">${dayCur()?`Attendance, Players and the Waiting queue show only <b>${DAY_L[dayCur()]}</b> players (${S.players.filter(dayOk).length} of ${S.players.length}).`:'Attendance, Players and the Waiting queue show everyone; lists are sorted Monday → Sunday by each player\'s first day.'} Set days with a <b>Days</b> column in Excel (Monday, Mon, Wed, Mon-Fri, Weekend, Daily) or Players → Edit. Auto match and Fill empty courts use only that day's players; anyone already on a court finishes their game. Choose All days to bring everyone back.</p></div>
     <div><label>Number of courts</label><div class="stepper"><button class="btn sm" data-act="courts-" ${S.courts.length<=1?'disabled':''}>−</button><b>${S.courts.length}</b><button class="btn sm" data-act="courts+" ${S.courts.length>=8?'disabled':''}>+</button></div></div>
     <div><label>Match format (scoring)</label>
       <div class="row"><span style="min-width:120px">Games per match</span><div class="seg" style="flex:1">${[1,2,3,4,5].map(n=>`<button class="${S.match.n===n?'on':''}" data-act="mf-n" data-k="${n}">${n}</button>`).join('')}</div></div>

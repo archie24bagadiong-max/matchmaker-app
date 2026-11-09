@@ -1,1 +1,1 @@
-{"version": 59, "notes": "Add many at once reads playing days (Mon, Thu, Mon-Fri, Weekend, Daily)"}
+{"version": 60, "notes": "Show day also filters the waiting queue and Auto match"}
