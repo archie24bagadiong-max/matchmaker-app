@@ -624,7 +624,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=62;
+const APP_VERSION=63;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1089,12 +1089,14 @@ function vPlayers(){
       <button class="btn sm warn" data-act="del" data-id="${p.id}">${confirmKey==='del'+p.id?'Sure?':'✕'}</button></div>`).join('')||'<div class="hint">No players.</div>'}</div>
   </div>`;
 }
-let payFilter='All';
+let payFilter='All', payGone=false;
 /* payment method: S.paid[id] = 'cash' | 'stc' (old value 1 counts as cash) */
 const PM={cash:'Cash',stc:'STC Pay'};
 const payM=id=>{ const v=S.paid[id]; return !v?'':(v==='stc'?'stc':'cash'); };
 function vPay(){
-  const allRows=S.players.filter(p=>S.present[p.id]||(S.games[p.id]||0)>0), rows=allRows.filter(dayOk);
+  // only players ticked in Attendance; players who played and were then unchecked are hidden unless "Show" is tapped
+  const gone=S.players.filter(p=>!S.present[p.id]&&(S.games[p.id]||0)>0&&dayOk(p)), goneDue=gone.reduce((a,p)=>a+fee(p),0), goneUnpaid=gone.filter(p=>!S.paid[p.id]&&fee(p)>0);
+  const allRows=S.players.filter(p=>S.present[p.id]||(payGone&&(S.games[p.id]||0)>0)), rows=allRows.filter(dayOk);
   const dc=dayCur(), hidRows=allRows.length-rows.length, hidDue=allRows.filter(p=>!dayOk(p)).reduce((a,p)=>a+fee(p),0);
   const subs=rows.filter(p=>p.t!=='G'), gs=rows.filter(p=>p.t==='G');
   const tot=l=>l.reduce((a,p)=>a+fee(p),0);
@@ -1111,6 +1113,7 @@ function vPay(){
   <p class="hint">${Math.round(games)} games played today · Subscriber ${sr(S.fee.sp)}/game · Guest ${sr(S.fee.gp)} for ${S.fee.gn} games, ${sr(S.fee.gp+S.fee.gx)} for ${S.fee.gn*2}</p>
   <h2>Games &amp; fees per player</h2>
   <div class="card">
+    ${gone.length?`<div class="daybar" style="background:#fff6e6;border-color:#f1d29a;color:#6b4a00">${payGone?'Showing':'Hidden:'} ${gone.length} player${gone.length===1?'':'s'} not in Attendance who played today (${sr(goneDue)}${goneUnpaid.length?', '+goneUnpaid.length+' unpaid':''})<span class="grow"></span><button class="btn sm" data-act="pay-gone">${payGone?'Hide':'Show'}</button></div>`:''}
     <div class="chips">${['All','Members','Guests','Unpaid'].map(k=>`<button class="chip ${payFilter===k?'on':''}" data-act="pay-f" data-k="${k}">${k}</button>`).join('')}</div>
     ${list.length?`<div class="phead"><span class="pinfo">Player</span><span class="pg">Games</span><span class="pfee">Fee / Paid</span></div><div class="list">${list.map(p=>{const g=S.games[p.id]||0,f=fee(p);
       const note=p.t==='G'?(g===0?'minimum '+sr(S.fee.gp)+' covers '+S.fee.gn+' games':g<S.fee.gn?(S.fee.gn-g)+' more covered by minimum':g===S.fee.gn?'minimum used':(g-S.fee.gn)+' extra × '+sr(S.fee.gx/S.fee.gn)):sr(S.fee.sp)+' per game';
@@ -1882,6 +1885,7 @@ document.addEventListener('click',e=>{
     case 'export': exportReport(); break;
     case 'mf-n': S.match.n=+k; save(); render(); break;
     case 'mf-p': S.match.pts=+k; save(); render(); break;
+    case 'pay-gone': payGone=!payGone; render(); break;
     case 'day-view': S.dayView=['All','Today'].concat(DAYS).includes(k)?k:'All'; save(); render(); toast(S.dayView==='All'?'Showing all days':'Showing '+DAY_L[dayCur()]+' players'); break;
     case 'mf-m': S.match.mode=k==='all'?'all':'best'; save(); render(); break;
     case 'sc-help': scHelp=!scHelp; renderScore(); break;
@@ -2371,7 +2375,7 @@ function applyIncoming(){
   }
   if(changed){ save(); render(); if(remoteChanged) refreshSheet(); }
 }
-const VIEW_OK=new Set(['sc-help','go','wq-sort','ci-f','pl-f','h-f','h-r','h-v','pay-f','score','sc-close','sync-role','sync-ip','upd-check','upd-go','upd-app','export','copypay','copy']);
+const VIEW_OK=new Set(['sc-help','go','wq-sort','pay-gone','ci-f','pl-f','h-f','h-r','h-v','pay-f','score','sc-close','sync-role','sync-ip','upd-check','upd-go','upd-app','export','copypay','copy']);
 if(IS_DISPLAY) document.body.classList.add('display');
 if(IS_APP||IS_SERVED){
   if(ROLE==='main'&&IS_APP){ try{ AndroidApp.startServer(); }catch(e){} shareState(); sharePhotos(); setInterval(syncHeader,3000); }
