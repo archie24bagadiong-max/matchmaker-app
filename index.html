@@ -624,7 +624,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=63;
+const APP_VERSION=64;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1126,8 +1126,13 @@ function vPay(){
     <p class="hint">Games are counted automatically when you tap “Game done” on a court.</p>
   </div>
   <h2>Excel report</h2>
-  <div class="card">${dc?`<div class="daybar">📅 <b>${DAY_L[dc]} report</b>: ${reportScope().pl.length} active ${DAY_L[dc]} players, records from ${DAY_L[dc]}s only<span class="grow"></span><button class="btn sm" data-act="day-view" data-k="All">All days</button></div>`:''}<p class="hint" style="margin-top:0">${dc?`Only active players scheduled on <b>${DAY_L[dc]}</b> (inactive and other days left out), and only check-ins, matches and payments on ${DAY_L[dc]}s. Choose <b>All days</b> in Settings → Show day for the full report.`:`One Excel file with everything: <b>Activity Log</b> (check-ins, matches and payments with time and Cash / STC Pay), Payments (all days), Match History, Team and Win Statistics, Daily Summary and Players. Pick a day in Settings → Show day to export just that day's players.`}</p>
-  <button class="btn pri" data-act="export">⬇ ${dc?'Export '+DAY_L[dc]+' report':'Export all activity'} (Excel)</button></div>
+  <div class="card">
+    <div class="chips" style="align-items:center"><span class="hint" style="margin:0 4px 0 0">Dates:</span>${[['all','All dates'],['date','One date'],['range','Date range']].map(([k,l])=>`<button class="chip ${repMode===k?'on':''}" data-act="rep-mode" data-k="${k}">${l}</button>`).join('')}</div>
+    ${repMode==='date'?`<div class="row" style="margin-top:8px"><input type="date" id="rep-from" value="${repFrom||ymd(Date.now())}" style="width:auto"></div>`
+      :repMode==='range'?`<div class="row" style="margin-top:8px;align-items:center"><span>From</span><input type="date" id="rep-from" value="${repFrom||ymd(Date.now())}" style="width:auto"><span>to</span><input type="date" id="rep-to" value="${repTo||ymd(Date.now())}" style="width:auto"></div>`:''}
+    ${dc?`<div class="daybar" style="margin-top:8px">📅 Show day is <b>${DAY_L[dc]}</b>: only active ${DAY_L[dc]} players and ${DAY_L[dc]} records<span class="grow"></span><button class="btn sm" data-act="day-view" data-k="All">All days</button></div>`:''}
+    <p class="hint">This report: <b>${esc(repDesc())}</b>. Sheets: Activity Log (check-ins, matches, payments with time and Cash / STC Pay), Payments, Match History, Team and Win Statistics, Daily Summary and Players.<br>🛟 Every file also carries a hidden <b>Backup</b> sheet with <b>all</b> your data, whatever dates you pick — restore it in Settings → Backup &amp; restore.</p>
+    <button class="btn pri" data-act="export">⬇ Export report (Excel)</button></div>
   <h2>Summary to share</h2>
   <div class="card"><textarea readonly id="paytxt">${esc(rows.slice().sort((a,b)=>a.n.localeCompare(b.n)).map(p=>`${p.n}${p.t==='G'?' (Guest)':''} – ${S.games[p.id]||0} games – ${fee(p)?sr(fee(p)):'0 SR'}${S.paid[p.id]?' ✓ paid ('+PM[payM(p.id)]+')':''}`).join('\n')+(rows.length?`\n\nTotal${dc?' ('+DAY_L[dc]+' players)':''}: ${sr(tot(rows))}`:''))}</textarea>
   <div class="row" style="margin-top:8px"><button class="btn" data-act="copypay">Copy summary</button></div></div>`;
@@ -1403,7 +1408,7 @@ function vHelp(){
     <li><b>Copy summary</b> on Payments gives a list to paste in WhatsApp.${shot('tab-pay','Payments: total due and collected (Cash / STC Pay), fee per player')}</li></ul>`)}
   ${sec('end','6. End of the day',`<ol>
     <li>Payments → <b>Unpaid</b>: collect what's left.</li>
-    <li><b>Export Excel report</b> and save it — your record and backup.${shot('tab-hist','History: every match with teams and winner (Change winner fixes a mistake)')}</li>
+    <li><b>Export Excel report</b> (Payments: All dates, One date or Date range) and save it — your record <b>and</b> backup. If a device breaks: Settings → Backup &amp; restore → <b>Restore from backup file</b>.${shot('tab-hist','History: every match with teams and winner (Change winner fixes a mistake)')}</li>
     <li>Settings → <b>Start new session</b> (tap twice). Players, photos and history stay.</li></ol>`)}
   ${sec('tasks','7. Quick answers',`<table class="htbl">
     <tr><td>Add a player or guest</td><td>Players → name, level, type → Add</td></tr>
@@ -1435,22 +1440,42 @@ function archiveDay(){
 function dayDate(k){const [y,m,d]=k.split('-').map(Number);return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');}
 /* Settings → Show day set: the report covers only that day's active players, and only records dated on that weekday.
    All days: everything (full backup). */
+/* report dates: all / one date / range (remembered on this device) */
+let repMode='all', repFrom='', repTo='';
+try{ const r=JSON.parse(localStorage.getItem('mm_rep')||'{}'); if(['all','date','range'].includes(r.m)) repMode=r.m; if(/^\d{4}-\d\d-\d\d$/.test(r.f||'')) repFrom=r.f; if(/^\d{4}-\d\d-\d\d$/.test(r.t||'')) repTo=r.t; }catch(e){}
+const repSave=()=>{ try{ localStorage.setItem('mm_rep',JSON.stringify({m:repMode,f:repFrom,t:repTo})); }catch(e){} };
+const ymd=t=>{const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+function repRange(){ const td=ymd(Date.now());
+  if(repMode==='date'){ const f=repFrom||td; return {f,t:f}; }
+  if(repMode==='range'){ let f=repFrom||td, t=repTo||td; if(f>t){ const x=f; f=t; t=x; } return {f,t}; }
+  return null; }
+const fmtYmd=k=>{const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short',year:'numeric'});};
+function repDesc(){ const rr=repRange(), dc=dayCur();
+  return (rr?(rr.f===rr.t?fmtYmd(rr.f):fmtYmd(rr.f)+' → '+fmtYmd(rr.t)):'All dates')+(dc?' · active '+DAY_L[dc]+' players only, '+DAY_L[dc]+'s only':' · all players'); }
+/* Settings → Show day set: only that day's active players and records dated on that weekday. Report dates: only records in that date / range. */
 function reportScope(){
-  const dc=dayCur(); if(!dc) return {dc:null,pl:S.players,inP:()=>true,inD:()=>true};
-  const pl=S.players.filter(p=>dayOk(p)&&!isOff(p)), ids=new Set(pl.map(p=>p.id)), names=new Set(pl.map(p=>p.n.toLowerCase()));
-  const wd=t=>DAYS[(new Date(t).getDay()+6)%7]===dc;
-  return {dc,pl,inP:(id,n)=>ids.has(id)||(!!n&&names.has(String(n).toLowerCase())),inD:wd};
+  const dc=dayCur(), rr=repRange();
+  const wd=t=>!dc||DAYS[(new Date(t).getDay()+6)%7]===dc, inR=t=>{ if(!rr) return true; const k=ymd(t); return k>=rr.f&&k<=rr.t; };
+  const pl=dc?S.players.filter(p=>dayOk(p)&&!isOff(p)):S.players, ids=new Set(pl.map(p=>p.id)), names=new Set(pl.map(p=>p.n.toLowerCase()));
+  return {dc,rr,pl,inP:dc?((id,n)=>ids.has(id)||(!!n&&names.has(String(n).toLowerCase()))):(()=>true),inD:t=>wd(t)&&inR(t)};
 }
+/* full backup of this device: everything needed to rebuild it (players, photos, attendance, courts, payments, history, settings) */
+const backupText=()=>JSON.stringify({app:'MatchMaker',kind:'backup',v:1,ver:APP_VERSION,at:Date.now(),state:S,photos:PH});
 const keyTime=k=>{const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d).getTime();};
 function buildReport(){
   const today=dayKey(Date.now()), R=reportScope();
   const pay=S.ledger.filter(x=>x.day!==today).concat(todayRows()).filter(r=>R.inP(r.id,r.n)&&R.inD(keyTime(r.day)));
   const H=S.hist.filter(x=>R.inD(x.d)&&x.a.concat(x.b).some((id,j)=>R.inP(id,(x.an||[]).concat(x.bn||[])[j])));
-  const LG=(S.log||[]).filter(e=>R.inD(e.d)&&(e.k==='session'?!!R.dc:R.inP(null,e.n)));
+  const LG=(S.log||[]).filter(e=>R.inD(e.d)&&(e.k==='session'?true:R.inP(null,e.n)));
+  let PLs=R.pl; if(R.rr){ const seen=new Set(), byN=n=>S.players.find(q=>q.n===n);
+    pay.forEach(r=>{ if(r.id) seen.add(r.id); const q=byN(r.n); if(q) seen.add(q.id); });
+    H.forEach(x=>x.a.concat(x.b).forEach(id=>seen.add(id)));
+    LG.forEach(e=>{ const q=e.n&&byN(e.n); if(q) seen.add(q.id); });
+    PLs=R.pl.filter(q=>seen.has(q.id)); }
   const T=t=>TYPE_L[t]||'Member';
   const wb=XLSX.utils.book_new();
   const add=(name,aoa,widths)=>{const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=widths.map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws,name);};
-  add('Players',[['Name','Full Name','Level','Type','Active','Gender','Team','Days']].concat(R.pl.slice().sort((a,b)=>lvCmp(a.c,b.c)||a.n.localeCompare(b.n)).map(p=>[p.n,p.fn||'',p.c,T(p.t),p.st||'',p.g==='M'?'Male':p.g==='F'?'Female':'',p.tm||'',(p.dy||[]).join(', ')])),[22,30,8,10,9,9,20,22]);
+  add('Players',[['Name','Full Name','Level','Type','Active','Gender','Team','Days']].concat(PLs.slice().sort((a,b)=>lvCmp(a.c,b.c)||a.n.localeCompare(b.n)).map(p=>[p.n,p.fn||'',p.c,T(p.t),p.st||'',p.g==='M'?'Male':p.g==='F'?'Female':'',p.tm||'',(p.dy||[]).join(', ')])),[22,30,8,10,9,9,20,22]);
   add('Payments',[['Date','Player','Team','Level','Type','Games','Fee (SR)','Paid','Method']].concat(pay.map(r=>[dayDate(r.day),r.n,r.tm||((S.players.find(p=>p.n===r.n)||{}).tm||''),r.c,T(r.t),r.g,r.f,r.pd?'Yes':'No',r.pd?(r.pm||'Cash'):''])),[13,24,18,10,12,8,10,7,10]);
   { const L={in:'Checked in',out:'Checked out',pay:'Payment received',unpay:'Payment cancelled',session:'New session started'};
     const ev=LG.map(e=>({d:e.d,a:L[e.k]||e.k,p:e.n||'',c:'',x:e.k==='pay'?(e.g?e.g+' games':''):'',amt:(e.k==='pay'||e.k==='unpay')?(e.k==='unpay'?-e.amt:e.amt):'',m:e.m||''}));
@@ -1473,13 +1498,18 @@ function buildReport(){
   const dk=[...new Set(Object.keys(days).concat(Object.keys(mt)))].sort((a,b)=>dayDate(a).localeCompare(dayDate(b)));
   const r2=v=>Math.round(v*100)/100;
   add('Daily Summary',[['Date','Players','Matches','Total due (SR)','Collected (SR)','Cash (SR)','STC Pay (SR)','Outstanding (SR)','Members & Family (SR)','Guests (SR)']].concat(dk.map(k=>{const d=days[k]||{pl:0,due:0,col:0,cash:0,stc:0,sub:0,gst:0};return [dayDate(k),d.pl,mt[k]||0,r2(d.due),r2(d.col),r2(d.cash),r2(d.stc),r2(d.due-d.col),r2(d.sub),r2(d.gst)];})),[13,9,9,14,14,11,13,15,15,12]);
+  /* hidden Backup sheet: the whole app (not only this report's dates/day) in ≤30 000-character pieces (Excel cell limit 32 767) */
+  const bk=backupText(), rb=[['Match Maker backup — do not edit. To restore: Settings → Backup & restore → Restore from backup file.'],['MMBACKUP1',new Date().toISOString(),S.players.length+' players']];
+  for(let i=0;i<bk.length;i+=30000) rb.push([bk.slice(i,i+30000)]);
+  add('Backup',rb,[110]);
+  wb.Workbook={Sheets:wb.SheetNames.map(n=>({name:n,Hidden:n==='Backup'?1:0}))};
   return XLSX.write(wb,{bookType:'xlsx',type:'base64'});
 }
 async function exportReport(){
   toast('Preparing report…');
   try{ await loadXLSX(); }catch(e){ toast('Could not load the Excel tool — check internet'); return; }
   let b64; try{ b64=buildReport(); }catch(e){ toast('Could not build the report'); return; }
-  const dc=dayCur(); const name='MatchMaker_Report_'+(dc?DAY_L[dc]+'_':'')+dayDate(dayKey(Date.now()))+'.xlsx';
+  const dc=dayCur(), rr=repRange(); const name='MatchMaker_Report_'+(dc?DAY_L[dc]+'_':'')+(rr?(rr.f===rr.t?rr.f:rr.f+'_to_'+rr.t):dayDate(dayKey(Date.now())))+'.xlsx';
   if(IS_APP){
     if(typeof window.AndroidApp.saveFile!=='function'){ toast('Install the latest MatchMaker.apk to export'); return; }
     window.AndroidApp.saveFile(b64,name); return;
@@ -1618,6 +1648,12 @@ function vSettings(){
       <div class="row" style="margin-top:8px"><span style="min-width:110px">Guest extra</span>+<input type="text" inputmode="decimal" data-fee="gx" value="${S.fee.gx}" style="width:80px"> SR per extra ${S.fee.gn} games (${sr(S.fee.gx/S.fee.gn)} each)</div>
       <div class="row" style="margin-top:8px"><span style="min-width:110px">Subscriber</span><input type="text" inputmode="decimal" data-fee="sp" value="${S.fee.sp}" style="width:80px"> SR per game</div>
       <p class="hint">Guest minimum: ${sr(S.fee.gp)} (covers ${S.fee.gn} games). Each game after that: ${sr(S.fee.gx/S.fee.gn)} → ${S.fee.gn*2} games = ${sr(S.fee.gp+S.fee.gx)}.</p></div>
+  </div>
+  <h2>Backup &amp; restore</h2>
+  <div class="card">
+    <p class="hint" style="margin-top:0">Each device keeps its own data. Every Excel report has a hidden <b>Backup</b> sheet with everything: players, photos, attendance, courts, payments, history and settings. Export after each session and keep the file safe (Google Drive, email, WhatsApp to yourself). If a device breaks or the app is reinstalled, open Match Maker on any device and restore the file here — all data comes back.</p>
+    <div class="row"><button class="btn pri" data-act="export">⬇ Export report + backup</button>${IS_DISPLAY||IS_COURT?'':`<div class="filebtn btn">⟲ Restore from backup file<input type="file" id="restore-in" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" aria-label="Choose a Match Maker report to restore"></div>`}</div>
+    <p class="hint">Restore replaces all data on this device. With Tablet sync, restore on the Main tablet; the others follow it.</p>
   </div>
   <h2>New session</h2>
   <div class="card">
@@ -1770,6 +1806,11 @@ document.addEventListener('click',e=>{
   switch(a){
     case 'court-menu': if(!IS_DISPLAY) sheetCourt(ci); break;
     case 'sheet-close': break;
+    case 'restore-go':{ const d=restorePending; restorePending=null; closeSheet(); if(!d||IS_DISPLAY||IS_COURT) break;
+      try{ S=normalize(JSON.parse(JSON.stringify(d.state))); }catch(e){ toast('Backup could not be read'); break; }
+      if(d.photos&&typeof d.photos==='object'&&!Array.isArray(d.photos)){ PH={}; Object.keys(d.photos).forEach(k=>{ if(typeof d.photos[k]==='string'&&d.photos[k].slice(0,5)==='data:') PH[k]=d.photos[k]; }); persistPhotos(); }
+      persistNow(); save(); tab='courts'; render(); toast(`Backup restored: ${S.players.length} players, ${S.hist.length} matches`); break;}
+    case 'rep-mode': repMode=['all','date','range'].includes(k)?k:'all'; if(repMode!=='all'&&!repFrom) repFrom=ymd(Date.now()); if(repMode==='range'&&!repTo) repTo=ymd(Date.now()); repSave(); render(); break;
     case 'go': tab=el.dataset.tab; render(); break;
     case 'fill-all': fillAll(); break;
     case 'gen': if(fillCourt(ci)){save();render();} break;
@@ -1928,10 +1969,31 @@ document.addEventListener('change',e=>{
   if(IS_DISPLAY&&(el.dataset.act==='setcat'||el.id==='file-in'||el.dataset.fee)){ toast('Display tablet — make changes on the Main tablet'); render(); return; }
   if(el.dataset.act==='setcat'){ const p=byId(el.dataset.id); if(p){p.c=el.value; save(); render();} }
   if(el.id==='file-in'&&el.files&&el.files[0]) importFile(el.files[0]);
+  if(el.id==='restore-in'){ const f=el.files&&el.files[0]; el.value=''; if(f){ if(IS_DISPLAY||IS_COURT) toast('Restore on the Main tablet'); else readBackup(f); } return; }
+  if(el.id==='rep-from'||el.id==='rep-to'){ if(/^\d{4}-\d\d-\d\d$/.test(el.value)){ if(el.id==='rep-from') repFrom=el.value; else repTo=el.value; repSave(); } render(); return; }
   if(el.dataset.fee){ const v=parseFloat(String(el.value).replace(',','.')); const k=el.dataset.fee;
     if(isFinite(v)&&v>=0&&(k!=='gn'||v>=1)){ S.fee[k]=k==='gn'?Math.round(v):v; save(); toast('Fee updated'); } render(); }
 });
 let xlsxLoading=null;
+let restorePending=null;
+async function readBackup(f){
+  toast('Reading '+f.name+'…');
+  try{ await loadXLSX(); }catch(e){ toast('Could not load the Excel tool — check internet'); return; }
+  let d=null;
+  try{
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'}), ws=wb.Sheets['Backup'];
+    if(ws){ const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''}), i=rows.findIndex(r=>String(r[0]).trim()==='MMBACKUP1');
+      if(i>=0) d=JSON.parse(rows.slice(i+1).map(r=>String(r[0]==null?'':r[0])).join('')); }
+  }catch(e){ d=null; }
+  if(!d||d.app!=='MatchMaker'||!d.state||!Array.isArray(d.state.players)){ toast('No Match Maker backup in this file — use a report exported from version 2.33 or later'); return; }
+  restorePending=d; sheetRestore();
+}
+function sheetRestore(){ const d=restorePending; if(!d) return; const st=d.state, days=new Set((st.ledger||[]).map(x=>x.day));
+  openSheet(`<h3>Restore this backup?</h3><div class="hint" style="margin:0 0 10px">Made <b>${esc(new Date(+d.at||0).toLocaleString())}</b> · version ${fmtVer(+d.ver||0)}</div>
+  <table class="htbl"><tr><td>Players</td><td><b>${st.players.length}</b></td></tr><tr><td>Photos</td><td>${Object.keys(d.photos||{}).length}</td></tr><tr><td>Matches in history</td><td>${(st.hist||[]).length}</td></tr><tr><td>Days with payments</td><td>${days.size}</td></tr><tr><td>Custom teams</td><td>${(st.teams||[]).length}</td></tr></table>
+  <p class="hint">This <b>replaces everything on this device</b> — players, photos, attendance, courts, payments, history and settings — with the backup.${S.players.length?` This device has <b>${S.players.length} players</b> now; export a report first if you want to keep them.`:''}</p>
+  <div class="acts"><button class="btn pri" data-act="restore-go">Replace all data with this backup</button><button class="btn" data-act="sheet-close">Cancel</button></div>`);
+}
 function loadXLSX(){
   if(window.XLSX) return Promise.resolve();
   if(!xlsxLoading) xlsxLoading=new Promise((res,rej)=>{const s=document.createElement('script');s.src=IS_APP?'file:///android_asset/xlsx.full.min.js':'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=res;s.onerror=()=>{xlsxLoading=null;rej();};document.head.appendChild(s);});
@@ -2375,7 +2437,7 @@ function applyIncoming(){
   }
   if(changed){ save(); render(); if(remoteChanged) refreshSheet(); }
 }
-const VIEW_OK=new Set(['sc-help','go','wq-sort','pay-gone','ci-f','pl-f','h-f','h-r','h-v','pay-f','score','sc-close','sync-role','sync-ip','upd-check','upd-go','upd-app','export','copypay','copy']);
+const VIEW_OK=new Set(['sc-help','go','wq-sort','pay-gone','rep-mode','ci-f','pl-f','h-f','h-r','h-v','pay-f','score','sc-close','sync-role','sync-ip','upd-check','upd-go','upd-app','export','copypay','copy']);
 if(IS_DISPLAY) document.body.classList.add('display');
 if(IS_APP||IS_SERVED){
   if(ROLE==='main'&&IS_APP){ try{ AndroidApp.startServer(); }catch(e){} shareState(); sharePhotos(); setInterval(syncHeader,3000); }
