@@ -624,7 +624,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=61;
+const APP_VERSION=62;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1123,8 +1123,8 @@ function vPay(){
     <p class="hint">Games are counted automatically when you tap “Game done” on a court.</p>
   </div>
   <h2>Excel report</h2>
-  <div class="card"><p class="hint" style="margin-top:0">One Excel file with everything: <b>Activity Log</b> (check-ins, matches and payments with time and Cash / STC Pay), Payments (all days), Match History, Team and Win Statistics, Daily Summary and Players.</p>
-  <button class="btn pri" data-act="export">⬇ Export all activity (Excel)</button></div>
+  <div class="card">${dc?`<div class="daybar">📅 <b>${DAY_L[dc]} report</b>: ${reportScope().pl.length} active ${DAY_L[dc]} players, records from ${DAY_L[dc]}s only<span class="grow"></span><button class="btn sm" data-act="day-view" data-k="All">All days</button></div>`:''}<p class="hint" style="margin-top:0">${dc?`Only active players scheduled on <b>${DAY_L[dc]}</b> (inactive and other days left out), and only check-ins, matches and payments on ${DAY_L[dc]}s. Choose <b>All days</b> in Settings → Show day for the full report.`:`One Excel file with everything: <b>Activity Log</b> (check-ins, matches and payments with time and Cash / STC Pay), Payments (all days), Match History, Team and Win Statistics, Daily Summary and Players. Pick a day in Settings → Show day to export just that day's players.`}</p>
+  <button class="btn pri" data-act="export">⬇ ${dc?'Export '+DAY_L[dc]+' report':'Export all activity'} (Excel)</button></div>
   <h2>Summary to share</h2>
   <div class="card"><textarea readonly id="paytxt">${esc(rows.slice().sort((a,b)=>a.n.localeCompare(b.n)).map(p=>`${p.n}${p.t==='G'?' (Guest)':''} – ${S.games[p.id]||0} games – ${fee(p)?sr(fee(p)):'0 SR'}${S.paid[p.id]?' ✓ paid ('+PM[payM(p.id)]+')':''}`).join('\n')+(rows.length?`\n\nTotal${dc?' ('+DAY_L[dc]+' players)':''}: ${sr(tot(rows))}`:''))}</textarea>
   <div class="row" style="margin-top:8px"><button class="btn" data-act="copypay">Copy summary</button></div></div>`;
@@ -1430,32 +1430,43 @@ function archiveDay(){
   const d=rows[0].day; S.ledger=S.ledger.filter(x=>x.day!==d).concat(rows).slice(-4000);
 }
 function dayDate(k){const [y,m,d]=k.split('-').map(Number);return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');}
+/* Settings → Show day set: the report covers only that day's active players, and only records dated on that weekday.
+   All days: everything (full backup). */
+function reportScope(){
+  const dc=dayCur(); if(!dc) return {dc:null,pl:S.players,inP:()=>true,inD:()=>true};
+  const pl=S.players.filter(p=>dayOk(p)&&!isOff(p)), ids=new Set(pl.map(p=>p.id)), names=new Set(pl.map(p=>p.n.toLowerCase()));
+  const wd=t=>DAYS[(new Date(t).getDay()+6)%7]===dc;
+  return {dc,pl,inP:(id,n)=>ids.has(id)||(!!n&&names.has(String(n).toLowerCase())),inD:wd};
+}
+const keyTime=k=>{const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d).getTime();};
 function buildReport(){
-  const today=dayKey(Date.now());
-  const pay=S.ledger.filter(x=>x.day!==today).concat(todayRows());
+  const today=dayKey(Date.now()), R=reportScope();
+  const pay=S.ledger.filter(x=>x.day!==today).concat(todayRows()).filter(r=>R.inP(r.id,r.n)&&R.inD(keyTime(r.day)));
+  const H=S.hist.filter(x=>R.inD(x.d)&&x.a.concat(x.b).some((id,j)=>R.inP(id,(x.an||[]).concat(x.bn||[])[j])));
+  const LG=(S.log||[]).filter(e=>R.inD(e.d)&&(e.k==='session'?!!R.dc:R.inP(null,e.n)));
   const T=t=>TYPE_L[t]||'Member';
   const wb=XLSX.utils.book_new();
   const add=(name,aoa,widths)=>{const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=widths.map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws,name);};
-  add('Players',[['Name','Full Name','Level','Type','Active','Gender','Team','Days']].concat(S.players.slice().sort((a,b)=>lvCmp(a.c,b.c)||a.n.localeCompare(b.n)).map(p=>[p.n,p.fn||'',p.c,T(p.t),p.st||'',p.g==='M'?'Male':p.g==='F'?'Female':'',p.tm||'',(p.dy||[]).join(', ')])),[22,30,8,10,9,9,20,22]);
+  add('Players',[['Name','Full Name','Level','Type','Active','Gender','Team','Days']].concat(R.pl.slice().sort((a,b)=>lvCmp(a.c,b.c)||a.n.localeCompare(b.n)).map(p=>[p.n,p.fn||'',p.c,T(p.t),p.st||'',p.g==='M'?'Male':p.g==='F'?'Female':'',p.tm||'',(p.dy||[]).join(', ')])),[22,30,8,10,9,9,20,22]);
   add('Payments',[['Date','Player','Team','Level','Type','Games','Fee (SR)','Paid','Method']].concat(pay.map(r=>[dayDate(r.day),r.n,r.tm||((S.players.find(p=>p.n===r.n)||{}).tm||''),r.c,T(r.t),r.g,r.f,r.pd?'Yes':'No',r.pd?(r.pm||'Cash'):''])),[13,24,18,10,12,8,10,7,10]);
   { const L={in:'Checked in',out:'Checked out',pay:'Payment received',unpay:'Payment cancelled',session:'New session started'};
-    const ev=(S.log||[]).map(e=>({d:e.d,a:L[e.k]||e.k,p:e.n||'',c:'',x:e.k==='pay'?(e.g?e.g+' games':''):'',amt:(e.k==='pay'||e.k==='unpay')?(e.k==='unpay'?-e.amt:e.amt):'',m:e.m||''}));
-    S.hist.forEach(x=>{ const ns=(ids,n2)=>ids.map((id,j)=>(byId(id)||{}).n||n2[j]).join(' & ');
+    const ev=LG.map(e=>({d:e.d,a:L[e.k]||e.k,p:e.n||'',c:'',x:e.k==='pay'?(e.g?e.g+' games':''):'',amt:(e.k==='pay'||e.k==='unpay')?(e.k==='unpay'?-e.amt:e.amt):'',m:e.m||''}));
+    H.forEach(x=>{ const ns=(ids,n2)=>ids.map((id,j)=>(byId(id)||{}).n||n2[j]).join(' & ');
       if(x.s&&x.s!==x.d) ev.push({d:x.s,a:'Match started',p:ns(x.a,x.an)+' vs '+ns(x.b,x.bn),c:x.c,x:'',amt:'',m:''});
       ev.push({d:x.d,a:'Match finished',p:ns(x.a,x.an)+' vs '+ns(x.b,x.bn),c:x.c,x:(x.w==='a'?ns(x.a,x.an)+(x.ta?' ('+x.ta+')':'')+' won':x.w==='b'?ns(x.b,x.bn)+(x.tb?' ('+x.tb+')':'')+' won':x.w==='d'?'Draw':'No result')+(x.sc?' · '+x.sc:''),amt:'',m:''}); });
     ev.sort((p,q)=>p.d-q.d);
     const tm=d=>{const t=new Date(d);return String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');};
     add('Activity Log',[['Date','Time','Activity','Player(s)','Court','Details','Amount (SR)','Method']].concat(ev.map(e=>[dayDate(dayKey(e.d)),tm(e.d),e.a,e.p,e.c,e.x,e.amt,e.m])).concat(ev.length?[]:[['No activity yet','','','','','','','']]),[12,7,20,40,7,40,12,10]); }
-  add('Match History',[['Date','Time','Court','Team 1 – Player 1','Team 1 – Player 2','Team 2 – Player 1','Team 2 – Player 2','Team 1 name','Team 2 name','Winner','Winning team','Score','Minutes']].concat(S.hist.map(x=>{const nm=(ids,ns,i)=>ids[i]?((byId(ids[i])||{}).n||ns[i]):'';
+  add('Match History',[['Date','Time','Court','Team 1 – Player 1','Team 1 – Player 2','Team 2 – Player 1','Team 2 – Player 2','Team 1 name','Team 2 name','Winner','Winning team','Score','Minutes']].concat(H.map(x=>{const nm=(ids,ns,i)=>ids[i]?((byId(ids[i])||{}).n||ns[i]):'';
     return [dayDate(dayKey(x.d)),fmtTime(x.d),x.c,nm(x.a,x.an,0),nm(x.a,x.an,1),nm(x.b,x.bn,0),nm(x.b,x.bn,1),x.ta||'',x.tb||'',x.w==='a'?'Team 1':x.w==='b'?'Team 2':'',x.w==='a'?(x.ta||nm(x.a,x.an,0)+(x.a[1]?' & '+nm(x.a,x.an,1):'')):x.w==='b'?(x.tb||nm(x.b,x.bn,0)+(x.b[1]?' & '+nm(x.b,x.bn,1):'')):'',x.sc||'',Math.max(1,Math.round((x.d-x.s)/60000))];})),[13,10,7,20,20,20,20,18,18,9,26,20,9]);
   const st={};
-  S.hist.forEach(x=>{[['a',x.a,x.an],['b',x.b,x.bn]].forEach(([s,ids,ns])=>ids.forEach((id,j)=>{const p=byId(id);const r=st[id]||(st[id]={n:p?p.n:ns[j],c:p?p.c:'',t:p?T(p.t):'',p:0,w:0,l:0});r.p++;if(x.w===s)r.w++;else if(x.w)r.l++;}));});
+  H.forEach(x=>{[['a',x.a,x.an],['b',x.b,x.bn]].forEach(([s,ids,ns])=>ids.forEach((id,j)=>{ if(!R.inP(id,ns[j])) return; const p=byId(id);const r=st[id]||(st[id]={n:p?p.n:ns[j],c:p?p.c:'',t:p?T(p.t):'',p:0,w:0,l:0});r.p++;if(x.w===s)r.w++;else if(x.w)r.l++;}));});
   const ws=Object.values(st).sort((a,b)=>b.w-a.w||b.p-a.p);
-  const tstat=teamStats(S.hist);
-  add('Team Statistics',[['Team','Played','Won','Lost','Win %','Players']].concat(tstat.map(r=>[r.n,r.p,r.w,r.l,r.w+r.l?Math.round(r.w*1000/(r.w+r.l))/10+'%':'-',S.players.filter(p=>p.tm===r.n).map(p=>p.n).join(', ')]).concat(tstat.length?[]:[['No team results yet','','','','','']])),[24,8,8,8,8,50]);
+  const tstat=teamStats(H);
+  add('Team Statistics',[['Team','Played','Won','Lost','Win %','Players']].concat(tstat.map(r=>[r.n,r.p,r.w,r.l,r.w+r.l?Math.round(r.w*1000/(r.w+r.l))/10+'%':'-',R.pl.filter(p=>p.tm===r.n).map(p=>p.n).join(', ')]).concat(tstat.length?[]:[['No team results yet','','','','','']])),[24,8,8,8,8,50]);
   add('Win Statistics',[['Player','Team','Level','Type','Played','Won','Lost','Win %']].concat(ws.map(r=>[r.n,(S.players.find(p=>p.n===r.n)||{}).tm||'',r.c,r.t,r.p,r.w,r.l,r.w+r.l?Math.round(r.w*1000/(r.w+r.l))/10+'%':'-'])),[24,18,10,12,8,8,8,8]);
   const days={}; pay.forEach(r=>{const d=days[r.day]||(days[r.day]={pl:0,g:0,due:0,col:0,cash:0,stc:0,sub:0,gst:0});d.pl++;d.g+=r.g;d.due+=r.f;if(r.pd){d.col+=r.f;if(r.pm==='STC Pay')d.stc+=r.f;else d.cash+=r.f;}if(r.t==='G')d.gst+=r.f;else d.sub+=r.f;});
-  const mt={}; S.hist.forEach(x=>{const k=dayKey(x.d);mt[k]=(mt[k]||0)+1;});
+  const mt={}; H.forEach(x=>{const k=dayKey(x.d);mt[k]=(mt[k]||0)+1;});
   const dk=[...new Set(Object.keys(days).concat(Object.keys(mt)))].sort((a,b)=>dayDate(a).localeCompare(dayDate(b)));
   const r2=v=>Math.round(v*100)/100;
   add('Daily Summary',[['Date','Players','Matches','Total due (SR)','Collected (SR)','Cash (SR)','STC Pay (SR)','Outstanding (SR)','Members & Family (SR)','Guests (SR)']].concat(dk.map(k=>{const d=days[k]||{pl:0,due:0,col:0,cash:0,stc:0,sub:0,gst:0};return [dayDate(k),d.pl,mt[k]||0,r2(d.due),r2(d.col),r2(d.cash),r2(d.stc),r2(d.due-d.col),r2(d.sub),r2(d.gst)];})),[13,9,9,14,14,11,13,15,15,12]);
@@ -1465,7 +1476,7 @@ async function exportReport(){
   toast('Preparing report…');
   try{ await loadXLSX(); }catch(e){ toast('Could not load the Excel tool — check internet'); return; }
   let b64; try{ b64=buildReport(); }catch(e){ toast('Could not build the report'); return; }
-  const name='MatchMaker_Report_'+dayDate(dayKey(Date.now()))+'.xlsx';
+  const dc=dayCur(); const name='MatchMaker_Report_'+(dc?DAY_L[dc]+'_':'')+dayDate(dayKey(Date.now()))+'.xlsx';
   if(IS_APP){
     if(typeof window.AndroidApp.saveFile!=='function'){ toast('Install the latest MatchMaker.apk to export'); return; }
     window.AndroidApp.saveFile(b64,name); return;
@@ -1625,7 +1636,7 @@ function vSettings(){
     <p class="hint">Paste this list into "Add many at once" to restore.</p>
   </div>
   <h2>Export</h2>
-  <div class="card"><p class="hint" style="margin-top:0">All activity in one Excel file: check-ins, matches, payments (Cash / STC Pay), statistics and daily totals.</p><button class="btn pri" data-act="export">⬇ Export all activity (Excel)</button></div>
+  <div class="card"><p class="hint" style="margin-top:0">All activity in one Excel file: check-ins, matches, payments (Cash / STC Pay), statistics and daily totals.${dayCur()?' <b>Show day is '+DAY_L[dayCur()]+'</b>: only active '+DAY_L[dayCur()]+' players and '+DAY_L[dayCur()]+' records are exported.':''}</p><button class="btn pri" data-act="export">${dayCur()?'⬇ Export '+DAY_L[dayCur()]+' report (Excel)':'⬇ Export all activity (Excel)'}</button></div>
   <h2>About</h2>
   ${DEV_CARD()}`;
 }
