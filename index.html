@@ -160,6 +160,10 @@ body.display .cmenu{display:none}
 .ng-a{display:flex;gap:6px;margin-left:auto}
 .ng-f{width:100%;margin:0;font-size:13px}
 .toast.act{pointer-events:auto}
+.hsec{scroll-margin-top:84px}
+.qbtn{flex:none;width:24px;height:24px;padding:0;border-radius:50%;border:1.5px solid var(--border);background:#fff;color:var(--muted);font:700 13px/1 Barlow,sans-serif;display:inline-flex;align-items:center;justify-content:center}
+.qbtn:hover{border-color:var(--C);color:var(--C)}
+body.display [data-act=help-topic]{pointer-events:auto;opacity:1}
 /* drag a player onto another to swap them (court teams, planned games) */
 [data-dd]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 @media (hover:hover){[data-dd]{cursor:grab}}
@@ -592,7 +596,7 @@ body.served .gear{display:none!important}
   <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="25" r="5" fill="#fff"/><path d="M12 21 7 5l6 3 3-5 3 5 6-3-5 16" stroke="#c8f169" stroke-width="2" stroke-linejoin="round" fill="none"/></svg>
   <h1>Match<span>Maker</span><em>JAMREIBIZ Badminton Club</em></h1>
   <div class="sync" id="sync"><i></i><span>Local</span></div>
-  <button class="helpbtn" data-act="go" data-tab="help" aria-label="How to use">?</button>
+  <button class="helpbtn" data-act="help" aria-label="How to use this screen">?</button>
 </header>
 <main id="app"></main>
 <nav id="nav">
@@ -673,7 +677,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=73;
+const APP_VERSION=74;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1132,7 +1136,7 @@ function vNext(){
   const nx=S.next||[];
   const pl=(id,j)=>{ const p=byId(id); return p?`<button class="wp" data-act="nx-pl" data-dd="n:${j}" data-k="${j}" data-id="${id}" title="Tap to replace · drag onto another player to swap">${catBadge(p.c)}${esc(p.n)} ${typeBadge(p)}<small>${S.games[id]||0}g</small></button>`:''; };
   const side=(ids,j)=>'<span class="ng-s">'+ids.map(id=>id?pl(id,j):'<span class="ng-hole">needs a player</span>').join('')+'</span>';
-  let h=`<h2>Next games <small>${nx.length?nx.length+' planned':'none planned'}</small><span class="grow"></span><button class="btn sm" data-act="nx-pick">Pick players</button><button class="btn lime sm" data-act="nx-plan">+ Plan next game</button></h2><div class="card">`;
+  let h=`<h2>Next games <button class="qbtn" data-act="help-topic" data-k="next" aria-label="Help: Next games and changing teams">?</button><small>${nx.length?nx.length+' planned':'none planned'}</small><span class="grow"></span><button class="btn sm" data-act="nx-pick">Pick players</button><button class="btn lime sm" data-act="nx-plan">+ Plan next game</button></h2><div class="card">`;
   if(!nx.length) return h+`<div class="hint" style="margin:0">Plan games ahead: tap <b>+ Plan next game</b> (same rules as Auto match) or <b>Pick players</b>. When a court finishes, <b>Game done</b> puts Next 1 straight on that court. Players in a planned game wait here, not in the queue.</div></div>`;
   h+=`<div class="nextg">${nx.map((g,j)=>{ const half=g.p.length/2, fits=S.courts.map((c,i)=>nextFits(c,g)?i+1:0).filter(Boolean), full=g.p.every(Boolean);
     return `<div class="ng ${j===0?'first':''}"><div class="ng-n">Next ${j+1}</div><div class="ng-t">${side(g.p.slice(0,half),j)}<span class="ng-vs">vs</span>${side(g.p.slice(half),j)}</div>
@@ -1500,7 +1504,14 @@ function sheetWinner(ci){
   </div>`);
 }
 let histCourt='All', histRange='today', histView='matches';
-let scHelp=false, helpOpen='session';
+let scHelp=false, helpOpen='session', helpFrom='courts';
+/* the ? button opens How to use at the topic for the screen you are on; Back returns to that screen */
+const HELP_FOR={courts:'session',checkin:'session',players:'first',pay:'fees',hist:'end',settings:'first'};
+function openHelp(topic){
+  if(tab!=='help') helpFrom=tab;
+  helpOpen=topic||HELP_FOR[helpFrom]||'session'; tab='help'; closeSheet(); render();
+  setTimeout(()=>{ const e=document.querySelector('.hsec.open'); if(e) e.scrollIntoView({block:'start'}); else window.scrollTo(0,0); },30);
+}
 const DEV_CARD=()=>`<div class="devcard"><div class="devk">Developer</div><div class="devn">Archie Martinez Bagadiong</div><div class="devnick">“Baggy”</div><span class="devtel">📞 0542873115</span><br><a class="devtel" href="mailto:archie24bagadiong@gmail.com">✉ archie24bagadiong@gmail.com</a><div class="devv">Match Maker · JAMREIBIZ Badminton Club · version ${fmtVer(APP_VERSION)}</div></div>`;
 const GUIDE_URL='https://archie24bagadiong-max.github.io/matchmaker-app/guide.html';
 // screenshots: same folder on the website / laptop; the APK opens the page from a file, so it loads them from the website
@@ -1508,7 +1519,7 @@ const SHOT_BASE=/^https?:$/.test(location.protocol)&&location.port!=='8787'?'gui
 function vHelp(){
   const shot=(f,cap,ph)=>`<a class="hshot${ph?' ph':''}" href="${SHOT_BASE}${f}.webp" target="_blank" rel="noopener"><img src="${SHOT_BASE}${f}.webp" alt="${cap}" loading="lazy" onerror="this.parentNode.style.display='none'"><small>📷 ${cap}</small></a>`;
   const sec=(id,title,body)=>`<div class="hsec ${helpOpen===id?'open':''}"><button class="hhead" data-act="help-sec" data-k="${id}"><span>${title}</span><span class="chev">${helpOpen===id?'−':'+'}</span></button>${helpOpen===id?`<div class="hbody">${body}</div>`:''}</div>`;
-  return `<div class="row" style="margin:4px 0 10px"><h2 style="margin:0;flex:1">How to use</h2><button class="btn sm" data-act="go" data-tab="courts">← Back</button></div>
+  return `<div class="row" style="margin:4px 0 10px"><h2 style="margin:0;flex:1">How to use</h2><button class="btn sm" data-act="go" data-tab="${HELP_FOR[helpFrom]!==undefined?helpFrom:'courts'}">← Back</button></div>
   <a class="guidelink" href="${GUIDE_URL}" target="_blank" rel="noopener">📖 <span><b>Picture guide</b><small>Screenshots for PC, Android tablet, Android phone and iPhone</small></span></a>
   <p class="hint" style="margin:0 0 12px">Tap a topic to open it. ${IS_DISPLAY?'This tablet is a <b>Display</b>: it shows the Main tablet live and cannot change anything.':''}</p>
   ${sec('install','0. Install on PC, Android or iPhone',`<ul>
@@ -1577,6 +1588,7 @@ function vHelp(){
     <tr><td>Create custom teams</td><td>Players → Custom teams → Add team</td></tr>
     <tr><td>Pick a team during a game</td><td>Scoreboard → tap the team box at the top of a side</td></tr>
     <tr><td>See only Monday's players</td><td>Settings → Show day → Mon (or Today)</td></tr>
+    <tr><td>Help for this screen</td><td>Tap ? at the top: it opens the topic for the screen you are on</td></tr>
     <tr><td>Someone went home</td><td>Waiting queue → name → Went home</td></tr>
     <tr><td>Plan the next game</td><td>Courts → Next games → + Plan next game (or Pick players)</td></tr>
     <tr><td>Replace someone in a planned game</td><td>Next games → tap the name → pick a waiting player</td></tr>
@@ -1776,7 +1788,7 @@ function vSettings(){
     ${IS_APP?`<button class="btn pri" data-act="upd-app" ${updBusy?'disabled':''}>⟳ ${updInfo?'Install update':'Update app'}</button>`:''}</div>
     ${IS_APP?'<p class="hint" style="margin:8px 0 0">Needs internet. Your players, payments, photos and history are kept.</p>':''}
   </div>
-  <button class="btn pri" style="width:100%;margin-top:10px" data-act="go" data-tab="help">📖 How to use this app</button>
+  <button class="btn pri" style="width:100%;margin-top:10px" data-act="help">📖 How to use this app</button>
   ${IS_APP?`<h2>Tablet sync (local network)</h2>
   <div class="card">${!CAN_SYNC?`<p class="hint" style="margin:0">Install the latest MatchMaker.apk on every tablet to use sync.</p>`:`
     <p class="hint" style="margin-top:0">Connect all tablets to the same hotspot or Wi-Fi. No internet needed. One <b>Main</b> tablet makes all changes; <b>Display</b> tablets show the same courts, scores and lists live.</p>
@@ -2210,7 +2222,9 @@ document.addEventListener('click',e=>{
     case 'sc-tpick': setTeamName(scoreOpen,teamPick||k,el.dataset.v||''); break;
     case 'sc-tuse':{ const v=(($('#tp-in')||{}).value||'').trim().slice(0,40); if(!v){ toast('Type a team name'); break; } if(!(S.teams||[]).some(x=>x.toLowerCase()===v.toLowerCase())) S.teams=(S.teams||[]).concat(v); setTeamName(scoreOpen,teamPick,v); break;}
     case 'sc-tclear':{ const sc=scEnsure(scoreOpen); if(!sc) break; sc.tn=Object.assign({a:scTN(sc,'a'),b:scTN(sc,'b')},sc.tn||{}); sc.tn[k]=''; sc.seq=(sc.seq||0)+1; save(); renderScore(); break;}
-    case 'help-sec': helpOpen=helpOpen===k?'':k; render(); break;
+    case 'help-sec': helpOpen=helpOpen===k?'':k; render(); if(helpOpen) setTimeout(()=>{ const e=document.querySelector('.hsec.open'); if(e) e.scrollIntoView({block:'start'}); },30); break;
+    case 'help': openHelp(); break;
+    case 'help-topic': openHelp(k); break;
     case 'court-exit': courtExit=true; renderScore(); break;
     case 'court-exit-no': courtExit=false; renderScore(); break;
     case 'court-exit-ok':{ const v=(document.getElementById('pin-in')||{}).value||''; if(COURT_PIN&&v!==COURT_PIN){ toast('Wrong PIN'); const i=document.getElementById('pin-in'); if(i){i.value='';i.focus();} break; } try{ localStorage.setItem('bmm_role','off'); }catch(e){} persistFlush(); location.reload(); break;}
@@ -2749,7 +2763,7 @@ function applyIncoming(){
   }
   if(changed){ save(); render(); if(remoteChanged) refreshSheet(); }
 }
-const VIEW_OK=new Set(['sc-help','go','wq-sort','pay-gone','rep-mode','stg-check','ci-f','pl-f','h-f','h-r','h-v','pay-f','score','sc-close','sync-role','sync-ip','upd-check','upd-go','upd-app','export','copypay','copy']);
+const VIEW_OK=new Set(['sc-help','go','help','help-topic','help-sec','wq-sort','pay-gone','rep-mode','stg-check','ci-f','pl-f','h-f','h-r','h-v','pay-f','score','sc-close','sync-role','sync-ip','upd-check','upd-go','upd-app','export','copypay','copy']);
 if(IS_DISPLAY) document.body.classList.add('display');
 if(IS_APP||IS_SERVED){
   if(ROLE==='main'&&IS_APP){ try{ AndroidApp.startServer(); }catch(e){} shareState(); sharePhotos(); setInterval(syncHeader,3000); }

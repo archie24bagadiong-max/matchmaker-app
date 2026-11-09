@@ -78,6 +78,7 @@ Set up once, then each playing day the organizer runs the session from the Main 
 | Add many players | Players → Choose file, or paste `Maria, B, Guest` lines into Add many at once |
 | Change level or Sub/Guest | Players → dropdown, or tap Sub/Guest |
 | Change the teams on a court | Drag a player onto another on the same court (touch: press and hold, then drag); works until the first point is scored |
+| Help for the screen you are on | Tap ? at the top right: How to use opens at that screen's topic; ← Back returns |
 | Rename or add a photo | Players → Edit, or tap the name on a court / in the queue |
 | Mark someone resting | Queue → name → Rest; on court → Can't play |
 | Someone went home | Queue → name → Went home, or untick in Attendance |
@@ -302,6 +303,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 | 7 Nov 2026 | Page v29 (1.29) | Set the serve before starting: tap the player who serves first, then the player who receives (0–0, first game); serving team can still be changed until the first point |
 | 7 Nov 2026 | Page v30 (1.30) | Payments: mark each player paid by 💵 Cash or 📱 STC Pay; Collected shows the split; Excel Payments sheet has a Method column and Daily Summary has Cash / STC Pay totals |
 | 7 Nov 2026 | Page v31 (2.0) | Export all activity: new Activity Log sheet (check-ins/outs, match start and finish with result, payments received/cancelled with amount and Cash / STC Pay, new sessions — all with date and time). Export button also in Settings |
+| 9 Nov 2026 | Page v74 (3.12) | Context help: the header ? opens How to use with the topic for the current tab open and scrolled into view (Courts and Attendance → 3 Running a session, Players and Settings → 1 First time setup, Payments → 6 Fees, History → 7 End of the day); a small ? beside Next games opens topic 4; ← Back returns to the tab you came from. Display tablets can read the help |
 | 9 Nov 2026 | Page v73 (3.11) | How to use: new topic 4 Next games and changing teams (screenshots tab-next, tab-nextpl, tab-drag), iPhone installer picture, new Quick answers; picture guide (guide.html) gets the iPhone installer and steps 8-10 (Next games, replace a planned player, drag to change teams); README rewritten. Planned-game teams keep each pair on one line on wide screens |
 | 9 Nov 2026 | Page v72 (3.10) | iPhone installer: iphone.html (QR icons/qr-iphone.svg) with Option 1 one-tap install profile MatchMaker.mobileconfig (Web Clip, full screen, unsigned so iOS shows Not Verified; fixed UUIDs so reinstall replaces it) and Option 2 Share → Add to Home Screen. Detects Chrome/in-app browsers (copy link for Safari), PC/Android (shows QR), already installed. Linked from the iPhone install banner, How to use and qr.html |
 | 9 Nov 2026 | APK 1.10 (code 11) | Rebuilt with page v71 bundled, so new installs start on the latest page. From now on the APK is rebuilt and published with every page update |
