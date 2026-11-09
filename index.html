@@ -595,10 +595,15 @@ const STATUS=['Reg','A-SUB','No'];
 /* playing days (schedule): p.dy = ['Mon','Thu',…]; Settings → Show day filters Attendance and Players */
 const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], DAY_L={Mon:'Monday',Tue:'Tuesday',Wed:'Wednesday',Thu:'Thursday',Fri:'Friday',Sat:'Saturday',Sun:'Sunday'};
 const normDays=a=>Array.isArray(a)?DAYS.filter(d=>a.includes(d)):[];
+const DAY_W=/^(mon(day)?|tues?(day)?|wed(nesday)?|weds|thu(rs?(day)?)?|fri(day)?|sat(urday)?|sun(day)?)$/;
+/* a cell / bulk part made only of day words: "Mon", "Monday & Thursday", "Mon-Fri", "Weekend", "Daily" */
+const isDaysText=v=>{ const t=String(v||'').toLowerCase().trim(); if(!t) return false;
+  if(/^(every\s*day|daily|week\s*days?|week\s*ends?)$/.test(t)) return true;
+  const w=t.split(/[\s,;\/&+\-–—.]+|\band\b|\bto\b|\buntil\b|\btill\b/).filter(Boolean); return w.length>0&&w.every(x=>DAY_W.test(x)||/^(week\s*days?|week\s*ends?|and|to|until|till)$/.test(x)); };
 function parseDays(v){
   let t=String(v==null?'':v).toLowerCase().trim(); if(!t) return [];
   if(/every\s*day|daily|^all(\s*days)?$/.test(t)) return DAYS.slice();
-  const out=new Set(), ix=w=>w.length>=3?DAYS.findIndex(d=>d.toLowerCase()===w.slice(0,3)):-1;
+  const out=new Set(), ix=w=>DAY_W.test(w)?DAYS.findIndex(d=>d.toLowerCase()===w.slice(0,3)):-1;
   if(/week\s*days?/.test(t)) DAYS.slice(0,5).forEach(d=>out.add(d));
   if(/week\s*ends?/.test(t)) ['Sat','Sun'].forEach(d=>out.add(d));
   t=t.replace(/week\s*(days?|ends?)/g,' ');
@@ -619,7 +624,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=58;
+const APP_VERSION=59;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1066,9 +1071,9 @@ function vPlayers(){
   </div>
   <h2>Add many at once</h2>
   <div class="card">
-    <textarea id="bulk" placeholder="One per line: Name, Level, Type, Team&#10;Archie, C+, Subscriber, Racket Kings&#10;Maria Santos, B-, Guest&#10;Ahmed, A+, , Smash Bros"></textarea>
+    <textarea id="bulk" placeholder="One per line: Name, Level, Type, Gender, Team, Days&#10;Archie, C+, Member, Male, Racket Kings, Mon, Thu&#10;Maria Santos, B-, Guest, Female, Saturday&#10;Ahmed, A+, , , Smash Bros, Mon-Fri&#10;Ken, D+, Weekend"></textarea>
     <div class="row" style="margin-top:8px"><button class="btn pri" data-act="bulk">Add list</button>${S.players.length?'':'<button class="btn" data-act="sample">Add sample entries</button>'}</div>
-    <p class="hint">Paste from a spreadsheet too — comma or tab works. Missing level = C+. A plain letter (e.g. B) becomes B+. Add “Guest” or “Family” (otherwise Member), and Male / Female if you like. Anything else on the line becomes the team name.</p>
+    <p class="hint">Paste from a spreadsheet too — comma or tab works. Missing level = C+. A plain letter (e.g. B) becomes B+. Add “Guest” or “Family” (otherwise Member), Male / Female, and the <b>playing days</b> anywhere after the name: Monday, Mon, Thu, Mon-Fri, Weekdays, Weekend or Daily. Anything else on the line becomes the team name.</p>
   </div>
   <h2>Roster <small>${S.players.filter(p=>p.t==='S').length} members · ${S.players.filter(p=>p.t==='F').length} family · ${S.players.filter(p=>p.t==='G').length} guests${S.players.some(isOff)?' · '+S.players.filter(isOff).length+' inactive':''} · tap the type to switch</small></h2>
   <div class="card">
@@ -1798,15 +1803,15 @@ document.addEventListener('click',e=>{
     case 'bulk':{ const t=$('#bulk').value; let n=0;
       t.split(/\r?\n/).forEach(line=>{ line=line.trim(); if(!line) return;
         let parts=line.split(/\t|,|;/).map(s=>s.trim()).filter(Boolean); if(!parts.length) return;
-        let t='S', g=''; parts=parts.filter((x,i)=>{ if(i>0&&/^(guest|g|sub|subscriber|member|family)$/i.test(x)){ t=parseType(x)||'S'; return false;} if(i>0&&/^(male|female)$/i.test(x)){ g=parseGender(x); return false; } return true; });
+        let t='S', g='', dy=[]; parts=parts.filter((x,i)=>{ if(i>0&&/^(guest|g|sub|subscriber|member|family)$/i.test(x)){ t=parseType(x)||'S'; return false;} if(i>0&&/^(male|female)$/i.test(x)){ g=parseGender(x); return false; } if(i>0&&isDaysText(x)){ dy=normDays(dy.concat(parseDays(x))); return false; } return true; });
         if(!parts.length) return;
         let c=DEF_LV, name=parts[0], catFound=false;
         const rest=parts.slice(1).filter(x=>{ const u=parseCat(x); if(!catFound&&u&&/^\s*[A-D]\s*[+\-−–]?\s*$/i.test(x)){ c=u; catFound=true; return false; } return true; });
         const tm=rest.join(' ').trim().slice(0,40);
         if(parts.length===1){ const m=line.match(/^(.*?)[\s(]+([ABCD]\s*[+\-−–]?)\)?$/i); if(m&&m[1].trim()){name=m[1].trim();c=parseCat(m[2])||DEF_LV;} }
         const ex=S.players.find(p=>p.n.toLowerCase()===name.toLowerCase());
-        if(ex){ ex.c=c; ex.t=t; if(tm) ex.tm=tm; if(g) ex.g=g; n++; return; }
-        S.players.push({id:uid(),n:name.slice(0,40),c,t,tm,g,fn:'',st:''}); n++; });
+        if(ex){ ex.c=c; ex.t=t; if(tm) ex.tm=tm; if(g) ex.g=g; if(dy.length) ex.dy=dy; n++; return; }
+        S.players.push({id:uid(),n:name.slice(0,40),c,t,tm,g,fn:'',st:'',dy}); n++; });
       save(); render(); toast(`Added ${n} player${n===1?'':'s'}`); break;}
     case 'sample': addSamples(); break;
     case 'demo-clear':
@@ -1943,7 +1948,7 @@ function importRows(rows){
   if(ti<0) ti=byVals(v=>/^(member|guest|family|subscriber|sub)$/i.test(v.trim()),used());
   if(ai<0) ai=byVals(v=>!!parseStatus(v)&&/^(reg|a-?\s*sub|no)$/i.test(v.trim()),used());
   if(gi<0) gi=byVals(v=>/^(male|female)$/i.test(v.trim()),used());
-  if(dyi<0) dyi=byVals(v=>parseDays(v).length>0,used());
+  if(dyi<0) dyi=byVals(v=>isDaysText(v),used());
   if(catCol<0){ // guess: the column whose values are mostly A-D
     const w=Math.max(...rows.map(r=>r.length)); let best=-1,bs=0;
     for(let c=0;c<w;c++){ if(c===nameCol) continue; const sc=rows.slice(start).filter(r=>parseCat(r[c])).length; if(sc>bs){bs=sc;best=c;} }
