@@ -131,6 +131,17 @@
   } else {
     st.innerHTML='Tap <b>Install Match Maker</b> below and follow the 4 steps. It takes about a minute.';
   }
+  // GitHub Pages sends the profile as application/octet-stream, which Safari only saves as a file. Hand it to Safari
+  // with the profile type instead, so iOS shows "This website is trying to download a configuration profile → Allow".
+  $('install').addEventListener('click',function(e){
+    if(!window.fetch||!window.Blob||!window.URL||!URL.createObjectURL) return;   // old browser: plain link
+    e.preventDefault(); var href=this.href;
+    fetch(href,{cache:'no-cache'}).then(function(r){ if(!r.ok) throw 0; return r.arrayBuffer(); }).then(function(buf){
+      var u=URL.createObjectURL(new Blob([buf],{type:'application/x-apple-aspen-config'}));
+      var a=document.createElement('a'); a.href=u; a.download='MatchMaker.mobileconfig'; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(u); },60000);
+    }).catch(function(){ location.href=href; });
+  });
   $('copy').addEventListener('click',function(){
     var u=location.href.split('#')[0], b=$('copy');
     function done(){ b.textContent='✓ Copied — now open Safari and paste'; }
