@@ -495,6 +495,10 @@ input.stsel{padding-right:40px}
 .guidelink{display:flex;align-items:center;gap:12px;background:var(--court);color:#fff;text-decoration:none;border-radius:14px;padding:12px 16px;margin:0 0 12px;font-size:26px}
 .guidelink span{display:flex;flex-direction:column;font-size:16px;line-height:1.3}
 .guidelink small{font-size:13px;opacity:.85}
+.hshot{display:block;margin:6px 0 14px;text-decoration:none;color:var(--muted)}
+.hshot img{display:block;width:100%;height:auto;border:1px solid var(--border);border-radius:10px;background:var(--bg)}
+.hshot.ph img{max-width:220px}
+.hshot small{display:block;font-size:13px;line-height:1.35;margin-top:5px}
 /* ---- iPhone / tablet fit (kept last so it wins) ---- */
 /* landscape iPhone: keep content clear of the notch and rounded corners */
 header{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
@@ -586,7 +590,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=52;
+const APP_VERSION=54;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -643,7 +647,7 @@ function normalize(s){
   s.autoNext=!!s.autoNext;
   s.phRev=+s.phRev||0;
   const mf=(s.match&&typeof s.match==='object')?s.match:{};
-  s.match={n:[1,2,3,4,5].includes(+mf.n)?+mf.n:3, pts:[11,15,21].includes(+mf.pts)?+mf.pts:21, mode:mf.mode==='all'?'all':'best'};
+  s.match={n:[1,2,3,4,5].includes(+mf.n)?+mf.n:3, pts:[11,15,21,35].includes(+mf.pts)?+mf.pts:21, mode:mf.mode==='all'?'all':'best'};
   if(!['strong','tie','none'].includes(s.prio)) s.prio='strong';
   if(typeof s.paid!=='object'||!s.paid||Array.isArray(s.paid)) s.paid={};
   const f=(s.fee&&typeof s.fee==='object')?s.fee:{};
@@ -1297,38 +1301,41 @@ let histCourt='All', histRange='today', histView='matches';
 let scHelp=false, helpOpen='session';
 const DEV_CARD=()=>`<div class="devcard"><div class="devk">Developer</div><div class="devn">Archie Martinez Bagadiong</div><div class="devnick">“Baggy”</div><span class="devtel">📞 0542873115</span><br><a class="devtel" href="mailto:archie24bagadiong@gmail.com">✉ archie24bagadiong@gmail.com</a><div class="devv">Match Maker · JAMREIBIZ Badminton Club · version ${fmtVer(APP_VERSION)}</div></div>`;
 const GUIDE_URL='https://archie24bagadiong-max.github.io/matchmaker-app/guide.html';
+// screenshots: same folder on the website / laptop; the APK opens the page from a file, so it loads them from the website
+const SHOT_BASE=/^https?:$/.test(location.protocol)&&location.port!=='8787'?'guide/':GUIDE_URL.replace('guide.html','guide/');
 function vHelp(){
+  const shot=(f,cap,ph)=>`<a class="hshot${ph?' ph':''}" href="${SHOT_BASE}${f}.webp" target="_blank" rel="noopener"><img src="${SHOT_BASE}${f}.webp" alt="${cap}" loading="lazy" onerror="this.parentNode.style.display='none'"><small>📷 ${cap}</small></a>`;
   const sec=(id,title,body)=>`<div class="hsec ${helpOpen===id?'open':''}"><button class="hhead" data-act="help-sec" data-k="${id}"><span>${title}</span><span class="chev">${helpOpen===id?'−':'+'}</span></button>${helpOpen===id?`<div class="hbody">${body}</div>`:''}</div>`;
   return `<div class="row" style="margin:4px 0 10px"><h2 style="margin:0;flex:1">How to use</h2><button class="btn sm" data-act="go" data-tab="courts">← Back</button></div>
   <a class="guidelink" href="${GUIDE_URL}" target="_blank" rel="noopener">📖 <span><b>Picture guide</b><small>Screenshots for PC, Android tablet, Android phone and iPhone</small></span></a>
   <p class="hint" style="margin:0 0 12px">Tap a topic to open it. ${IS_DISPLAY?'This tablet is a <b>Display</b>: it shows the Main tablet live and cannot change anything.':''}</p>
   ${sec('install','0. Install on PC, Android or iPhone',`<ul>
     <li><b>Club tablets (Android):</b> download <b>MatchMaker.apk</b> from the QR page → Install (Play Protect: More details → Install anyway). Needed for Tablet sync and court tablets.</li>
-    <li><b>PC / laptop:</b> open the website in Chrome or Edge → <b>Install</b> (address bar icon or the green bar at the bottom).</li>
+    <li><b>PC / laptop:</b> open the website in Chrome or Edge → <b>Install</b> (address bar icon or the green bar at the bottom).${shot('pc-courts','On a laptop: courts side by side and the waiting queue in level columns')}</li>
     <li><b>Android phone:</b> scan the QR code → tap <b>Install</b> on the green bar.</li>
-    <li><b>iPhone / iPad:</b> scan the QR code → it opens in Safari → <b>Share</b> → <b>Add to Home Screen</b>.</li></ul>
+    <li><b>iPhone / iPad:</b> scan the QR code → it opens in Safari → <b>Share</b> → <b>Add to Home Screen</b>.${shot('iphone-install','iPhone in Safari: tap Share, then Add to Home Screen',1)}</li></ul>
     <p class="hint">Website: archie24bagadiong-max.github.io/matchmaker-app · QR code &amp; APK: …/qr.html. Each device keeps its own data.</p>`)}
   ${sec('first','1. First time setup',`<ol>
     <li>Install the app (see 0). A newer version updates by itself and keeps your data — don't uninstall.</li>
     <li>Put your players in the Excel template (Players sheet: <b>Name</b>, <b>Level</b> A+ to D-, <b>Type</b> Member/Family/Guest, optional <b>Active</b> (Reg, A-SUB, No), <b>Gender</b>, <b>Full Name</b> and <b>Team</b>; a <b>Teams</b> sheet adds custom team names).</li>
     <li>Copy the file to the Main tablet, then <b>Players → Choose file</b>.</li>
-    <li>Check <b>Settings</b>: number of courts, Doubles, skill mixing, subscriber priority and fees.</li>
+    <li>Check <b>Settings</b>: number of courts, Doubles, skill mixing, subscriber priority and fees.${shot('tab-rounds','Settings: Equal rounds, fees and Start new session')}</li>
     <li>Optional: tap a player's name → <b>📷 Take photo</b>.</li></ol>`)}
   ${sec('tablets','2. Setting up several tablets',`<ol>
     <li>Turn on a <b>hotspot</b> and connect all tablets to it. No internet needed.</li>
-    <li><b>Main tablet</b> (organizer): Settings → Tablet sync → <b>Main tablet</b>. Note the address, e.g. 192.168.43.1.</li>
+    <li><b>Main tablet</b> (organizer): Settings → Tablet sync → <b>Main tablet</b>. Note the address, e.g. 192.168.43.1.${shot('tab-sync','Settings → Tablet sync: Main tablet chosen, with its address and connected tablets')}</li>
     <li><b>Court tablets</b> (one per court): Settings → Tablet sync → <b>Court tablet</b> → address, court number, PIN → <b>Start court mode</b>.</li>
     <li><b>Display tablet</b>: Settings → Tablet sync → <b>Display tablet</b> → address → <b>Connect</b>.</li>
     <li>Only one tablet? Leave Tablet sync <b>Off</b> and do everything on it.</li>
-    <li><b>Score with a phone (nothing to install):</b> on the host — laptop, tablet or phone — tap a court; its menu shows the court's QR code. Any phone scans it and the Match Maker web page opens, scoring that court only with the players you put on. One phone per court; another phone is refused. Host and phone need internet.</li>
-    <li><b>Only you disconnect a phone:</b> court menu → <b>Disconnect</b> (tap twice). The court gets a new QR code, so that phone can only come back by scanning again. If a phone just loses the network it keeps retrying by itself and sends its points when it reconnects — no new scan needed.</li>
+    <li><b>Score with a phone (nothing to install):</b> on the host — laptop, tablet or phone — tap a court; its menu shows the court's QR code. Any phone scans it and the Match Maker web page opens, scoring that court only with the players you put on. One phone per court; another phone is refused. Host and phone need internet.${shot('tab-courtqr',"Tap a court: its own QR code for phone scoring")}${shot('phone-score','A phone scoring its court after scanning the QR code',1)}</li>
+    <li><b>Only you disconnect a phone:</b> court menu → <b>Disconnect</b> (tap twice). The court gets a new QR code, so that phone can only come back by scanning again. If a phone just loses the network it keeps retrying by itself and sends its points when it reconnects — no new scan needed.${shot('tab-linked','Court cards show 📱 Connected (green) or 📱 Reconnecting… (orange)')}</li>
 </ol>
     <p class="hint">Only the Main tablet makes changes. Court tablets only score; Display tablets only show.</p>`)}
   ${sec('session','3. Running a session',`<ol>
-    <li><b>Attendance:</b> tick everyone who arrives (Check in all, or by level).</li>
-    <li><b>Courts:</b> tap <b>Auto match</b> (fair, balanced teams) or <b>Pick players</b> (choose 4 yourself). <b>Fill empty courts</b> does all courts. Or tap <b>+ Assign player</b> on a box and sort the list by <b>Played</b>, <b>Level</b> or <b>Guest</b>.</li>
+    <li><b>Attendance:</b> tick everyone who arrives (Check in all, or by level).${shot('tab-attend','Attendance: tick each player who arrives')}</li>
+    <li><b>Courts:</b> tap <b>Auto match</b> (fair, balanced teams) or <b>Pick players</b> (choose 4 yourself). <b>Fill empty courts</b> does all courts. Or tap <b>+ Assign player</b> on a box and sort the list by <b>Played</b>, <b>Level</b> or <b>Guest</b>.${shot('tab-courts','Courts: playing courts, and an empty one with Auto match and Pick players')}${shot('tab-pick','+ Assign player: the list sorted by Played, Level or Guest')}</li>
     <li><b>Equal rounds</b> (Settings): automatic picks take the fewest-games players first — someone on 3 games waits until everyone has 3. You can still put anyone on by hand.</li>
-    <li><b>Waiting queue → Level columns:</b> a column per level and one for guests; whoever just played goes to the bottom and moves up as others play.</li>
+    <li><b>Waiting queue → Level columns:</b> a column per level and one for guests; whoever just played goes to the bottom and moves up as others play.${shot('tab-queue','Waiting queue in level columns, with guests in their own column')}</li>
     <li>Scores are kept on the court tablet, or tap <b>🏸 Keep score</b> on the court card.</li>
     <li>Someone can't play? Tap their name → <b>Can't play</b>, or pick a substitute. Later tap <b>Back to play</b>.</li>
     <li>Tap any court (its name or empty space) to open its menu: Game done, scoreboard, reshuffle, clear, players and levels.</li>
@@ -1337,20 +1344,20 @@ function vHelp(){
     <li><b>Payments:</b> tap <b>Unpaid → Paid</b> as players pay.</li></ol>`)}
   ${sec('score','4. Keeping score',`<ol>
     <li>After the toss, tap <b>Serves first</b>. Use <b>⇄ Swap</b> so names match where players stand (only at 0–0).</li>
-    <li>Tap the big number of the team that wins the rally.</li>
+    <li>Tap the big number of the team that wins the rally.${shot('tab-score','Scoreboard on a tablet: score, server and receiver')}${shot('phone-score','Scoreboard on a phone',1)}</li>
     <li>The top line shows who serves, from which side, and who receives.</li>
     <li><b>↶ Undo</b> fixes a wrong tap.</li>
-    <li>Standard: best of 3 games to 21, win by 2, maximum 30. Change it in <b>Settings → Match format</b> (1–5 games, 11/15/21 points, best of or play all). Sides swap automatically at change of ends.</li>
+    <li>Standard: best of 3 games to 21, win by 2, maximum 30. Change it in <b>Settings → Match format</b> (1–5 games, 11/15/21/35 points, best of or play all). Sides swap automatically at change of ends.</li>
     <li>Even number of games and it ends level (e.g. 1–1)? Tap <b>⚡ Play decider</b> for one extra game to 11, or keep the result (more total points wins; equal points = draw).</li>
     <li><b>Team names:</b> tap <b>+ Team name</b> at the top of each side and type any name for this match (or pick one used before). It's filled in automatically when both players share a team. ✕ clears it.</li></ol>`)}
   ${sec('fees','5. Fees and payments',`<ul>
     <li><b>Subscriber:</b> 2.50 SR per game.</li>
     <li><b>Guest:</b> 25 SR minimum for up to 3 games, then 3.33 SR per extra game (6 games = 35 SR).</li>
     <li>Fees update automatically as games are played. Change prices in Settings → Fees.</li>
-    <li><b>Copy summary</b> on Payments gives a list to paste in WhatsApp.</li></ul>`)}
+    <li><b>Copy summary</b> on Payments gives a list to paste in WhatsApp.${shot('tab-pay','Payments: total due and collected (Cash / STC Pay), fee per player')}</li></ul>`)}
   ${sec('end','6. End of the day',`<ol>
     <li>Payments → <b>Unpaid</b>: collect what's left.</li>
-    <li><b>Export Excel report</b> and save it — your record and backup.</li>
+    <li><b>Export Excel report</b> and save it — your record and backup.${shot('tab-hist','History: every match with teams and winner (Change winner fixes a mistake)')}</li>
     <li>Settings → <b>Start new session</b> (tap twice). Players, photos and history stay.</li></ol>`)}
   ${sec('tasks','7. Quick answers',`<table class="htbl">
     <tr><td>Add a player or guest</td><td>Players → name, level, type → Add</td></tr>
@@ -1528,7 +1535,7 @@ function vSettings(){
     <div><label>Number of courts</label><div class="stepper"><button class="btn sm" data-act="courts-" ${S.courts.length<=1?'disabled':''}>−</button><b>${S.courts.length}</b><button class="btn sm" data-act="courts+" ${S.courts.length>=8?'disabled':''}>+</button></div></div>
     <div><label>Match format (scoring)</label>
       <div class="row"><span style="min-width:120px">Games per match</span><div class="seg" style="flex:1">${[1,2,3,4,5].map(n=>`<button class="${S.match.n===n?'on':''}" data-act="mf-n" data-k="${n}">${n}</button>`).join('')}</div></div>
-      <div class="row" style="margin-top:8px"><span style="min-width:120px">Points per game</span><div class="seg" style="flex:1">${[11,15,21].map(n=>`<button class="${S.match.pts===n?'on':''}" data-act="mf-p" data-k="${n}">${n}</button>`).join('')}</div></div>
+      <div class="row" style="margin-top:8px"><span style="min-width:120px">Points per game</span><div class="seg" style="flex:1">${[11,15,21,35].map(n=>`<button class="${S.match.pts===n?'on':''}" data-act="mf-p" data-k="${n}">${n}</button>`).join('')}</div></div>
       ${S.match.n>1&&S.match.n%2===1?`<div class="row" style="margin-top:8px"><span style="min-width:120px">Match ends</span><div class="seg" style="flex:1"><button class="${S.match.mode==='best'?'on':''}" data-act="mf-m" data-k="best">Best of ${S.match.n} (first to ${needWins({n:S.match.n})})</button><button class="${S.match.mode==='all'?'on':''}" data-act="mf-m" data-k="all">Play all ${S.match.n} games</button></div></div>`:''}
       <p class="hint">Now: <b>${esc(fmtLabel(curRules()))}</b>, win by 2, maximum ${capFor(S.match.pts)}. ${curRules().mode==='all'?'All '+S.match.n+' games are played. The team that wins more games wins; equal games → more total points; still equal → draw.':''} Applies to new matches; matches already being scored keep their format. Standard: best of 3 to 21.</p></div>
     <div><label>Game type</label><div class="seg"><button class="${S.mode==='doubles'?'on':''}" data-act="mode" data-k="doubles">Doubles (4)</button><button class="${S.mode==='singles'?'on':''}" data-act="mode" data-k="singles">Singles (2)</button></div></div>
