@@ -592,7 +592,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=55;
+const APP_VERSION=56;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -660,7 +660,7 @@ function normalize(s){
 let S=fresh();
 try{ const raw=localStorage.getItem(LS_KEY); if(raw) S=normalize(JSON.parse(raw)); }catch(e){}
 
-let tab='courts', ciFilter='All', ciSearch='', plSearch='', plFilter='All', confirmKey=null, plTeam='', ciTeam='', ciInactive=false;
+let tab='courts', ciFilter='All', ciSearch='', wqSearch='', plSearch='', plFilter='All', confirmKey=null, plTeam='', ciTeam='', ciInactive=false;
 
 /* ---------- persistence ---------- */
 let dbRef=null, writing=false, dirty=false, saveTimer=null, lastTs=0;
@@ -953,9 +953,12 @@ function vCourts(){
   h+=`</div>`;
   h+=`<h2>Waiting queue <small>${WQ_SORTS[wqSort][1]} · tap to manage</small></h2><div class="card">`;
   h+=`<div class="chips" style="margin:0 0 10px;align-items:center"><span class="hint" style="margin:0 4px 0 0">Arrange:</span>${Object.keys(WQ_SORTS).map(k=>`<button class="chip ${wqSort===k?'on':''}" data-act="wq-sort" data-k="${k}">${WQ_SORTS[k][0]}</button>`).join('')}</div>`;
+  const wq=wqSearch.trim().toLowerCase(), wv=wq?w.filter(p=>(p.n+' '+(p.fn||'')).toLowerCase().includes(wq)):w;
+  if(w.length) h+=`<div class="row" style="margin:0 0 10px"><input type="search" id="wq-s" style="flex:1;min-width:150px" placeholder="Search waiting players…" aria-label="Search waiting players" autocomplete="off" value="${esc(wqSearch)}">${wq?`<span class="hint" style="margin:0 0 0 8px;white-space:nowrap">${wv.length} of ${w.length}</span>`:''}</div>`;
   h+= !w.length?`<div class="hint" style="margin:0">Nobody waiting.</div>`
-    : wqSort==='grid'?wqGrid(w)
-    : `<div class="wait">${wqGroups(w).map(g=>(g.label?`<div class="wgrp">${g.label} <small>${g.list.length}</small></div>`:'')+g.list.map(p=>`<button class="wp" data-act="wait-pl" data-id="${p.id}">${catBadge(p.c)}${esc(p.n)} ${typeBadge(p)}<small>${S.games[p.id]||0}g</small></button>`).join('')).join('')}</div>`;
+    : !wv.length?`<div class="hint" style="margin:0">No waiting player matches “${esc(wqSearch)}”.</div>`
+    : wqSort==='grid'?wqGrid(wv)
+    : `<div class="wait">${wqGroups(wv).map(g=>(g.label?`<div class="wgrp">${g.label} <small>${g.list.length}</small></div>`:'')+g.list.map(p=>`<button class="wp" data-act="wait-pl" data-id="${p.id}">${catBadge(p.c)}${esc(p.n)} ${typeBadge(p)}<small>${S.games[p.id]||0}g</small></button>`).join('')).join('')}</div>`;
   h+=`</div>`;
   if(resting.length){
     h+=`<h2>Resting / can't play <small>${resting.length}</small></h2><div class="card"><div class="list">${resting.map(p=>`<div class="item">${catBadge(p.c)}<div class="nm">${esc(p.n)}</div>${typeBadge(p)}${gpill(p.id)}<button class="btn sm pri" data-act="unrest" data-id="${p.id}">Back to play</button></div>`).join('')}</div></div>`;
@@ -1339,7 +1342,7 @@ function vHelp(){
     <li><b>Attendance:</b> tick everyone who arrives (Check in all, or by level).${shot('tab-attend','Attendance: tick each player who arrives')}</li>
     <li><b>Courts:</b> tap <b>Auto match</b> (fair, balanced teams) or <b>Pick players</b> (choose 4 yourself). <b>Fill empty courts</b> does all courts. Or tap <b>+ Assign player</b> on a box and sort the list by <b>Played</b>, <b>Level</b> or <b>Guest</b>.${shot('tab-courts','Courts: playing courts, and an empty one with Auto match and Pick players')}${shot('tab-pick','+ Assign player: the list sorted by Played, Level or Guest')}</li>
     <li><b>Equal rounds</b> (Settings): automatic picks take the fewest-games players first — someone on 3 games waits until everyone has 3. You can still put anyone on by hand.</li>
-    <li><b>Waiting queue → Level columns:</b> a column per level and one for guests; whoever just played goes to the bottom and moves up as others play.${shot('tab-queue','Waiting queue in level columns, with guests in their own column')}</li>
+    <li><b>Waiting queue → Level columns:</b> a column per level and one for guests; whoever just played goes to the bottom and moves up as others play. Type in <b>Search waiting players</b> to find someone fast.${shot('tab-queue','Waiting queue in level columns, with guests in their own column')}</li>
     <li>Scores are kept on the court tablet, or tap <b>🏸 Keep score</b> on the court card.</li>
     <li>Someone can't play? Tap their name → <b>Can't play</b>, or pick a substitute. Later tap <b>Back to play</b>.</li>
     <li>Tap any court (its name or empty space) to open its menu: Game done, scoreboard, reshuffle, clear, players and levels.</li>
@@ -1940,6 +1943,7 @@ async function importFile(f){
 document.addEventListener('input',e=>{
   if(e.target.id==='sh-s'){ shFilter(e.target.value); return; }
   if(e.target.id==='ci-s'){ ciSearch=e.target.value; const pos=e.target.selectionStart; render(); const i=$('#ci-s'); i.focus(); try{i.setSelectionRange(pos,pos);}catch(_){} }
+  if(e.target.id==='wq-s'){ wqSearch=e.target.value; const pos=e.target.selectionStart; render(); const i=$('#wq-s'); if(i){ i.focus(); try{i.setSelectionRange(pos,pos);}catch(_){} } }
   if(e.target.id==='pl-s'){ plSearch=e.target.value; const pos=e.target.selectionStart; render(); const i=$('#pl-s'); i.focus(); try{i.setSelectionRange(pos,pos);}catch(_){} }
 });
 document.addEventListener('submit',e=>{
