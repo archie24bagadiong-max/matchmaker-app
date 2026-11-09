@@ -673,7 +673,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=71;
+const APP_VERSION=72;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1515,7 +1515,7 @@ function vHelp(){
     <li><b>Club tablets (Android):</b> download <b>MatchMaker.apk</b> from the QR page → Install (Play Protect: More details → Install anyway). Needed for Tablet sync and court tablets.</li>
     <li><b>PC / laptop:</b> open the website in Chrome or Edge → <b>Install</b> (address bar icon or the green bar at the bottom).${shot('pc-courts','On a laptop: courts side by side and the waiting queue in level columns')}</li>
     <li><b>Android phone:</b> scan the QR code → tap <b>Install</b> on the green bar.</li>
-    <li><b>iPhone / iPad:</b> scan the QR code → it opens in Safari → <b>Share</b> → <b>Add to Home Screen</b>.${shot('iphone-install','iPhone in Safari: tap Share, then Add to Home Screen',1)}</li></ul>
+    <li><b>iPhone / iPad:</b> open <b>archie24bagadiong-max.github.io/matchmaker-app/iphone.html</b> in Safari → <b>Install Match Maker</b> → Allow → Settings → Profile Downloaded → Install. Or: open the app in Safari → <b>Share</b> → <b>Add to Home Screen</b>.${shot('iphone-install','iPhone in Safari: tap Share, then Add to Home Screen',1)}</li></ul>
     <p class="hint">Website: archie24bagadiong-max.github.io/matchmaker-app · QR code &amp; APK: …/qr.html. Each device keeps its own data.</p>`)}
   ${sec('first','1. First time setup',`<ol>
     <li>Install the app (see 0). A newer version updates by itself and keeps your data — don't uninstall.</li>
@@ -2786,7 +2786,7 @@ if(!IS_APP&&!IS_SERVED&&'serviceWorker' in navigator&&/^https?:$/.test(location.
       const inApp=/FBAN|FBAV|Instagram|Line\/|GSA\//.test(ua);
       bar.innerHTML='<img src="icons/apple-touch-icon.png" alt="" style="width:44px;height:44px;border-radius:10px;flex:none">'
         +'<div style="flex:1"><b>Install Match Maker on your iPhone</b><br>'
-        +(inApp?'Open this page in <b>Safari</b> first, then tap ':'Tap ')+'<b>Share</b> '+share+' then <b>Add to Home Screen</b>.</div>'
+        +(inApp?'Open this page in <b>Safari</b> first, then tap ':'Tap ')+'<b>Share</b> '+share+' then <b>Add to Home Screen</b> — or use the <a href="iphone.html" style="color:#c6f135;font-weight:700">one-tap installer</a>.</div>'
         +'<button style="'+btn+';background:transparent;color:#c6f135">Not now</button>';
       bar.querySelector('button').onclick=close;
       setTimeout(()=>document.body.appendChild(bar),2500);

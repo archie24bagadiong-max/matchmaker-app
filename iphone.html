@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Install Match Maker on iPhone</title>
+<meta name="theme-color" content="#0f3d2e">
+<link rel="icon" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+  :root { --green: #0f3d2e; --green2: #145a42; --lime: #c8f169; --ink: #1b1f1d; --muted: #5b655f; --card: #f3f6f4; --line: #dfe6e0; --warn: #8a5a00; --warnbg: #fff4dc; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #fff; color: var(--ink); font: 16px/1.5 -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; }
+  .page { max-width: 640px; margin: 0 auto; padding: calc(env(safe-area-inset-top) + 22px) 16px calc(env(safe-area-inset-bottom) + 40px); }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand img { width: 64px; height: 64px; border-radius: 15px; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+  h1 { margin: 0; font-size: 26px; color: var(--green); line-height: 1.15; }
+  .sub { margin: 3px 0 0; color: var(--muted); }
+  .state { margin: 20px 0 6px; padding: 14px 16px; border-radius: 14px; background: var(--card); }
+  .state.warn { background: var(--warnbg); color: var(--warn); }
+  .state.ok { background: #e7f6ec; color: #1d5a2a; }
+  .state b { color: inherit; }
+  .big { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin: 16px 0 4px; padding: 16px 20px; border: 0; border-radius: 16px; background: var(--green); color: #fff; font: inherit; font-size: 19px; font-weight: 700; text-decoration: none; cursor: pointer; }
+  .big:active { background: var(--green2); }
+  .big img { width: 30px; height: 30px; border-radius: 7px; }
+  .alt { display: block; width: 100%; margin: 8px 0 0; padding: 12px 16px; border: 1px solid var(--line); border-radius: 14px; background: #fff; color: var(--green); font: inherit; font-weight: 600; text-align: center; text-decoration: none; cursor: pointer; }
+  h2 { margin: 28px 0 10px; font-size: 19px; color: var(--green); }
+  h2 small { font-size: 14px; color: var(--muted); font-weight: 500; }
+  ol.steps { list-style: none; margin: 0; padding: 0; counter-reset: s; }
+  ol.steps li { counter-increment: s; position: relative; padding: 12px 14px 12px 54px; margin: 0 0 8px; background: var(--card); border-radius: 14px; }
+  ol.steps li::before { content: counter(s); position: absolute; left: 14px; top: 12px; width: 28px; height: 28px; border-radius: 50%; background: var(--green); color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+  ol.steps li small { display: block; color: var(--muted); font-size: 14px; margin-top: 2px; }
+  .kbd { display: inline-block; padding: 0 7px; border: 1px solid var(--line); border-radius: 7px; background: #fff; font-weight: 600; white-space: nowrap; }
+  .share { display: inline-block; width: 16px; height: 18px; vertical-align: -3px; }
+  .shot { display: block; width: 100%; max-width: 360px; margin: 10px auto 0; border-radius: 14px; border: 1px solid var(--line); }
+  .qrbox { text-align: center; }
+  .qrbox img { width: min(70vw, 260px); padding: 12px; border: 5px solid var(--green); border-radius: 18px; background: #fff; }
+  .url { font-size: 13px; color: var(--muted); word-break: break-all; }
+  .note { font-size: 14px; color: var(--muted); }
+  .note b { color: var(--ink); }
+  details { margin-top: 10px; background: var(--card); border-radius: 14px; padding: 10px 14px; }
+  summary { cursor: pointer; font-weight: 600; color: var(--green); }
+  details p { margin: 8px 0 2px; font-size: 15px; }
+  .hide { display: none !important; }
+  .foot { margin-top: 28px; font-size: 14px; color: var(--muted); text-align: center; }
+  .foot a { color: var(--green); }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="brand">
+    <img src="icons/apple-touch-icon.png" alt="">
+    <div>
+      <h1>Install Match Maker</h1>
+      <p class="sub">on iPhone or iPad · JAMREIBIZ Badminton Club</p>
+    </div>
+  </div>
+
+  <!-- filled in by the script for this device -->
+  <div id="state" class="state">Match Maker installs from this page in about a minute. It opens full screen like an app, works without internet and updates itself.</div>
+
+  <!-- PC / Android: scan with the iPhone -->
+  <section id="scan" class="hide">
+    <h2>Scan with your iPhone camera</h2>
+    <div class="qrbox"><img src="icons/qr-iphone.svg" alt="QR code for this install page"><p class="url">archie24bagadiong-max.github.io/matchmaker-app/iphone.html</p></div>
+  </section>
+
+  <!-- iPhone in Chrome / Instagram / Facebook etc.: needs Safari -->
+  <section id="safari" class="hide">
+    <button class="big" id="copy" type="button">Copy link for Safari</button>
+    <ol class="steps">
+      <li>Tap <b>Copy link for Safari</b> above.</li>
+      <li>Open <b>Safari</b> (the blue compass), tap the address bar, choose <b>Paste and Go</b>.</li>
+      <li>Follow the steps on this page in Safari.</li>
+    </ol>
+  </section>
+
+  <!-- Option 1: install profile -->
+  <section id="opt1">
+    <h2>Option 1 · One-tap install <small>recommended</small></h2>
+    <a class="big" id="install" href="MatchMaker.mobileconfig"><img src="icons/apple-touch-icon.png" alt="">Install Match Maker</a>
+    <ol class="steps">
+      <li>Tap <b>Install Match Maker</b>, then <b>Allow</b>.<small>The iPhone says “Profile Downloaded”. Tap <b>Close</b>.</small></li>
+      <li>Open <b>Settings</b>. At the top tap <b>Profile Downloaded</b>.<small>Don’t see it? Settings → <b>General</b> → <b>VPN &amp; Device Management</b> → <b>Match Maker</b>.</small></li>
+      <li>Tap <b>Install</b> (top right), enter your iPhone passcode, then <b>Install</b> → <b>Install</b> → <b>Done</b>.</li>
+      <li>Go to the Home Screen and open <b>Match Maker</b>. 🎉</li>
+    </ol>
+    <details>
+      <summary>Why does it say “Not Verified”?</summary>
+      <p>The club made this small install file itself, without paying Apple to sign it, so the iPhone shows <b>Not Verified</b>. It is safe: it only puts the Match Maker icon on your Home Screen. It cannot read, track or change anything on your phone.</p>
+      <p>To remove it later: Settings → General → VPN &amp; Device Management → Match Maker → <b>Remove Profile</b>, or just press and hold the icon → Remove.</p>
+    </details>
+  </section>
+
+  <!-- Option 2: Add to Home Screen -->
+  <section id="opt2">
+    <h2>Option 2 · Add to Home Screen <small>no settings needed</small></h2>
+    <a class="alt" id="open" href="./">Open Match Maker in Safari</a>
+    <ol class="steps">
+      <li>Open Match Maker in <b>Safari</b> (button above).</li>
+      <li>Tap <b>Share</b> <svg class="share" viewBox="0 0 16 18" fill="none" stroke="#0a84ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-label="Share"><path d="M8 11V1M4.5 4.5 8 1l3.5 3.5M5 7H2.5v9.5h11V7H11"/></svg> at the bottom of the screen.<small>On iPad it is at the top right. On iOS 26, tap <b>⋯</b> first, then Share.</small></li>
+      <li>Scroll down and tap <b>Add to Home Screen</b>, then <b>Add</b>.</li>
+    </ol>
+    <img class="shot" src="guide/iphone-install.webp" alt="Safari on iPhone: Share, then Add to Home Screen" loading="lazy">
+  </section>
+
+  <h2>Good to know</h2>
+  <p class="note"><b>Your data stays on this iPhone</b>: players, attendance, payments and history are saved in the app on the phone, even with no internet. Export a report now and then as a backup (Payments → Excel report).</p>
+  <p class="note"><b>Updates are automatic.</b> Close the app and open it again to get the newest version (Settings shows the version).</p>
+  <p class="note"><b>Just scoring a court?</b> No install needed: scan the court’s QR code on the organizer’s screen and score in the browser.</p>
+
+  <p class="foot"><a href="./">Open Match Maker</a> · <a href="qr.html">Android &amp; tablets</a> · <a href="guide.html">Picture guide</a></p>
+</main>
+<script>
+(function(){
+  var ua=navigator.userAgent||'', $=function(i){return document.getElementById(i);};
+  var ios=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  var standalone=navigator.standalone===true||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches);
+  // only Safari can install a profile or add to the Home Screen; Chrome/Firefox/Edge on iPhone and in-app browsers cannot
+  var other=/CriOS|FxiOS|EdgiOS|OPiOS|GSA\/|FBAN|FBAV|FB_IAB|Instagram|Line\/|Snapchat|TikTok|musical_ly|Twitter|LinkedInApp|MicroMessenger/i.test(ua);
+  var st=$('state');
+  if(standalone){
+    st.className='state ok'; st.innerHTML='✅ <b>Match Maker is already installed</b> on this device. <a href="./">Open it</a>.';
+    $('opt1').classList.add('hide'); $('opt2').classList.add('hide');
+  } else if(!ios){
+    st.innerHTML='This page installs Match Maker on an <b>iPhone or iPad</b>. Scan the code below with the iPhone camera, or open <b>'+location.host+location.pathname+'</b> in Safari on the iPhone.';
+    $('scan').classList.remove('hide');
+  } else if(other){
+    st.className='state warn'; st.innerHTML='⚠️ <b>Open this page in Safari.</b> Apps can only be installed from Safari, not from this browser.';
+    $('safari').classList.remove('hide'); $('opt1').classList.add('hide'); $('opt2').classList.add('hide');
+  } else {
+    st.innerHTML='Tap <b>Install Match Maker</b> below and follow the 4 steps. It takes about a minute.';
+  }
+  $('copy').addEventListener('click',function(){
+    var u=location.href.split('#')[0], b=$('copy');
+    function done(){ b.textContent='✓ Copied — now open Safari and paste'; }
+    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(u).then(done,function(){ prompt('Copy this link:',u); }); }
+    else prompt('Copy this link:',u);
+  });
+})();
+</script>
+</body>
+</html>
