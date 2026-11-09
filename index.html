@@ -468,6 +468,11 @@ body.courtmode nav,body.courtmode main{display:none}
 .schelp ol{padding-left:20px}
 .schelp li{margin-bottom:6px}
 .tmtag{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:5px;background:#efedff;color:#4b3fa8;border:1px solid #d9d4fb;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis;flex:none}
+.dytag{display:block;font-size:11.5px;font-weight:600;color:#0b6e8a;margin-top:1px}
+.daybar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#e7f5fa;border:1px solid #b8dfeb;color:#0b4f63;border-radius:10px;padding:8px 10px;margin:0 0 10px;font-size:14px}
+.dayseg{flex-wrap:wrap}
+.daypick{display:flex;flex-wrap:wrap;gap:6px}
+.daypick label{display:flex;align-items:center;gap:4px;border:1px solid var(--border);border-radius:9px;padding:6px 9px;font-size:14px;font-weight:600}
 .nmtm{display:block;font-size:12px;font-weight:600;color:#5a4fc0;margin-top:1px;overflow:hidden;text-overflow:ellipsis}
 .tfsel{max-width:180px}
 .stn{display:flex}
@@ -587,12 +592,34 @@ const normLv=c=>CATS.includes(c)?c:(GROUPS.includes(c)?c+'+':DEF_LV);
 /* player type: S = Member (subscriber fee), F = Family (pays like a Member), G = Guest.
    status (club roster "Active" column): Reg, A-SUB, No (= inactive, hidden from Attendance). Gender: M / F. */
 const STATUS=['Reg','A-SUB','No'];
+/* playing days (schedule): p.dy = ['Mon','Thu',…]; Settings → Show day filters Attendance and Players */
+const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], DAY_L={Mon:'Monday',Tue:'Tuesday',Wed:'Wednesday',Thu:'Thursday',Fri:'Friday',Sat:'Saturday',Sun:'Sunday'};
+const normDays=a=>Array.isArray(a)?DAYS.filter(d=>a.includes(d)):[];
+function parseDays(v){
+  let t=String(v==null?'':v).toLowerCase().trim(); if(!t) return [];
+  if(/every\s*day|daily|^all(\s*days)?$/.test(t)) return DAYS.slice();
+  const out=new Set(), ix=w=>w.length>=3?DAYS.findIndex(d=>d.toLowerCase()===w.slice(0,3)):-1;
+  if(/week\s*days?/.test(t)) DAYS.slice(0,5).forEach(d=>out.add(d));
+  if(/week\s*ends?/.test(t)) ['Sat','Sun'].forEach(d=>out.add(d));
+  t=t.replace(/week\s*(days?|ends?)/g,' ');
+  t=t.replace(/([a-z]+)\s*(?:-|–|—|to|until|till)\s*([a-z]+)/g,(m,a,b)=>{ const i=ix(a), j=ix(b); if(i<0||j<0) return m; for(let k=i;;k=(k+1)%7){ out.add(DAYS[k]); if(k===j) break; } return ' '; });
+  t.split(/[^a-z]+/).forEach(w=>{ const i=ix(w); if(i>=0) out.add(DAYS[i]); });
+  return DAYS.filter(d=>out.has(d));
+}
+const dayToday=()=>DAYS[(new Date().getDay()+6)%7];
+const dayCur=()=>!S.dayView||S.dayView==='All'?null:S.dayView==='Today'?dayToday():S.dayView;
+const dayOk=p=>{ const d=dayCur(); return !d||(p.dy||[]).includes(d); };
+const dayIdx=p=>p.dy&&p.dy.length?DAYS.indexOf(p.dy[0]):7;
+const dyTag=p=>p.dy&&p.dy.length?`<small class="dytag">📅 ${p.dy.length===7?'Every day':p.dy.join(' · ')}</small>`:'';
+function dayBar(){ const d=dayCur(); if(!d) return '';
+  const off=S.players.filter(p=>!(p.dy||[]).length).length;
+  return `<div class="daybar">📅 Showing <b>${DAY_L[d]}</b> players only${S.dayView==='Today'?' (today)':''}${off?` · ${off} with no day set are hidden`:''}<span class="grow"></span><button class="btn sm" data-act="day-view" data-k="All">Show all days</button></div>`; }
 const TYPE_L={S:'Member',F:'Family',G:'Guest'};
 const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=57;
+const APP_VERSION=58;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -623,7 +650,7 @@ const CLIENT=Math.random().toString(36).slice(2);
 function fresh(){
   return {players:[],present:{},resting:{},games:{},lastEnd:{},partners:{},
     courts:[0,1,2].map(()=>({lv:GROUPS.slice(),p:[],t:0})),
-    mode:'doubles',mix:'adjacent',autoNext:true,prio:'strong',rounds:true,paid:{},hist:[],ledger:[],log:[],teams:[],match:{n:3,pts:21,mode:'best'},fee:{gp:25,gn:3,gx:10,sp:2.5}};
+    mode:'doubles',mix:'adjacent',autoNext:true,prio:'strong',rounds:true,paid:{},hist:[],ledger:[],log:[],teams:[],match:{n:3,pts:21,mode:'best'},fee:{gp:25,gn:3,gx:10,sp:2.5},dayView:'All'};
 }
 /* activity log: every check-in, payment and session change, with time */
 function logEv(k,o){ if(IS_DISPLAY||IS_COURT) return; if(!Array.isArray(S.log)) S.log=[]; S.log.push(Object.assign({d:Date.now(),k},o||{})); if(S.log.length>6000) S.log=S.log.slice(-6000); }
@@ -633,7 +660,7 @@ function normalize(s){
   s=(s&&typeof s==='object')?s:{};
   for(const k in d){ if(s[k]===undefined) s[k]=d[k]; }
   if(!Array.isArray(s.players)) s.players=[];
-  s.players=s.players.filter(p=>p&&p.id&&typeof p.n==='string').map(p=>({id:String(p.id),n:p.n.slice(0,40),c:normLv(p.c),t:['S','F','G'].includes(p.t)?p.t:'S',tm:typeof p.tm==='string'?p.tm.trim().slice(0,40):'',fn:typeof p.fn==='string'?p.fn.trim().slice(0,80):'',g:p.g==='M'||p.g==='F'?p.g:'',st:STATUS.includes(p.st)?p.st:''}));
+  s.players=s.players.filter(p=>p&&p.id&&typeof p.n==='string').map(p=>({id:String(p.id),n:p.n.slice(0,40),c:normLv(p.c),t:['S','F','G'].includes(p.t)?p.t:'S',tm:typeof p.tm==='string'?p.tm.trim().slice(0,40):'',fn:typeof p.fn==='string'?p.fn.trim().slice(0,80):'',g:p.g==='M'||p.g==='F'?p.g:'',st:STATUS.includes(p.st)?p.st:'',dy:normDays(p.dy)}));
   if(!Array.isArray(s.courts)||!s.courts.length) s.courts=d.courts;
   s.courts=s.courts.map(c=>{ let lv=Array.isArray(c&&c.lv)?[...new Set(c.lv.map(grp))].filter(x=>GROUPS.includes(x)).sort():[]; if(!lv.length) lv=GROUPS.slice(); return {lv,p:Array.isArray(c&&c.p)?c.p.map(String):[],t:+(c&&c.t)||0,sc:(c&&c.sc&&typeof c.sc==='object'&&c.sc.pos)?c.sc:null,d:Array.isArray(c&&c.d)?c.d.slice(0,4).map(x=>typeof x==='string'&&x?x:null):[]}; });
   if(!Array.isArray(s.teams)) s.teams=[];
@@ -651,6 +678,7 @@ function normalize(s){
   const mf=(s.match&&typeof s.match==='object')?s.match:{};
   s.match={n:[1,2,3,4,5].includes(+mf.n)?+mf.n:3, pts:[11,15,21,35].includes(+mf.pts)?+mf.pts:21, mode:mf.mode==='all'?'all':'best'};
   if(!['strong','tie','none'].includes(s.prio)) s.prio='strong';
+  if(!['All','Today'].concat(DAYS).includes(s.dayView)) s.dayView='All';
   if(typeof s.paid!=='object'||!s.paid||Array.isArray(s.paid)) s.paid={};
   const f=(s.fee&&typeof s.fee==='object')?s.fee:{};
   s.fee={gp:isFinite(+f.gp)&&+f.gp>=0?+f.gp:25, gn:isFinite(+f.gn)&&+f.gn>=1?Math.round(+f.gn):3, gx:f.gx!==undefined&&f.gx!==null&&f.gx!==''&&isFinite(+f.gx)&&+f.gx>=0?+f.gx:10, sp:isFinite(+f.sp)&&+f.sp>=0?+f.sp:2.5};
@@ -1004,21 +1032,21 @@ function vCheckin(){
   if(!S.players.length) return `<div class="card emptybox"><b>No players yet</b>Add your roster first.<div style="margin-top:12px"><button class="btn pri" data-act="go" data-tab="players">Add players</button></div></div>`;
   const counts=CATS.map(k=>`<div class="stat"><b>${S.players.filter(p=>p.c===k&&S.present[p.id]).length}</b><span>${k} present</span></div>`).join('');
   const offN=S.players.filter(p=>isOff(p)&&!S.present[p.id]).length;
-  let list=S.players.filter(p=>(ciFilter==='All'||p.c===ciFilter)&&teamMatch(p,ciTeam)&&(ciInactive||!isOff(p)||S.present[p.id])&&(!ciSearch||(p.n+' '+(p.fn||'')).toLowerCase().includes(ciSearch.toLowerCase())));
-  list.sort((a,b)=>lvCmp(a.c,b.c)||a.n.localeCompare(b.n));
+  let list=S.players.filter(p=>dayOk(p)&&(ciFilter==='All'||p.c===ciFilter)&&teamMatch(p,ciTeam)&&(ciInactive||!isOff(p)||S.present[p.id])&&(!ciSearch||(p.n+' '+(p.fn||'')).toLowerCase().includes(ciSearch.toLowerCase())));
+  list.sort((a,b)=>(dayCur()?0:dayIdx(a)-dayIdx(b))||lvCmp(a.c,b.c)||a.n.localeCompare(b.n));
   const scope=(ciFilter==='All'?(ciTeam&&ciTeam!=='__none'?'all '+esc(ciTeam):'everyone'):'all '+ciFilter+(ciTeam&&ciTeam!=='__none'?' · '+esc(ciTeam):''));
   return `<div class="stats">${counts}</div>
   <h2>Who's here today?</h2>
   <div class="card">
-    ${filterChips(ciFilter,'ci-f')}
+    ${dayBar()}${filterChips(ciFilter,'ci-f')}
     <div class="row" style="margin-top:10px"><input type="search" id="ci-s" style="flex:1;min-width:150px" placeholder="Search name…" value="${esc(ciSearch)}">${teamFilterSel(ciTeam,'ci-team')}</div>
     <div class="row" style="margin-top:10px"><button class="btn sm" data-act="ci-all">Check in ${scope}</button><button class="btn sm" data-act="ci-none">Uncheck ${scope}</button>${offN?`<span class="grow"></span><button class="btn sm" data-act="ci-inact">${ciInactive?'Hide':'Show'} ${offN} inactive</button>`:''}</div>
-    <div class="list" style="margin-top:6px">${list.map(p=>`<div class="item tapr ${S.present[p.id]?'sel':''} ${isOff(p)?'off':''}" data-act="ci" data-id="${p.id}"><div class="check"></div>${av(p.id)}${catBadge(p.c)}<div class="nm">${esc(p.n)}${p.tm?`<small class="nmtm">${esc(p.tm)}</small>`:''}</div>${gBadge(p)}${isOff(p)?stBadge(p):''}${typeBadge(p)}${S.resting[p.id]?`<button class="btn sm pri" data-act="unrest" data-id="${p.id}">Back to play</button>`:''}</div>`).join('')||'<div class="hint">No matches.</div>'}</div>
+    <div class="list" style="margin-top:6px">${list.map(p=>`<div class="item tapr ${S.present[p.id]?'sel':''} ${isOff(p)?'off':''}" data-act="ci" data-id="${p.id}"><div class="check"></div>${av(p.id)}${catBadge(p.c)}<div class="nm">${esc(p.n)}${p.tm?`<small class="nmtm">${esc(p.tm)}</small>`:''}${dyTag(p)}</div>${gBadge(p)}${isOff(p)?stBadge(p):''}${typeBadge(p)}${S.resting[p.id]?`<button class="btn sm pri" data-act="unrest" data-id="${p.id}">Back to play</button>`:''}</div>`).join('')||'<div class="hint">No matches.</div>'}</div>
   </div>`;
 }
 function vPlayers(){
-  let list=S.players.filter(p=>(plFilter==='All'||p.c===plFilter)&&teamMatch(p,plTeam)&&(!plSearch||p.n.toLowerCase().includes(plSearch.toLowerCase())));
-  list.sort((a,b)=>lvCmp(a.c,b.c)||a.n.localeCompare(b.n));
+  let list=S.players.filter(p=>dayOk(p)&&(plFilter==='All'||p.c===plFilter)&&teamMatch(p,plTeam)&&(!plSearch||p.n.toLowerCase().includes(plSearch.toLowerCase())));
+  list.sort((a,b)=>(dayCur()?0:dayIdx(a)-dayIdx(b))||lvCmp(a.c,b.c)||a.n.localeCompare(b.n));
   return `<h2>Add player</h2>
   <div class="card">
     <form id="addf" class="row"><input class="grow" type="text" id="add-n" placeholder="Player name" maxlength="40" style="flex:1;min-width:150px"><select id="add-c" class="mini">${CATS.map(k=>`<option ${k===DEF_LV?'selected':''}>${k}</option>`).join('')}</select><input type="text" id="add-tm" list="teamlist" placeholder="Team (optional)" maxlength="40" style="width:170px"><select id="add-t" class="mini"><option value="S">Member</option><option value="F">Family</option><option value="G">Guest</option></select><select id="add-g" class="mini"><option value="">Gender</option><option value="M">Male</option><option value="F">Female</option></select><button class="btn pri">Add</button></form>
@@ -1034,7 +1062,7 @@ function vPlayers(){
   <h2>Import from Excel / CSV</h2>
   <div class="card">
     <div class="filebtn btn pri">Choose file (.xlsx, .xls, .csv)<input type="file" id="file-in" accept=".xlsx,.xls,.csv,.ods,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" aria-label="Choose Excel or CSV file"></div>
-    <p class="hint">If the file picker doesn't open on your phone, open the sheet in Excel, select the Name and Level columns, copy, and paste into “Add many at once” below.<br>Uses the first sheet. Put names in one column and the level (A+, A-, B+, B-, C+, C-, D+, D-) in another — headers like <b>Name</b> and <b>Level</b> (or Category / Skill / Grade) are detected automatically. Without headers: column 1 = name, column 2 = level. A type column with <b>Member</b>, <b>Family</b> or <b>Guest</b> (blank = Member), an <b>Active</b> column (Reg, A-SUB, No = inactive), <b>Gender</b> and <b>Full Name</b> are also read — the club's roster sheet works as it is. Players already in the roster get updated instead of being added twice.</p>
+    <p class="hint">If the file picker doesn't open on your phone, open the sheet in Excel, select the Name and Level columns, copy, and paste into “Add many at once” below.<br>Uses the first sheet. Put names in one column and the level (A+, A-, B+, B-, C+, C-, D+, D-) in another — headers like <b>Name</b> and <b>Level</b> (or Category / Skill / Grade) are detected automatically. Without headers: column 1 = name, column 2 = level. A type column with <b>Member</b>, <b>Family</b> or <b>Guest</b> (blank = Member), an <b>Active</b> column (Reg, A-SUB, No = inactive), <b>Gender</b>, <b>Full Name</b> and <b>Days</b> (e.g. Monday · Mon, Wed · Mon-Fri · Weekend · Daily) are also read — the club's roster sheet works as it is. Players already in the roster get updated instead of being added twice.</p>
   </div>
   <h2>Add many at once</h2>
   <div class="card">
@@ -1044,12 +1072,12 @@ function vPlayers(){
   </div>
   <h2>Roster <small>${S.players.filter(p=>p.t==='S').length} members · ${S.players.filter(p=>p.t==='F').length} family · ${S.players.filter(p=>p.t==='G').length} guests${S.players.some(isOff)?' · '+S.players.filter(isOff).length+' inactive':''} · tap the type to switch</small></h2>
   <div class="card">
-    ${filterChips(plFilter,'pl-f')}
+    ${dayBar()}${filterChips(plFilter,'pl-f')}
     <div class="row" style="margin-top:10px"><input type="search" id="pl-s" style="flex:1;min-width:150px" placeholder="Search name…" value="${esc(plSearch)}">${teamFilterSel(plTeam,'pl-team')}</div>
     <div class="list" style="margin-top:6px">${list.map(p=>`<div class="item">
       <select class="mini" data-act="setcat" data-id="${p.id}">${CATS.map(k=>`<option ${k===p.c?'selected':''}>${k}</option>`).join('')}</select>
       <button class="typeb ${p.t==='G'?'g':p.t==='F'?'f':''}" data-act="settype" data-id="${p.id}">${TYPE_L[p.t]}</button>
-      ${av(p.id)}<div class="nm">${esc(p.n)}${p.fn&&p.fn!==p.n||p.tm?`<small class="nmtm">${esc([p.fn&&p.fn!==p.n?p.fn:'',p.tm].filter(Boolean).join(' · '))}</small>`:''}</div>${gBadge(p)}${stBadge(p)}<span class="meta">${S.games[p.id]||0}g</span>
+      ${av(p.id)}<div class="nm">${esc(p.n)}${p.fn&&p.fn!==p.n||p.tm?`<small class="nmtm">${esc([p.fn&&p.fn!==p.n?p.fn:'',p.tm].filter(Boolean).join(' · '))}</small>`:''}${dyTag(p)}</div>${gBadge(p)}${stBadge(p)}<span class="meta">${S.games[p.id]||0}g</span>
       <button class="btn sm" data-act="rename" data-id="${p.id}">Edit</button>
       <button class="btn sm warn" data-act="del" data-id="${p.id}">${confirmKey==='del'+p.id?'Sure?':'✕'}</button></div>`).join('')||'<div class="hint">No players.</div>'}</div>
   </div>`;
@@ -1324,7 +1352,7 @@ function vHelp(){
     <p class="hint">Website: archie24bagadiong-max.github.io/matchmaker-app · QR code &amp; APK: …/qr.html. Each device keeps its own data.</p>`)}
   ${sec('first','1. First time setup',`<ol>
     <li>Install the app (see 0). A newer version updates by itself and keeps your data — don't uninstall.</li>
-    <li>Put your players in the Excel template (Players sheet: <b>Name</b>, <b>Level</b> A+ to D-, <b>Type</b> Member/Family/Guest, optional <b>Active</b> (Reg, A-SUB, No), <b>Gender</b>, <b>Full Name</b> and <b>Team</b>; a <b>Teams</b> sheet adds custom team names).</li>
+    <li>Put your players in the Excel template (Players sheet: <b>Name</b>, <b>Level</b> A+ to D-, <b>Type</b> Member/Family/Guest, optional <b>Active</b> (Reg, A-SUB, No), <b>Gender</b>, <b>Full Name</b>, <b>Days</b> (Monday, Mon, Wed, Mon-Fri, Weekend, Daily) and <b>Team</b>; a <b>Teams</b> sheet adds custom team names).</li>
     <li>Copy the file to the Main tablet, then <b>Players → Choose file</b>.</li>
     <li>Check <b>Settings</b>: number of courts, Doubles, skill mixing, subscriber priority and fees.${shot('tab-rounds','Settings: Equal rounds, fees and Start new session')}</li>
     <li>Optional: tap a player's name → <b>📷 Take photo</b>.</li></ol>`)}
@@ -1374,6 +1402,7 @@ function vHelp(){
     <tr><td>Team results</td><td>History → Teams</td></tr>
     <tr><td>Create custom teams</td><td>Players → Custom teams → Add team</td></tr>
     <tr><td>Pick a team during a game</td><td>Scoreboard → tap the team box at the top of a side</td></tr>
+    <tr><td>See only Monday's players</td><td>Settings → Show day → Mon (or Today)</td></tr>
     <tr><td>Someone went home</td><td>Waiting queue → name → Went home</td></tr>
     <tr><td>Guests rarely play</td><td>Settings → Subscriber priority → Fair turns</td></tr>
     <tr><td>Wrong winner saved</td><td>History → Change winner</td></tr>
@@ -1399,7 +1428,7 @@ function buildReport(){
   const T=t=>TYPE_L[t]||'Member';
   const wb=XLSX.utils.book_new();
   const add=(name,aoa,widths)=>{const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=widths.map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws,name);};
-  add('Players',[['Name','Full Name','Level','Type','Active','Gender','Team']].concat(S.players.slice().sort((a,b)=>lvCmp(a.c,b.c)||a.n.localeCompare(b.n)).map(p=>[p.n,p.fn||'',p.c,T(p.t),p.st||'',p.g==='M'?'Male':p.g==='F'?'Female':'',p.tm||''])),[22,30,8,10,9,9,20]);
+  add('Players',[['Name','Full Name','Level','Type','Active','Gender','Team','Days']].concat(S.players.slice().sort((a,b)=>lvCmp(a.c,b.c)||a.n.localeCompare(b.n)).map(p=>[p.n,p.fn||'',p.c,T(p.t),p.st||'',p.g==='M'?'Male':p.g==='F'?'Female':'',p.tm||'',(p.dy||[]).join(', ')])),[22,30,8,10,9,9,20,22]);
   add('Payments',[['Date','Player','Team','Level','Type','Games','Fee (SR)','Paid','Method']].concat(pay.map(r=>[dayDate(r.day),r.n,r.tm||((S.players.find(p=>p.n===r.n)||{}).tm||''),r.c,T(r.t),r.g,r.f,r.pd?'Yes':'No',r.pd?(r.pm||'Cash'):''])),[13,24,18,10,12,8,10,7,10]);
   { const L={in:'Checked in',out:'Checked out',pay:'Payment received',unpay:'Payment cancelled',session:'New session started'};
     const ev=(S.log||[]).map(e=>({d:e.d,a:L[e.k]||e.k,p:e.n||'',c:'',x:e.k==='pay'?(e.g?e.g+' games':''):'',amt:(e.k==='pay'||e.k==='unpay')?(e.k==='unpay'?-e.amt:e.amt):'',m:e.m||''}));
@@ -1539,6 +1568,9 @@ function vSettings(){
   </div>`:''}
   <h2>Session settings</h2>
   <div class="card set">
+    <div><label>Show day (schedule)</label>
+      <div class="seg dayseg">${['All','Today'].concat(DAYS).map(k=>`<button class="${S.dayView===k?'on':''}" data-act="day-view" data-k="${k}">${k==='All'?'All days':k==='Today'?'Today ('+dayToday()+')':k}</button>`).join('')}</div>
+      <p class="hint">${dayCur()?`Attendance and Players show only <b>${DAY_L[dayCur()]}</b> players (${S.players.filter(dayOk).length} of ${S.players.length}).`:'Attendance and Players show everyone, sorted Monday → Sunday by each player\'s first day.'} Set days with a <b>Days</b> column in Excel (Monday, Mon, Wed, Mon-Fri, Weekend, Daily) or Players → Edit. Players already checked in keep playing whatever the day.</p></div>
     <div><label>Number of courts</label><div class="stepper"><button class="btn sm" data-act="courts-" ${S.courts.length<=1?'disabled':''}>−</button><b>${S.courts.length}</b><button class="btn sm" data-act="courts+" ${S.courts.length>=8?'disabled':''}>+</button></div></div>
     <div><label>Match format (scoring)</label>
       <div class="row"><span style="min-width:120px">Games per match</span><div class="seg" style="flex:1">${[1,2,3,4,5].map(n=>`<button class="${S.match.n===n?'on':''}" data-act="mf-n" data-k="${n}">${n}</button>`).join('')}</div></div>
@@ -1696,7 +1728,7 @@ function sheetRename(id){
   const L=t=>`<label style="font-weight:600;font-size:14px">${t}</label>`;
   openSheet(`<h3>Edit player</h3>${photoActs(id)}<form id="renf" data-id="${id}" class="acts">${L('Name (shown on courts)')}<input type="text" id="ren-n" maxlength="40" value="${esc(p.n)}">${L('Full name')}<input type="text" id="ren-fn" maxlength="80" placeholder="Optional" value="${esc(p.fn||'')}">
   <div class="row"><div style="flex:1;min-width:110px">${L('Gender')}<select id="ren-g"><option value="">—</option><option value="M" ${p.g==='M'?'selected':''}>Male</option><option value="F" ${p.g==='F'?'selected':''}>Female</option></select></div>
-  <div style="flex:1;min-width:110px">${L('Active')}<select id="ren-st"><option value="">—</option>${STATUS.map(s=>`<option value="${s}" ${p.st===s?'selected':''}>${s==='No'?'No (inactive)':s}</option>`).join('')}</select></div></div><label style="font-weight:600;font-size:14px">Team</label><input type="text" id="ren-tm" list="teamlist" maxlength="40" placeholder="No team" value="${esc(p.tm||'')}">${teamDatalist()}<button class="btn pri">Save</button></form>`);
+  <div style="flex:1;min-width:110px">${L('Active')}<select id="ren-st"><option value="">—</option>${STATUS.map(s=>`<option value="${s}" ${p.st===s?'selected':''}>${s==='No'?'No (inactive)':s}</option>`).join('')}</select></div></div>${L('Playing days')}<div class="daypick">${DAYS.map(d=>`<label><input type="checkbox" id="ren-dy-${d}" ${(p.dy||[]).includes(d)?'checked':''}><span>${d}</span></label>`).join('')}</div><label style="font-weight:600;font-size:14px">Team</label><input type="text" id="ren-tm" list="teamlist" maxlength="40" placeholder="No team" value="${esc(p.tm||'')}">${teamDatalist()}<button class="btn pri">Save</button></form>`);
   setTimeout(()=>{const i=$('#ren-n');i&&i.focus();},250);
 }
 
@@ -1761,7 +1793,7 @@ document.addEventListener('click',e=>{
       else { S.present[id]=1; logEv('in',{n:pnm(id)}); }
       save(); render(); break;}
     case 'ci-all': case 'ci-none':{ const oc=onCourt();
-      S.players.filter(p=>(ciFilter==='All'||p.c===ciFilter)&&teamMatch(p,ciTeam)&&(a==='ci-none'||ciInactive||!isOff(p))).forEach(p=>{ if(a==='ci-all'){ if(!S.present[p.id]) logEv('in',{n:p.n}); S.present[p.id]=1; return; } if(S.present[p.id]&&oc[p.id]===undefined) logEv('out',{n:p.n}); if(oc[p.id]===undefined){delete S.present[p.id];delete S.resting[p.id];} });
+      S.players.filter(p=>dayOk(p)&&(ciFilter==='All'||p.c===ciFilter)&&teamMatch(p,ciTeam)&&(a==='ci-none'||ciInactive||!isOff(p))).forEach(p=>{ if(a==='ci-all'){ if(!S.present[p.id]) logEv('in',{n:p.n}); S.present[p.id]=1; return; } if(S.present[p.id]&&oc[p.id]===undefined) logEv('out',{n:p.n}); if(oc[p.id]===undefined){delete S.present[p.id];delete S.resting[p.id];} });
       save(); render(); break;}
     case 'bulk':{ const t=$('#bulk').value; let n=0;
       t.split(/\r?\n/).forEach(line=>{ line=line.trim(); if(!line) return;
@@ -1831,6 +1863,7 @@ document.addEventListener('click',e=>{
     case 'export': exportReport(); break;
     case 'mf-n': S.match.n=+k; save(); render(); break;
     case 'mf-p': S.match.pts=+k; save(); render(); break;
+    case 'day-view': S.dayView=['All','Today'].concat(DAYS).includes(k)?k:'All'; save(); render(); toast(S.dayView==='All'?'Showing all days':'Showing '+DAY_L[dayCur()]+' players'); break;
     case 'mf-m': S.match.mode=k==='all'?'all':'best'; save(); render(); break;
     case 'sc-help': scHelp=!scHelp; renderScore(); break;
     case 'team-del':{ if(confirmKey!=='td'+k){ confirmKey='td'+k; render(); break; } confirmKey=null; S.teams=(S.teams||[]).filter(x=>x!==k); save(); render(); break;}
@@ -1900,15 +1933,17 @@ function importRows(rows){
   let ai=head.findIndex(x=>/active|status/.test(x));
   let gi=head.findIndex(x=>/gender|sex/.test(x));
   const tmi=head.findIndex(x=>/team|squad|club/.test(x));
-  const hasHead=ni>=0||ci>=0||ti>=0||tmi>=0||ai>=0||gi>=0||fni>=0;
+  let dyi=head.findIndex(x=>/\bdays?\b|schedule/.test(x)&&!/birth/.test(x));
+  const hasHead=ni>=0||ci>=0||ti>=0||tmi>=0||ai>=0||gi>=0||fni>=0||dyi>=0;
   if(hasHead){ start=1; if(ni>=0) nameCol=ni; if(ci>=0) catCol=ci; }
   /* columns found by their values when the header is unclear (e.g. Member/Guest/Family under "Timestamp") */
   const byVals=(fn,skip)=>{ const w=Math.max(...rows.map(r=>r.length)); let best=-1,bs=0; const body=rows.slice(start).filter(r=>r.length);
     for(let c=0;c<w;c++){ if(skip.includes(c)) continue; const n=body.filter(r=>r[c]&&fn(r[c])).length; if(n>bs&&n>=body.length*0.6){bs=n;best=c;} } return best; };
-  const used=()=>[nameCol,catCol,ti,ai,gi,fni,tmi].filter(x=>x>=0);
+  const used=()=>[nameCol,catCol,ti,ai,gi,fni,tmi,dyi].filter(x=>x>=0);
   if(ti<0) ti=byVals(v=>/^(member|guest|family|subscriber|sub)$/i.test(v.trim()),used());
   if(ai<0) ai=byVals(v=>!!parseStatus(v)&&/^(reg|a-?\s*sub|no)$/i.test(v.trim()),used());
   if(gi<0) gi=byVals(v=>/^(male|female)$/i.test(v.trim()),used());
+  if(dyi<0) dyi=byVals(v=>parseDays(v).length>0,used());
   if(catCol<0){ // guess: the column whose values are mostly A-D
     const w=Math.max(...rows.map(r=>r.length)); let best=-1,bs=0;
     for(let c=0;c<w;c++){ if(c===nameCol) continue; const sc=rows.slice(start).filter(r=>parseCat(r[c])).length; if(sc>bs){bs=sc;best=c;} }
@@ -1924,8 +1959,9 @@ function importRows(rows){
     let fn=fni>=0?String(r[fni]||'').trim().slice(0,80):''; if(/^\[?blank\]?$/i.test(fn)) fn='';
     const ex=idx[name.toLowerCase()];
     const tm=tmi>=0?String(r[tmi]||'').trim().slice(0,40):null;
-    if(ex){ let ch=false; const set=(k,v)=>{ if(v&&ex[k]!==v){ ex[k]=v; ch=true; } }; set('c',c); set('t',t); set('st',st); set('g',g); set('fn',fn); if(tm!==null) set('tm',tm); if(ch) updated++; }
-    else { const p={id:uid(),n:name,c,t:t||'S',tm:tm||'',fn,g:g||'',st:st||''}; S.players.push(p); idx[name.toLowerCase()]=p; added++; }
+    const dy=dyi>=0?parseDays(r[dyi]):[];
+    if(ex){ let ch=false; const set=(k,v)=>{ if(v&&ex[k]!==v){ ex[k]=v; ch=true; } }; set('c',c); set('t',t); set('st',st); set('g',g); set('fn',fn); if(tm!==null) set('tm',tm); if(dy.length&&dy.join()!==(ex.dy||[]).join()){ ex.dy=dy; ch=true; } if(ch) updated++; }
+    else { const p={id:uid(),n:name,c,t:t||'S',tm:tm||'',fn,g:g||'',st:st||'',dy}; S.players.push(p); idx[name.toLowerCase()]=p; added++; }
   });
   save(); render();
   const off=S.players.filter(isOff).length;
@@ -1961,7 +1997,7 @@ document.addEventListener('submit',e=>{
   if(e.target.id==='teamf'&&!IS_DISPLAY){ const v=(($('#team-n')||{}).value||'').trim().slice(0,40); if(!v) return; if(!(S.teams||[]).some(x=>x.toLowerCase()===v.toLowerCase())){ S.teams=(S.teams||[]).concat(v); save(); toast('Team added: '+v); } else toast('Already saved'); render(); setTimeout(()=>{const i=$('#team-n');i&&i.focus();},0); return; }
   if(IS_DISPLAY){ toast('Display tablet — make changes on the Main tablet'); return; }
   if(e.target.id==='addf'){ const n=$('#add-n').value.trim(); if(!n) return; S.players.push({id:uid(),n:n.slice(0,40),c:$('#add-c').value,t:$('#add-t').value,g:(($('#add-g')||{}).value||''),fn:'',st:'',tm:($('#add-tm').value||'').trim().slice(0,40)}); save(); render(); toast('Added '+n); setTimeout(()=>{const i=$('#add-n');i&&i.focus();},0); }
-  if(e.target.id==='renf'){ const p=byId(e.target.dataset.id); const n=$('#ren-n').value.trim(); if(p&&n){p.n=n.slice(0,40); p.tm=(($('#ren-tm')||{}).value||'').trim().slice(0,40); p.fn=(($('#ren-fn')||{}).value||'').trim().slice(0,80); p.g=(($('#ren-g')||{}).value||''); p.st=(($('#ren-st')||{}).value||''); save();} closeSheet(); render(); }
+  if(e.target.id==='renf'){ const p=byId(e.target.dataset.id); const n=$('#ren-n').value.trim(); if(p&&n){p.n=n.slice(0,40); p.tm=(($('#ren-tm')||{}).value||'').trim().slice(0,40); p.fn=(($('#ren-fn')||{}).value||'').trim().slice(0,80); p.g=(($('#ren-g')||{}).value||''); p.st=(($('#ren-st')||{}).value||''); p.dy=DAYS.filter(d=>{const x=$('#ren-dy-'+d);return x&&x.checked;}); save();} closeSheet(); render(); }
 });
 setInterval(()=>{document.querySelectorAll('[data-t]').forEach(el=>{el.textContent=elapsed(+el.dataset.t);});},30000);
 /* ---------- app updates (Android app only) ---------- */
