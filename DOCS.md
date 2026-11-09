@@ -140,8 +140,9 @@ Plan games ahead so a finished court refills with one tap.
 3. **Game done** saves the result, then puts the first planned game that fits that court's levels on it. The message has **Undo** (8 seconds) to put the game back. **Clear** does not start a planned game.
 4. **Fill empty courts** uses planned games first, then Auto match. An empty court with a planned game that fits shows **▶ Start Next N**.
 5. Someone in a planned game goes home, rests, or is put on a court by hand: they leave the game and the gap is filled with the closest-level waiting player (shown as *needs a player* until someone is free).
-6. Each game: **↑** move up, **Reshuffle** (new players from the queue), **✕** remove (players go back to the queue). A note shows when a game fits only some courts because of court levels.
-7. Changing Doubles/Singles, Start new session and Delete all players clear the planned games.
+6. Tap a player in a planned game to replace them: a sheet with a search box lists waiting players (close level first, sort by Played / Level / Guest) and players in other planned games (tap to swap). The replaced player goes back to the queue; Rest and Went home are there too.
+7. Each game: **↑** move up, **Reshuffle** (new players from the queue), **✕** remove (players go back to the queue). A note shows when a game fits only some courts because of court levels.
+8. Changing Doubles/Singles, Start new session and Delete all players clear the planned games.
 
 ## Scoring
 
@@ -299,6 +300,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 | 7 Nov 2026 | Page v29 (1.29) | Set the serve before starting: tap the player who serves first, then the player who receives (0–0, first game); serving team can still be changed until the first point |
 | 7 Nov 2026 | Page v30 (1.30) | Payments: mark each player paid by 💵 Cash or 📱 STC Pay; Collected shows the split; Excel Payments sheet has a Method column and Daily Summary has Cash / STC Pay totals |
 | 7 Nov 2026 | Page v31 (2.0) | Export all activity: new Activity Log sheet (check-ins/outs, match start and finish with result, payments received/cancelled with amount and Cash / STC Pay, new sessions — all with date and time). Export button also in Settings |
+| 9 Nov 2026 | Page v70 (3.8) | Next games: tap a player → replace sheet (sheetNextPl) with search, sort chips, waiting players (allowed level first, then other levels), swap with a player in another planned game, Rest / Went home |
 | 9 Nov 2026 | Page v69 (3.7) | Next games: plan games ahead (+ Plan next game / Pick players) under the courts. Planned players are reserved (S.next; left out of waiting()). Game done starts the first planned game that fits the court's levels, with Undo on the message; Fill empty courts uses planned games first; empty courts show ▶ Start Next N. nextFix() on every save removes players who left and fills the gap with the closest-level waiting player. Cleared by mode change, new session, delete all players |
 | 9 Nov 2026 | Page v68 (3.6) | Settings has its own Delete all players card (tap twice; shows how many). It removes players, photos and today's attendance, games and payments, but keeps match history, balances, the activity log and settings. Deleting one player or all players is recorded in the Activity Log (Player deleted / All players deleted, with names) and is always included in the Excel export |
 | 9 Nov 2026 | Page v67 (2.36) | Simpler balances: one line To collect (today · earlier) instead of two tiles; Balances owed = one line per player (name, bills, total); bill sheet = date + amount left + Waive (tap twice), then amount + Cash / STC Pay. Waived bills (r.wv) owe 0, show as Waived in Excel and Balance waived in the Activity Log; Daily Summary Outstanding uses what is really left |

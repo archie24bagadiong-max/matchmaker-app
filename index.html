@@ -665,7 +665,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=69;
+const APP_VERSION=70;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1122,15 +1122,15 @@ function vCourts(){
 }
 function vNext(){
   const nx=S.next||[];
-  const pl=id=>{ const p=byId(id); return p?`<button class="wp" data-act="wait-pl" data-id="${id}">${catBadge(p.c)}${esc(p.n)} ${typeBadge(p)}<small>${S.games[id]||0}g</small></button>`:''; };
-  const side=ids=>'<span class="ng-s">'+ids.map(id=>id?pl(id):'<span class="ng-hole">needs a player</span>').join('')+'</span>';
+  const pl=(id,j)=>{ const p=byId(id); return p?`<button class="wp" data-act="nx-pl" data-k="${j}" data-id="${id}" title="Replace ${esc(p.n)}">${catBadge(p.c)}${esc(p.n)} ${typeBadge(p)}<small>${S.games[id]||0}g</small></button>`:''; };
+  const side=(ids,j)=>'<span class="ng-s">'+ids.map(id=>id?pl(id,j):'<span class="ng-hole">needs a player</span>').join('')+'</span>';
   let h=`<h2>Next games <small>${nx.length?nx.length+' planned':'none planned'}</small><span class="grow"></span><button class="btn sm" data-act="nx-pick">Pick players</button><button class="btn lime sm" data-act="nx-plan">+ Plan next game</button></h2><div class="card">`;
   if(!nx.length) return h+`<div class="hint" style="margin:0">Plan games ahead: tap <b>+ Plan next game</b> (same rules as Auto match) or <b>Pick players</b>. When a court finishes, <b>Game done</b> puts Next 1 straight on that court. Players in a planned game wait here, not in the queue.</div></div>`;
   h+=`<div class="nextg">${nx.map((g,j)=>{ const half=g.p.length/2, fits=S.courts.map((c,i)=>nextFits(c,g)?i+1:0).filter(Boolean), full=g.p.every(Boolean);
-    return `<div class="ng ${j===0?'first':''}"><div class="ng-n">Next ${j+1}</div><div class="ng-t">${side(g.p.slice(0,half))}<span class="ng-vs">vs</span>${side(g.p.slice(half))}</div>
+    return `<div class="ng ${j===0?'first':''}"><div class="ng-n">Next ${j+1}</div><div class="ng-t">${side(g.p.slice(0,half),j)}<span class="ng-vs">vs</span>${side(g.p.slice(half),j)}</div>
       <div class="ng-a">${j?`<button class="btn sm" data-act="nx-up" data-k="${j}" title="Move up" aria-label="Move up">↑</button>`:''}<button class="btn sm" data-act="nx-re" data-k="${j}">Reshuffle</button><button class="btn sm warn" data-act="nx-del" data-k="${j}" title="Remove" aria-label="Remove">✕</button></div>
       ${!full?'<p class="hint ng-f">Waiting for a free player to fill the gap.</p>':fits.length<S.courts.length?`<p class="hint ng-f">${fits.length?'Fits Court '+fits.join(', ')+' only (court levels)':'Fits no court — check the court levels'}</p>`:''}</div>`; }).join('')}</div>`;
-  return h+`<p class="hint" style="margin:10px 0 0">Game done puts the first game that fits that court's levels on it — tap <b>Undo</b> on the message to take it back. Fill empty courts uses these first.</p></div>`;
+  return h+`<p class="hint" style="margin:10px 0 0">Game done puts the first game that fits that court's levels on it — tap <b>Undo</b> on the message to take it back. Tap a player to replace them. Fill empty courts uses these first.</p></div>`;
 }
 /* waiting queue arrangement (display only — Auto match still takes players in "Next up" order). Remembered on this device. */
 const WQ_SORTS={grid:['Level columns','a column per level · who just played goes to the bottom'],played:['Played · Level','by games played, then level'],level:['Level','by level, fewest games first'],queue:['Next up','next up first']};
@@ -1534,7 +1534,7 @@ function vHelp(){
     <li>Someone can't play? Tap their name → <b>Can't play</b>, or pick a substitute. Later tap <b>Back to play</b>.</li>
     <li>Tap any court (its name or empty space) to open its menu: Game done, scoreboard, reshuffle, clear, players and levels.</li>
     <li>Match over? The <b>Game done</b> button blinks red with a “ting ting” sound when the score shows the match is finished. Tap <b>Game done</b>. The winner is picked from the score and saved to History. The court empties — or the next planned game goes straight on (see below).</li>
-    <li><b>Next games:</b> while courts are busy, tap <b>+ Plan next game</b> (same rules as Auto match) or <b>Pick players</b> under the courts. When a match ends, <b>Game done</b> puts Next 1 on that court at once — tap <b>Undo</b> on the message if it was wrong. If a planned player goes home or rests, the gap is filled with the closest-level waiting player. ↑ moves a game up, Reshuffle picks new players, ✕ sends them back to the queue.</li>
+    <li><b>Next games:</b> while courts are busy, tap <b>+ Plan next game</b> (same rules as Auto match) or <b>Pick players</b> under the courts. When a match ends, <b>Game done</b> puts Next 1 on that court at once — tap <b>Undo</b> on the message if it was wrong. If a planned player goes home or rests, the gap is filled with the closest-level waiting player. Tap a player in a planned game to replace them: search the waiting players or swap with someone in another planned game. ↑ moves a game up, Reshuffle picks new players, ✕ sends them back to the queue.</li>
     <li>Put the next players on and repeat.</li>
     <li><b>Payments:</b> tap <b>💵 Cash</b> or <b>📱 STC Pay</b> as players pay, or <b>½ Part</b> for part of it. Anything unpaid at <b>Start new session</b> stays as a dated balance under <b>Payments → Balances owed</b>; money received pays the oldest bill first.</li></ol>`)}
   ${sec('score','4. Keeping score',`<ol>
@@ -1907,6 +1907,24 @@ function sheetSlot(ci,k){
   ${other.length?`<h2>Other levels waiting</h2><div class="list">${other.map(row).join('')}</div>`:''}
   ${inBox.length?`<h2>Move from another box on this court</h2><div class="list">${inBox.map(row).join('')}</div>`:''}`);
 }
+/* tap a player in a planned game: replace them with someone waiting (search + sort), or swap with a player in another planned game */
+function sheetNextPl(j,id){
+  const g=S.next[j], p=byId(id); if(!g||!p||!g.p.includes(id)){ closeSheet(); return; }
+  shReopen=()=>sheetNextPl(j,id);
+  const w=shSorted(waiting()), ok=w.filter(x=>allowed(x.c,p.c)), other=w.filter(x=>!allowed(x.c,p.c));
+  const inNext=[]; S.next.forEach((h,k)=>{ if(k!==j) h.p.forEach(x=>{ const q=x&&byId(x); if(q) inNext.push({q,k}); }); });
+  const row=s=>pickRow(s,`data-act="nx-rep" data-k="${j}" data-id="${id}" data-in="${s.id}"`);
+  openSheet(`<h3>${catBadge(p.c)}${esc(p.n)} ${typeBadge(p)}</h3><div class="hint" style="margin:0">Next ${j+1} · ${gpill(id)} · tap a player to put them in instead. ${esc(p.n)} goes back to the waiting queue.</div>
+  ${shSearch()}${shSortChips()}
+  <h2 style="margin-top:4px">Waiting <small>${SH_SORTS[shSort]}</small></h2>
+  <div class="list">${ok.map(row).join('')||'<div class="hint">No one waiting at a close level.</div>'}</div>
+  ${other.length?`<h2>Other levels waiting</h2><div class="list">${other.map(row).join('')}</div>`:''}
+  ${inNext.length?`<h2>Swap with another planned game</h2><div class="list">${inNext.map(x=>pickRow(x.q,`data-act="nx-rep" data-k="${j}" data-id="${id}" data-in="${x.q.id}"`).replace('<div class="nm">'+esc(x.q.n)+'</div>','<div class="nm">'+esc(x.q.n)+' <small style="color:var(--muted);font-weight:500">· Next '+(x.k+1)+'</small></div>')).join('')}</div>`:''}
+  <div class="acts">
+    <button class="btn" data-act="rest" data-id="${id}">Rest / sit out for now</button>
+    <button class="btn warn" data-act="checkout" data-id="${id}">Went home (remove from attendance)</button>
+  </div>`);
+}
 let pickCourt=null, pickSel=[], pickCat='All';
 function sheetPick(){
   const ci=pickCourt; const c=S.courts[ci]; const n=need();
@@ -1983,6 +2001,12 @@ document.addEventListener('click',e=>{
     case 'sc-save':{ const i=scoreOpen, sc=S.courts[i].sc; if(!sc||!sc.done) break; if(sc.done==='d'){ const sum=scSummary(sc); scoreOpen=null; renderScore(); finishNext(i,'','🤝 Draw · '+sum); break; } const sum=scSummary(sc), who=scWho(sc,sc.done); scoreOpen=null; renderScore(); finishNext(i,sc.done,'🏆 '+who+' win · '+sum); break;}
     case 'sc-reset':{ if(confirmKey!=='screset'){confirmKey='screset';renderScore();break;} confirmKey=null; const oldSeq=(S.courts[scoreOpen].sc&&S.courts[scoreOpen].sc.seq)||0; S.courts[scoreOpen].sc=null; scEnsure(scoreOpen).seq=oldSeq+1; scEnsure(scoreOpen); save(); renderScore(); break;}
     case 'win': closeSheet(); finishNext(ci,k==='x'?'':k,k==='x'?'Game saved (no result)':'Result saved'); break;
+    case 'nx-pl': sheetNextPl(+k,id); break;
+    case 'nx-rep':{ const j=+k, g=S.next[j], inn=el.dataset.in, pos=g?g.p.indexOf(id):-1; if(pos<0||!inn){ closeSheet(); break; }
+      const oj=S.next.findIndex((h,x)=>x!==j&&h.p.includes(inn));
+      if(oj>=0){ const h=S.next[oj]; h.p[h.p.indexOf(inn)]=id; g.p[pos]=inn; closeSheet(); save(); render(); toast(`Swapped ${pnm(id)} (now Next ${oj+1}) and ${pnm(inn)} (now Next ${j+1})`); break; }
+      if(!waiting().some(x=>x.id===inn)){ toast('That player is no longer available'); sheetNextPl(j,id); break; }
+      g.p[pos]=inn; closeSheet(); save(); render(); toast(`Next ${j+1}: ${pnm(inn)} in for ${pnm(id)}`); break;}
     case 'nx-undo': $('#toast').classList.remove('show','act'); undoNext(); break;
     case 'nx-plan': if(planNext()){ save(); render(); toast(`Next ${S.next.length} planned`); } else toast('Not enough waiting players to plan another game'); break;
     case 'nx-pick': pickCourt=-1; pickSel=[]; pickCat='All'; sheetPick(); break;
