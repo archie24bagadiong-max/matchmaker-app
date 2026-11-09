@@ -146,6 +146,21 @@ body.display .cmenu{display:none}
 .wait{display:flex;flex-wrap:wrap;gap:6px}
 .wp{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:6px 10px 6px 6px;font-weight:600;font-size:14px}
 .wp small{color:var(--muted);font-weight:500}
+/* Next games (planned ahead) */
+.nextg{display:flex;flex-direction:column;gap:8px}
+.ng{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border:1px solid var(--border);border-radius:10px;padding:8px 10px;background:#fff}
+.ng.first{border-color:var(--C);background:#f1faf4}
+.ng-n{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:17px;text-transform:uppercase;min-width:62px}
+.ng.first .ng-n{color:var(--C)}
+.ng-t{display:flex;flex-wrap:wrap;gap:6px;align-items:center;flex:1;min-width:220px}
+.ng-s{display:flex;flex-wrap:wrap;gap:6px}
+@media (max-width:640px){.ng-t{order:3;flex-basis:100%;min-width:0}.ng-f{order:4}}
+.ng-vs{font-weight:700;color:var(--muted);font-size:13px;padding:0 2px}
+.ng-hole{border:1px dashed var(--border);border-radius:10px;padding:6px 10px;color:var(--muted);font-size:13px}
+.ng-a{display:flex;gap:6px;margin-left:auto}
+.ng-f{width:100%;margin:0;font-size:13px}
+.toast.act{pointer-events:auto}
+.toast .tbtn{margin-left:12px;background:var(--lime);color:var(--court);border:0;border-radius:8px;padding:5px 12px;font-weight:700;font-size:14px}
 .wgrp{flex:0 0 100%;font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.5px;color:var(--court2);margin:8px 2px 0;padding-bottom:4px;border-bottom:1px solid var(--border)}
 .wgrp:first-child{margin-top:0}
 /* waiting queue: a column per level */
@@ -443,7 +458,7 @@ button.spl{color:#fff;background-color:rgba(255,255,255,.1)}
 @keyframes fl{0%{opacity:0;transform:translate(-50%,-50%) scale(.9)}10%{opacity:1;transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0}}
 .syncbox{margin-top:12px;display:flex;flex-direction:column;gap:8px}
 .bigip{font-family:'Barlow Condensed';font-size:34px;font-weight:800;color:var(--court2);letter-spacing:.5px;word-break:break-all}
-body.display .court-f,body.display .lv button,body.display .sfoot,body.display .sctl,body.display [data-act=fill-all]{pointer-events:none;opacity:.35}
+body.display .court-f,body.display .ng-a,body.display [data-act^=nx-],body.display .lv button,body.display .sfoot,body.display .sctl,body.display [data-act=fill-all]{pointer-events:none;opacity:.35}
 body.display .sptb{pointer-events:none}
 .av{width:26px;height:26px;border-radius:50%;object-fit:cover;flex:none;background:#dfe6e0;display:inline-block}
 .av.ini{display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;color:var(--court2);background:#e3efe7;letter-spacing:.3px}
@@ -650,7 +665,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=68;
+const APP_VERSION=69;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -680,7 +695,7 @@ const CLIENT=Math.random().toString(36).slice(2);
 
 function fresh(){
   return {players:[],present:{},resting:{},games:{},lastEnd:{},partners:{},
-    courts:[0,1,2].map(()=>({lv:GROUPS.slice(),p:[],t:0})),
+    courts:[0,1,2].map(()=>({lv:GROUPS.slice(),p:[],t:0})),next:[],
     mode:'doubles',mix:'adjacent',autoNext:true,prio:'strong',rounds:true,paid:{},part:{},sess:0,hist:[],ledger:[],log:[],teams:[],match:{n:3,pts:21,mode:'best'},fee:{gp:25,gn:3,gx:10,sp:2.5},dayView:'All'};
 }
 /* activity log: every check-in, payment and session change, with time */
@@ -694,6 +709,8 @@ function normalize(s){
   s.players=s.players.filter(p=>p&&p.id&&typeof p.n==='string').map(p=>({id:String(p.id),n:p.n.slice(0,40),c:normLv(p.c),t:['S','F','G'].includes(p.t)?p.t:'S',tm:typeof p.tm==='string'?p.tm.trim().slice(0,40):'',fn:typeof p.fn==='string'?p.fn.trim().slice(0,80):'',g:p.g==='M'||p.g==='F'?p.g:'',st:STATUS.includes(p.st)?p.st:'',dy:normDays(p.dy)}));
   if(!Array.isArray(s.courts)||!s.courts.length) s.courts=d.courts;
   s.courts=s.courts.map(c=>{ let lv=Array.isArray(c&&c.lv)?[...new Set(c.lv.map(grp))].filter(x=>GROUPS.includes(x)).sort():[]; if(!lv.length) lv=GROUPS.slice(); return {lv,p:Array.isArray(c&&c.p)?c.p.map(String):[],t:+(c&&c.t)||0,sc:(c&&c.sc&&typeof c.sc==='object'&&c.sc.pos)?c.sc:null,d:Array.isArray(c&&c.d)?c.d.slice(0,4).map(x=>typeof x==='string'&&x?x:null):[]}; });
+  if(!Array.isArray(s.next)) s.next=[];
+  s.next=s.next.filter(g=>g&&Array.isArray(g.p)&&g.p.length).slice(0,40).map(g=>({p:g.p.slice(0,4).map(x=>typeof x==='string'&&x?x:null)}));
   if(!Array.isArray(s.teams)) s.teams=[];
   s.teams=[...new Set(s.teams.filter(x=>typeof x==='string').map(x=>x.trim().slice(0,40)).filter(Boolean))];
   if(!Array.isArray(s.hist)) s.hist=[];
@@ -751,6 +768,7 @@ document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==
 window.addEventListener('pagehide',persistFlush);
 window.addEventListener('beforeunload',persistFlush);
 function save(){
+  if(CAN_PLAN()&&S.next&&S.next.length) nextFix();
   if(IS_COURT) postScore();
   if(!persistTimer) persistTimer=setTimeout(persistNow,250);
   if(!dbRef) return;
@@ -798,7 +816,8 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 const byId=id=>S.players.find(p=>p.id===id);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const need=()=>S.mode==='doubles'?4:2;
-function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2200);}
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.remove('act');t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2200);}
+function toastAct(m,label,act){const t=$('#toast');t.innerHTML=esc(m)+`<button class="tbtn" data-act="${act}">${esc(label)}</button>`;t.classList.add('show','act');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show','act'),8000);}
 function onCourt(){const m={};S.courts.forEach((c,i)=>c.p.forEach(id=>m[id]=i));return m;}
 function pkey(a,b){return a<b?a+'|'+b:b+'|'+a;}
 function allTeamNames(){ const s=new Set((S.teams||[]).concat(teamsList())); S.hist.slice(-300).forEach(x=>{ if(x.ta) s.add(x.ta); if(x.tb) s.add(x.tb); }); S.courts.forEach(c=>{ if(c.sc&&c.sc.tn){ if(c.sc.tn.a) s.add(c.sc.tn.a); if(c.sc.tn.b) s.add(c.sc.tn.b); } }); return [...s].filter(Boolean).sort((a,b)=>a.localeCompare(b)); }
@@ -826,8 +845,8 @@ function fee(p){
 }
 const sr=v=>(Math.round(v*100)/100).toFixed(2).replace(/\.00$/,'')+' SR';
 function waiting(){
-  const oc=onCourt(), dr=drafted();
-  return prioritySort(S.players.filter(p=>S.present[p.id]&&!S.resting[p.id]&&oc[p.id]===undefined&&!dr.has(p.id)&&dayOk(p)));
+  const oc=onCourt(), dr=drafted(), pl=planned();
+  return prioritySort(S.players.filter(p=>S.present[p.id]&&!S.resting[p.id]&&oc[p.id]===undefined&&!dr.has(p.id)&&!pl.has(p.id)&&dayOk(p)));
 }
 /* empty court boxes: players placed in a box (c.d) before the game starts.
    Box order = c.p order: first half is the left team, second half the right team. */
@@ -838,6 +857,65 @@ function slots(c){
   return d;
 }
 function drafted(){ const s=new Set(); S.courts.forEach(c=>{ if(!c.p.length&&Array.isArray(c.d)) c.d.forEach(id=>{ if(id) s.add(id); }); }); return s; }
+/* ---------- Next games ----------
+   Games planned ahead, in order (S.next). Their players are reserved: not in the waiting queue, Auto match, Fill empty
+   courts or substitutes. Game done on a court puts the first planned game that fits the court's levels straight on. */
+function planned(){ const s=new Set(); (S.next||[]).forEach(g=>g.p.forEach(id=>{ if(id) s.add(id); })); return s; }
+function CAN_PLAN(){ return !IS_COURT&&!IS_DISPLAY&&!IS_REMOTE; }
+/* keep planned games valid: someone who went home, rests, is on a court or in a court box leaves the game,
+   and the gap is filled with the closest-level waiting player (fewest games first) */
+function nextFix(){
+  if(!Array.isArray(S.next)) S.next=[];
+  const n=need(), oc=onCourt(), dr=drafted(), seen=new Set();
+  S.next=S.next.filter(g=>g&&Array.isArray(g.p)&&g.p.length===n);
+  S.next.forEach(g=>{ g.p=g.p.map(id=>id&&byId(id)&&S.present[id]&&!S.resting[id]&&oc[id]===undefined&&!dr.has(id)&&!seen.has(id)?(seen.add(id),id):null); });
+  S.next=S.next.filter(g=>g.p.some(Boolean));
+  S.next.forEach(g=>{
+    if(!g.p.some(x=>!x)) return;
+    const kept=g.p.filter(Boolean).map(byId), avg=kept.reduce((a,p)=>a+(RATE[p.c]||0),0)/kept.length;
+    let filled=false;
+    for(let k=0;k<g.p.length;k++){ if(g.p[k]) continue;
+      const best=waiting().filter(p=>S.courts.some(c=>onLv(c,p)))
+        .map((p,j)=>({p,score:roundW(p)+(S.prio==='strong'&&isG(p)?100000:0)+Math.abs((RATE[p.c]||0)-avg)*1000+j})).sort((a,b)=>a.score-b.score)[0];
+      if(best){ g.p[k]=best.p.id; filled=true; } }
+    if(filled&&n===4&&g.p.every(Boolean)) g.p=arrange(g.p);
+  });
+}
+function nextFits(c,g){ return g.p.length===need()&&g.p.every(id=>{ const p=id&&byId(id); return p&&onLv(c,p); }); }
+function nextFor(i){ const c=S.courts[i]; return c?(S.next||[]).findIndex(g=>nextFits(c,g)):-1; }
+/* plan one more game from the waiting queue (same rules as Auto match). Courts with different levels: the group
+   with the fewest games / longest wait wins. */
+function planNext(){
+  nextFix();
+  const n=need(), w=waiting(), pos=new Map(w.map((p,i)=>[p.id,i]));
+  let best=null, bs=Infinity;
+  [...new Set(S.courts.map(c=>c.lv.join()))].forEach(key=>{ const c=S.courts.find(x=>x.lv.join()===key);
+    const g=pickGroup(w.filter(p=>onLv(c,p)),n); if(!g) return;
+    const sc=g.reduce((a,p)=>a+roundW(p)+pos.get(p.id),0); if(sc<bs){ bs=sc; best=g; } });
+  if(!best) return false;
+  const ids=best.map(p=>p.id); S.next.push({p:n===4?arrange(ids):ids}); return true;
+}
+let lastNext=null;
+/* court i is empty: start the first planned game that fits it. Returns its number (Next 1, 2…) or 0 */
+function startNext(i){
+  const c=S.courts[i]; if(!c||c.p.length||!CAN_PLAN()) return 0;
+  nextFix(); const j=nextFor(i); if(j<0) return 0;
+  const g=S.next.splice(j,1)[0];
+  c.p=g.p.slice(); c.d=[]; c.t=Date.now(); c.sc=null;
+  lastNext={c:i,j,p:g.p.slice(),t:c.t};
+  return j+1;
+}
+function undoNext(){
+  const u=lastNext; lastNext=null; const c=u&&S.courts[u.c];
+  if(!c||c.t!==u.t||!sameSet(c.p,u.p)){ toast('Too late to undo — that court has changed'); return; }
+  c.p=[]; c.t=0; c.sc=null; S.next.splice(Math.min(u.j,S.next.length),0,{p:u.p});
+  save(); render(); toast('Undone — the game is back in Next games');
+}
+/* Game done / result saved: save it, then start the next planned game on that court */
+function finishNext(i,win,msg){
+  const nx=finish(i,true,win);
+  if(nx) toastAct(msg+` · Court ${i+1}: Next ${nx} started`,'Undo','nx-undo'); else toast(msg);
+}
 function startFromSlots(i){
   const c=S.courts[i], d=slots(c);
   if(d.some(x=>!x)) return false;
@@ -906,8 +984,8 @@ function fillCourt(i,quiet,exclude){
   return true;
 }
 function fillAll(){
-  let n=0; S.courts.forEach((c,i)=>{ if(!c.p.length && fillCourt(i,true)) n++; });
-  save(); render(); toast(n?`Filled ${n} court${n>1?'s':''}`:'No court could be filled — check attendance & levels');
+  let n=0, m=0; S.courts.forEach((c,i)=>{ if(c.p.length) return; if(!slots(c).some(Boolean)&&startNext(i)){ n++; m++; } else if(fillCourt(i,true)) n++; });
+  save(); render(); toast(n?`Filled ${n} court${n>1?'s':''}${m?` (${m} from Next games)`:''}`:'No court could be filled — check attendance & levels');
 }
 function finish(i,count,win){
   const c=S.courts[i]; const now=Date.now();
@@ -921,7 +999,9 @@ function finish(i,count,win){
     if(c.p.length===4){[[0,1],[2,3]].forEach(([a,b])=>{const k=pkey(c.p[a],c.p[b]);S.partners[k]=(S.partners[k]||0)+1;});}
   }
   c.p=[];c.t=0;c.sc=null;
+  const nx=count?startNext(i):0;
   save(); render();
+  return nx;
 }
 function substitutes(courtIdx,outId){
   const c=S.courts[courtIdx], out=byId(outId);
@@ -980,12 +1060,13 @@ function plBtn(id,ci){
   return `<button class="pl" data-act="court-pl" data-c="${ci}" data-id="${id}">${av(id,'',true)}${catBadge(p.c)}<span class="nm">${esc(p.n)}</span>${typeBadge(p)}<span class="g">${S.games[id]||0}g</span></button>`;
 }
 function vCourts(){
+  if(CAN_PLAN()) nextFix();
   const present=S.players.filter(p=>S.present[p.id]);
   const w=waiting(); const resting=S.players.filter(p=>S.present[p.id]&&S.resting[p.id]);
   let h=`<div class="stats">
     <div class="stat"><b>${present.length}</b><span>Present</span></div>
     <div class="stat"><b>${S.courts.reduce((a,c)=>a+c.p.length,0)}</b><span>Playing</span></div>
-    <div class="stat"><b>${w.length}</b><span>Waiting</span></div>
+    <div class="stat"><b>${w.length+planned().size}</b><span>Waiting</span></div>
     <div class="stat"><b>${resting.length}</b><span>Resting</span></div></div>`;
   if(!present.length){
     h+=`<div class="card emptybox" style="margin-top:14px"><b>No one checked in yet</b>${S.players.length?'Mark today\'s attendees first.':'Add your players, then mark attendance.'}<div style="margin-top:12px"><button class="btn pri" data-act="go" data-tab="${S.players.length?'checkin':'players'}">${S.players.length?'Take attendance':'Add players'}</button></div></div>`;
@@ -1017,10 +1098,12 @@ function vCourts(){
       <div class="court-f">${c.p.length
         ?`<button class="btn ${c.sc&&c.sc.done?'gdone':'lime'}" data-act="finish" data-c="${i}">${c.sc&&c.sc.done?'🔔 Game done':'Game done'}</button><button class="btn ghost" data-act="reshuffle" data-c="${i}">Reshuffle</button><button class="btn ghost" data-act="cancel" data-c="${i}">Clear</button>`
         :hasD?`<button class="btn lime" data-act="gen" data-c="${i}">Auto fill rest</button><button class="btn ghost" data-act="slot-clear" data-c="${i}">Empty boxes</button>`
+        :nextFor(i)>=0?`<button class="btn lime" data-act="nx-start" data-c="${i}">▶ Start Next ${nextFor(i)+1}</button><button class="btn ghost" data-act="gen" data-c="${i}">Auto match</button><button class="btn ghost" data-act="pick" data-c="${i}">Pick players</button>`
         :`<button class="btn lime" data-act="gen" data-c="${i}">Auto match</button><button class="btn ghost" data-act="pick" data-c="${i}">Pick players</button>`}</div>
     </div>`;
   });
   h+=`</div>`;
+  if(present.length) h+=vNext();
   h+=`<h2>Waiting queue <small>${WQ_SORTS[wqSort][1]} · tap to manage</small></h2><div class="card">`;
   if(dayCur()){ const oc2=onCourt(), dr2=drafted(), hid=S.players.filter(p=>S.present[p.id]&&!S.resting[p.id]&&oc2[p.id]===undefined&&!dr2.has(p.id)&&!dayOk(p)).length;
     h+=`<div class="daybar">📅 <b>${DAY_L[dayCur()]}</b> players only${S.dayView==='Today'?' (today)':''}${hid?` · ${hid} checked-in player${hid===1?'':'s'} from other days hidden (not used by Auto match)`:''}<span class="grow"></span><button class="btn sm" data-act="day-view" data-k="All">Show all days</button></div>`; }
@@ -1036,6 +1119,18 @@ function vCourts(){
     h+=`<h2>Resting / can't play <small>${resting.length}</small></h2><div class="card"><div class="list">${resting.map(p=>`<div class="item">${catBadge(p.c)}<div class="nm">${esc(p.n)}</div>${typeBadge(p)}${gpill(p.id)}<button class="btn sm pri" data-act="unrest" data-id="${p.id}">Back to play</button></div>`).join('')}</div></div>`;
   }
   return h;
+}
+function vNext(){
+  const nx=S.next||[];
+  const pl=id=>{ const p=byId(id); return p?`<button class="wp" data-act="wait-pl" data-id="${id}">${catBadge(p.c)}${esc(p.n)} ${typeBadge(p)}<small>${S.games[id]||0}g</small></button>`:''; };
+  const side=ids=>'<span class="ng-s">'+ids.map(id=>id?pl(id):'<span class="ng-hole">needs a player</span>').join('')+'</span>';
+  let h=`<h2>Next games <small>${nx.length?nx.length+' planned':'none planned'}</small><span class="grow"></span><button class="btn sm" data-act="nx-pick">Pick players</button><button class="btn lime sm" data-act="nx-plan">+ Plan next game</button></h2><div class="card">`;
+  if(!nx.length) return h+`<div class="hint" style="margin:0">Plan games ahead: tap <b>+ Plan next game</b> (same rules as Auto match) or <b>Pick players</b>. When a court finishes, <b>Game done</b> puts Next 1 straight on that court. Players in a planned game wait here, not in the queue.</div></div>`;
+  h+=`<div class="nextg">${nx.map((g,j)=>{ const half=g.p.length/2, fits=S.courts.map((c,i)=>nextFits(c,g)?i+1:0).filter(Boolean), full=g.p.every(Boolean);
+    return `<div class="ng ${j===0?'first':''}"><div class="ng-n">Next ${j+1}</div><div class="ng-t">${side(g.p.slice(0,half))}<span class="ng-vs">vs</span>${side(g.p.slice(half))}</div>
+      <div class="ng-a">${j?`<button class="btn sm" data-act="nx-up" data-k="${j}" title="Move up" aria-label="Move up">↑</button>`:''}<button class="btn sm" data-act="nx-re" data-k="${j}">Reshuffle</button><button class="btn sm warn" data-act="nx-del" data-k="${j}" title="Remove" aria-label="Remove">✕</button></div>
+      ${!full?'<p class="hint ng-f">Waiting for a free player to fill the gap.</p>':fits.length<S.courts.length?`<p class="hint ng-f">${fits.length?'Fits Court '+fits.join(', ')+' only (court levels)':'Fits no court — check the court levels'}</p>`:''}</div>`; }).join('')}</div>`;
+  return h+`<p class="hint" style="margin:10px 0 0">Game done puts the first game that fits that court's levels on it — tap <b>Undo</b> on the message to take it back. Fill empty courts uses these first.</p></div>`;
 }
 /* waiting queue arrangement (display only — Auto match still takes players in "Next up" order). Remembered on this device. */
 const WQ_SORTS={grid:['Level columns','a column per level · who just played goes to the bottom'],played:['Played · Level','by games played, then level'],level:['Level','by level, fewest games first'],queue:['Next up','next up first']};
@@ -1438,7 +1533,8 @@ function vHelp(){
     <li>Scores are kept on the court tablet, or tap <b>🏸 Keep score</b> on the court card.</li>
     <li>Someone can't play? Tap their name → <b>Can't play</b>, or pick a substitute. Later tap <b>Back to play</b>.</li>
     <li>Tap any court (its name or empty space) to open its menu: Game done, scoreboard, reshuffle, clear, players and levels.</li>
-    <li>Match over? The <b>Game done</b> button blinks red with a “ting ting” sound when the score shows the match is finished. Tap <b>Game done</b>. The winner is picked from the score and saved to History. The court empties.</li>
+    <li>Match over? The <b>Game done</b> button blinks red with a “ting ting” sound when the score shows the match is finished. Tap <b>Game done</b>. The winner is picked from the score and saved to History. The court empties — or the next planned game goes straight on (see below).</li>
+    <li><b>Next games:</b> while courts are busy, tap <b>+ Plan next game</b> (same rules as Auto match) or <b>Pick players</b> under the courts. When a match ends, <b>Game done</b> puts Next 1 on that court at once — tap <b>Undo</b> on the message if it was wrong. If a planned player goes home or rests, the gap is filled with the closest-level waiting player. ↑ moves a game up, Reshuffle picks new players, ✕ sends them back to the queue.</li>
     <li>Put the next players on and repeat.</li>
     <li><b>Payments:</b> tap <b>💵 Cash</b> or <b>📱 STC Pay</b> as players pay, or <b>½ Part</b> for part of it. Anything unpaid at <b>Start new session</b> stays as a dated balance under <b>Payments → Balances owed</b>; money received pays the oldest bill first.</li></ol>`)}
   ${sec('score','4. Keeping score',`<ol>
@@ -1816,13 +1912,13 @@ function sheetPick(){
   const ci=pickCourt; const c=S.courts[ci]; const n=need();
   shReopen=sheetPick;
   const all=shSorted(waiting().filter(p=>pickCat==='All'||p.c===pickCat));
-  openSheet(`<h3>Court ${ci+1} — pick ${n} players</h3>
+  openSheet(`<h3>${ci<0?'Next game':'Court '+(ci+1)} — pick ${n} players</h3>
   <div class="hint" style="margin:0 0 10px">Selected ${pickSel.length} / ${n} · ${SH_SORTS[shSort]}</div>
   <div class="chips">${['All'].concat(CATS).map(k=>`<button class="chip ${pickCat===k?'on':''}" data-act="pick-f" data-k="${k}">${k}</button>`).join('')}</div>
   <div style="margin-top:6px">${shSortChips()}</div>
   <div class="list" style="margin-top:6px">${all.map(s=>pickRow(s,`data-act="pick-t" data-id="${s.id}"`,pickSel.includes(s.id))).join('')||'<div class="hint">No one waiting.</div>'}</div>
   <div class="acts" style="position:sticky;bottom:0;background:#fff;padding-top:8px;margin-bottom:0">
-    <button class="btn pri" data-act="pick-go" ${pickSel.length===n?'':'disabled'}>Start game (${pickSel.length}/${n})</button>
+    <button class="btn pri" data-act="pick-go" ${pickSel.length===n?'':'disabled'}>${ci<0?'Add to Next games':'Start game'} (${pickSel.length}/${n})</button>
   </div>`);
 }
 function sheetWaiting(id){
@@ -1875,7 +1971,7 @@ document.addEventListener('click',e=>{
     case 'go': tab=el.dataset.tab; render(); break;
     case 'fill-all': fillAll(); break;
     case 'gen': if(fillCourt(ci)){save();render();} break;
-    case 'finish':{ const sc=S.courts[ci].sc, w=scLeader(sc); if(sc&&sc.done==='d'){ const sum=scSummary(sc); finish(ci,true,''); toast('🤝 Draw · '+sum); break; } if(w){ const who=scWho(sc,w), sum=scSummary(sc); finish(ci,true,w); toast(who+' win · '+sum); break; } sheetWinner(ci); break;}
+    case 'finish':{ const sc=S.courts[ci].sc, w=scLeader(sc); if(sc&&sc.done==='d'){ const sum=scSummary(sc); finishNext(ci,'','🤝 Draw · '+sum); break; } if(w){ const who=scWho(sc,w), sum=scSummary(sc); finishNext(ci,w,who+' win · '+sum); break; } sheetWinner(ci); break;}
     case 'score': scoreOpen=ci; renderScore(); break;
     case 'sc-close': teamPick=null; scoreOpen=null; renderScore(); render(); break;
     case 'sc-pt': scPoint(scoreOpen,k); break;
@@ -1884,9 +1980,22 @@ document.addEventListener('click',e=>{
     case 'sc-serve': scServe(scoreOpen,k); break;
     case 'sc-swap': scSwap(scoreOpen,k); break;
     case 'sc-pick': scPick(scoreOpen,k,id); break;
-    case 'sc-save':{ const i=scoreOpen, sc=S.courts[i].sc; if(!sc||!sc.done) break; if(sc.done==='d'){ const sum=scSummary(sc); scoreOpen=null; renderScore(); finish(i,true,''); toast('🤝 Draw · '+sum); break; } const sum=scSummary(sc), who=scWho(sc,sc.done); scoreOpen=null; renderScore(); finish(i,true,sc.done); toast('🏆 '+who+' win · '+sum); break;}
+    case 'sc-save':{ const i=scoreOpen, sc=S.courts[i].sc; if(!sc||!sc.done) break; if(sc.done==='d'){ const sum=scSummary(sc); scoreOpen=null; renderScore(); finishNext(i,'','🤝 Draw · '+sum); break; } const sum=scSummary(sc), who=scWho(sc,sc.done); scoreOpen=null; renderScore(); finishNext(i,sc.done,'🏆 '+who+' win · '+sum); break;}
     case 'sc-reset':{ if(confirmKey!=='screset'){confirmKey='screset';renderScore();break;} confirmKey=null; const oldSeq=(S.courts[scoreOpen].sc&&S.courts[scoreOpen].sc.seq)||0; S.courts[scoreOpen].sc=null; scEnsure(scoreOpen).seq=oldSeq+1; scEnsure(scoreOpen); save(); renderScore(); break;}
-    case 'win': closeSheet(); finish(ci,true,k==='x'?'':k); toast(k==='x'?'Game saved (no result)':'Result saved'); break;
+    case 'win': closeSheet(); finishNext(ci,k==='x'?'':k,k==='x'?'Game saved (no result)':'Result saved'); break;
+    case 'nx-undo': $('#toast').classList.remove('show','act'); undoNext(); break;
+    case 'nx-plan': if(planNext()){ save(); render(); toast(`Next ${S.next.length} planned`); } else toast('Not enough waiting players to plan another game'); break;
+    case 'nx-pick': pickCourt=-1; pickSel=[]; pickCat='All'; sheetPick(); break;
+    case 'nx-start':{ const nx=startNext(ci); if(nx){ save(); render(); toast(`Court ${ci+1}: Next ${nx} started`); } else toast('No planned game fits this court'); break;}
+    case 'nx-up':{ const j=+k; if(j>0&&S.next[j]){ const t=S.next[j-1]; S.next[j-1]=S.next[j]; S.next[j]=t; save(); render(); } break;}
+    case 'nx-del':{ const j=+k; if(S.next[j]){ S.next.splice(j,1); save(); render(); toast('Planned game removed — players are back in the queue'); } break;}
+    case 'nx-re':{ const g=S.next[+k]; if(!g) break; const old=g.p, n=need(); g.p=[];
+      // a fresh group from the queue first; if not enough players, mix these players with the queue
+      const anyLv=p=>S.courts.some(c=>onLv(c,p));
+      let grp=pickGroup(waiting().filter(p=>anyLv(p)&&!old.includes(p.id)),n)||pickGroup(waiting().filter(anyLv),n);
+      if(grp&&sameSet(grp.map(p=>p.id),old)) grp=null;
+      if(grp){ const ids=grp.map(p=>p.id); g.p=n===4?arrange(ids):ids; } else { g.p=old; toast('Not enough players to reshuffle'); }
+      save(); render(); break;}
     case 'h-f': histCourt=k; render(); break;
     case 'h-r': histRange=k; render(); break;
     case 'h-v': histView=k; render(); break;
@@ -1943,18 +2052,18 @@ document.addEventListener('click',e=>{
       S.courts.forEach(c=>c.p=c.p.filter(x=>x!==id)); save(); render(); break;
     case 'courts+': S.courts.push({lv:GROUPS.slice(),p:[],t:0}); save(); render(); break;
     case 'courts-':{ const last=S.courts[S.courts.length-1]; if(last.p.length){toast('Clear the last court first');break;} S.courts.pop(); save(); render(); break;}
-    case 'mode': if(S.courts.some(c=>c.p.length)){toast('Finish or clear all courts first');break;} S.mode=k; S.courts.forEach(c=>c.d=[]); save(); render(); break;
+    case 'mode': if(S.courts.some(c=>c.p.length)){toast('Finish or clear all courts first');break;} S.mode=k; S.courts.forEach(c=>c.d=[]); S.next=[]; save(); render(); break;
     case 'mix': S.mix=k; save(); render(); break;
     case 'auto': S.autoNext=k==='1'; save(); render(); break;
     case 'reset':
       if(confirmKey!=='reset'){confirmKey='reset';render();break;}
-      confirmKey=null; archiveDay(); logEv('session',{}); S.present={};S.resting={};S.games={};S.lastEnd={};S.partners={};S.paid={};S.part={};S.sess=Date.now(); S.courts.forEach(c=>{c.p=[];c.t=0;}); save(); render(); toast('New session started'); break;
+      confirmKey=null; archiveDay(); logEv('session',{}); S.present={};S.resting={};S.games={};S.lastEnd={};S.partners={};S.paid={};S.part={};S.sess=Date.now(); S.next=[]; S.courts.forEach(c=>{c.p=[];c.t=0;}); save(); render(); toast('New session started'); break;
     case 'wipe':
       if(confirmKey!=='wipe'){confirmKey='wipe';render();break;}
       confirmKey=null; { const cnt=S.players.length, names=S.players.map(p=>p.n);
         if(Object.keys(PH).length){ Object.keys(PH).forEach(i=>photoDbWrite(i,'')); PH={}; persistPhotos(); }
         S.players=[]; S.present={}; S.resting={}; S.games={}; S.lastEnd={}; S.partners={}; S.paid={}; S.part={};
-        S.courts.forEach(c=>{c.p=[];c.t=0;c.sc=null;});
+        S.courts.forEach(c=>{c.p=[];c.t=0;c.sc=null;}); S.next=[];
         logEv('wipe',{n:'All players ('+cnt+')',names:names.join(', ')}); save(); render(); toast(cnt+' players deleted'); } break;
     case 'slot': sheetSlot(ci,+k); break;
     case 'slot-set':{ const c=S.courts[ci]; if(!c||c.p.length) { closeSheet(); break; }
@@ -1985,8 +2094,9 @@ document.addEventListener('click',e=>{
       if(shReopen) shReopen();
       const s2=$('#sh-s'); if(s2&&q){ s2.value=q; shFilter(q); } $('#sheet').scrollTop=top; break;}
     case 'pick-t':{ const i=pickSel.indexOf(id); if(i>=0) pickSel.splice(i,1); else if(pickSel.length<need()) pickSel.push(id); else toast('Already '+need()+' selected — tap one to remove'); sheetPick(); break;}
-    case 'pick-go':{ const c=S.courts[pickCourt]; if(c.p.length||pickSel.length!==need()) break;
+    case 'pick-go':{ const c=S.courts[pickCourt]; if((c&&c.p.length)||pickSel.length!==need()) break;
       const w=new Set(waiting().map(p=>p.id)); if(!pickSel.every(x=>w.has(x))){toast('Someone is no longer available');pickSel=pickSel.filter(x=>w.has(x));sheetPick();break;}
+      if(!c){ S.next.push({p:need()===4?arrange(pickSel.slice()):pickSel.slice()}); pickSel=[]; closeSheet(); save(); render(); toast(`Next ${S.next.length} planned`); break; }
       c.p=need()===4?arrange(pickSel.slice()):pickSel.slice(); c.t=Date.now(); c.sc=null; pickSel=[]; closeSheet(); save(); render(); break;}
     case 'export': exportReport(); break;
     case 'mf-n': S.match.n=+k; save(); render(); break;

@@ -51,7 +51,7 @@ Set up once, then each playing day the organizer runs the session from the Main 
 2. **Courts:** **Auto match** (fair, balanced teams) or **Pick players** (tick 4, fewest games first). **Fill empty courts** does all at once.
 3. The court tablet switches to that match's scoreboard automatically.
 4. **Someone can't play:** tap their name → **Can't play — replace & set resting**, or pick a substitute. Later: **Back to play**.
-5. **Match ends:** tap **Game done**. Winner is picked from the score and saved to History; the court empties.
+5. **Match ends:** tap **Game done**. Winner is picked from the score and saved to History; the court empties, or the next planned game goes straight on (see Next games).
 6. Put the next players on and repeat.
 7. **Payments:** tap **Unpaid → Paid** as players pay.
 
@@ -108,7 +108,7 @@ Each session day:
 
 | Tab | Shows | Actions |
 | --- | --- | --- |
-| Courts | Present/playing/waiting/resting counts, courts, queue, resting list | Fill empty courts, Auto match, Pick players, Game done, Reshuffle, Clear, court levels, replace a player, Back to play |
+| Courts | Present/playing/waiting/resting counts, courts, Next games, queue, resting list | Fill empty courts, Auto match, Pick players, Game done, Reshuffle, Clear, court levels, replace a player, Back to play, + Plan next game, Start Next, Undo |
 | Attendance | Present per level, tick list | Tick/untick, check in all or by level, search |
 | Players | Add form, Excel import, bulk paste, roster | Add, Choose file, Add list, change level, Sub/Guest, rename, delete |
 | Payments | Totals, per-player games and fee | Filter, mark Paid, Export Excel report, Copy summary |
@@ -130,6 +130,18 @@ Levels: 8 grades, A+ strongest … D- beginner. Skill mixing works on the letter
 Player types: Member, Family (pays the member fee) and Guest. Active status from the club roster: Reg, A-SUB, or No (inactive — hidden from Attendance until "Show inactive"). Gender (Male/Female) and Full Name are kept per player (Players → Edit).
 
 Can't play: replaced by closest-level substitute and moved to Resting until Back to play; the unfinished game is not counted for them.
+
+## Next games
+
+Plan games ahead so a finished court refills with one tap.
+
+1. Under the courts, tap **+ Plan next game** (same rules as Auto match: fewest games first, subscriber priority, skill mixing, balanced teams) or **Pick players** to choose 4 yourself. Games are numbered Next 1, Next 2…
+2. Players in a planned game are reserved: they leave the waiting queue, and Auto match, Fill empty courts and substitutes skip them. The Waiting count still includes them.
+3. **Game done** saves the result, then puts the first planned game that fits that court's levels on it. The message has **Undo** (8 seconds) to put the game back. **Clear** does not start a planned game.
+4. **Fill empty courts** uses planned games first, then Auto match. An empty court with a planned game that fits shows **▶ Start Next N**.
+5. Someone in a planned game goes home, rests, or is put on a court by hand: they leave the game and the gap is filled with the closest-level waiting player (shown as *needs a player* until someone is free).
+6. Each game: **↑** move up, **Reshuffle** (new players from the queue), **✕** remove (players go back to the queue). A note shows when a game fits only some courts because of court levels.
+7. Changing Doubles/Singles, Start new session and Delete all players clear the planned games.
 
 ## Scoring
 
@@ -269,7 +281,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 - One index.html runs every version; Excel via SheetJS 0.18.5 (bundled in APK).
 - Android shell: WebView loading the page saved in app storage; bridge `AndroidApp.saveUpdate(html)` and `AndroidApp.saveFile(base64, name)`.
 - Storage: tablet `localStorage` key `bmm_offline_v1`; Claude link online document `club/state`.
-- Data fields: players, present, resting, games, paid, lastEnd, partners, courts, hist, ledger, mode, mix, prio, fee.
+- Data fields: players, present, resting, games, paid, lastEnd, partners, courts, next (planned games: [{p:[ids]}]), hist, ledger, mode, mix, prio, fee.
 
 | Date | Version | Change |
 | --- | --- | --- |
@@ -287,6 +299,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 | 7 Nov 2026 | Page v29 (1.29) | Set the serve before starting: tap the player who serves first, then the player who receives (0–0, first game); serving team can still be changed until the first point |
 | 7 Nov 2026 | Page v30 (1.30) | Payments: mark each player paid by 💵 Cash or 📱 STC Pay; Collected shows the split; Excel Payments sheet has a Method column and Daily Summary has Cash / STC Pay totals |
 | 7 Nov 2026 | Page v31 (2.0) | Export all activity: new Activity Log sheet (check-ins/outs, match start and finish with result, payments received/cancelled with amount and Cash / STC Pay, new sessions — all with date and time). Export button also in Settings |
+| 9 Nov 2026 | Page v69 (3.7) | Next games: plan games ahead (+ Plan next game / Pick players) under the courts. Planned players are reserved (S.next; left out of waiting()). Game done starts the first planned game that fits the court's levels, with Undo on the message; Fill empty courts uses planned games first; empty courts show ▶ Start Next N. nextFix() on every save removes players who left and fills the gap with the closest-level waiting player. Cleared by mode change, new session, delete all players |
 | 9 Nov 2026 | Page v68 (3.6) | Settings has its own Delete all players card (tap twice; shows how many). It removes players, photos and today's attendance, games and payments, but keeps match history, balances, the activity log and settings. Deleting one player or all players is recorded in the Activity Log (Player deleted / All players deleted, with names) and is always included in the Excel export |
 | 9 Nov 2026 | Page v67 (2.36) | Simpler balances: one line To collect (today · earlier) instead of two tiles; Balances owed = one line per player (name, bills, total); bill sheet = date + amount left + Waive (tap twice), then amount + Cash / STC Pay. Waived bills (r.wv) owe 0, show as Waived in Excel and Balance waived in the Activity Log; Daily Summary Outstanding uses what is really left |
 & Part payments (½ Part: S.part[id] = {cash, stc}); unpaid or part-paid fees carry over at Start new session as dated bills in S.ledger (pa paid, pc/ps split, sd last payment day, ss session). Payments: Still to collect today, Balances from earlier, ⚠ Owes flag on the row, Balances owed list by date; money received pays the oldest bill first. Excel: Payments sheet gets Paid, Balance, Status, Last payment; new Balances sheet by player and date with running and grand totals; Daily Summary uses amounts actually paid and counts each player once. Fix: two sessions on the same day no longer overwrite each other's payment records; unpaid bills are never trimmed. Tested end-to-end in jsdom |
