@@ -76,6 +76,7 @@
   <a href="#phone">Android phone</a>
   <a href="#iphone">iPhone</a>
   <a href="#session">Running a session</a>
+  <a href="#next">Next games</a>
   <a href="#tablets">Several tablets</a>
   <a href="#qrscore">Score with a phone</a>
   <a href="#updates">Updates &amp; data</a>
@@ -90,7 +91,7 @@
     <div class="card dev"><div class="ic">💻</div><h3>PC / laptop</h3><p>Open the website in Chrome or Edge and install it. Good for preparing players and reports.</p><a href="#pc">Steps →</a></div>
     <div class="card dev"><div class="ic">📟</div><h3>Club tablets</h3><p>Install the Android app (APK). Needed for tablet sync, court tablets and the display screen.</p><a href="#android">Steps →</a></div>
     <div class="card dev"><div class="ic">📱</div><h3>Android phone</h3><p>Scan the QR code and tap Install. No file to download.</p><a href="#phone">Steps →</a></div>
-    <div class="card dev"><div class="ic">📲</div><h3>iPhone / iPad</h3><p>Scan the QR code in Safari and Add to Home Screen.</p><a href="#iphone">Steps →</a></div>
+    <div class="card dev"><div class="ic">📲</div><h3>iPhone / iPad</h3><p>Open the iPhone installer page in Safari and tap Install.</p><a href="#iphone">Steps →</a></div>
   </div>
   <div class="tip">Website: <b>archie24bagadiong-max.github.io/matchmaker-app</b> · QR code and APK download: <a href="qr.html">qr.html</a></div>
 </section>
@@ -151,18 +152,34 @@
 
 <section id="iphone">
   <h2>📲 iPhone / iPad</h2>
+  <p class="lead">Apple does not allow installer files like the Android APK, so the iPhone installs Match Maker from Safari. Two ways — both put the Match Maker icon on the Home Screen; it opens full screen and works offline.</p>
   <div class="step phone">
     <div>
       <span class="n">1</span>
-      <h3>Scan and Add to Home Screen</h3>
+      <h3>One-tap installer (recommended)</h3>
       <ol>
-        <li>Open the <b>Camera</b> and point it at the QR code. Tap the yellow link — it opens in <b>Safari</b>.</li>
-        <li>After a moment a green bar shows <b>“Install Match Maker on your iPhone”</b>.</li>
-        <li>Tap <b>Share</b> <svg width="15" height="17" viewBox="0 0 16 18" style="vertical-align:-3px" aria-label="Share icon"><path d="M8 1v11M4 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 8H2v9h12V8h-1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> at the bottom of Safari.</li>
-        <li>Scroll down and tap <b class="k">Add to Home Screen</b> → <b class="k">Add</b>.</li>
-        <li>Open <b>Match Maker</b> from the home screen: full screen, works offline.</li>
+        <li>In <b>Safari</b> open <b>archie24bagadiong-max.github.io/matchmaker-app/iphone.html</b> — or scan the QR code on that page from a PC, or tap <b>Install on iPhone</b> on the QR page.</li>
+        <li>Tap <b class="k">Install Match Maker</b> → <b class="k">Allow</b>. The iPhone says “Profile Downloaded”.</li>
+        <li>Open <b>Settings</b> → tap <b>Profile Downloaded</b> at the top (or Settings → General → VPN &amp; Device Management → Match Maker).</li>
+        <li>Tap <b class="k">Install</b>, enter the iPhone passcode, then <b class="k">Install</b> → <b class="k">Done</b>.</li>
+        <li>Open <b>Match Maker</b> from the Home Screen.</li>
       </ol>
-      <div class="tip">Opened the link inside WhatsApp or Instagram? Tap “Open in Safari” first — only Safari can add it to the home screen. Apple does not allow APK-style installer files.</div>
+      <div class="tip">The iPhone shows <b>Not Verified</b> because the club's install file is not signed by Apple (that costs $99 a year). It only adds the Home Screen icon — it can't read or change anything else. Remove it any time: Settings → General → VPN &amp; Device Management → Match Maker → Remove Profile.</div>
+      <a class="btn" href="iphone.html">Open the iPhone installer</a>
+    </div>
+    <a class="shot ph" href="guide/iphone-installer.webp"><img src="guide/iphone-installer.webp" alt="The iPhone installer page: Install Match Maker button and the four steps" loading="lazy" width="640" height="940"></a>
+  </div>
+  <div class="step phone">
+    <div>
+      <span class="n">2</span>
+      <h3>Or: Add to Home Screen</h3>
+      <ol>
+        <li>Open the Match Maker website in <b>Safari</b> (scan the QR code with the Camera and tap the yellow link).</li>
+        <li>After a moment a green bar shows <b>“Install Match Maker on your iPhone”</b>.</li>
+        <li>Tap <b>Share</b> <svg width="15" height="17" viewBox="0 0 16 18" style="vertical-align:-3px" aria-label="Share icon"><path d="M8 1v11M4 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 8H2v9h12V8h-1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> at the bottom of Safari (iOS 26: tap ⋯ first).</li>
+        <li>Scroll down and tap <b class="k">Add to Home Screen</b> → <b class="k">Add</b>.</li>
+      </ol>
+      <div class="tip">Opened the link inside WhatsApp, Instagram or Chrome? Open it in <b>Safari</b> first — only Safari can install it.</div>
     </div>
     <a class="shot ph" href="guide/iphone-install.webp"><img src="guide/iphone-install.webp" alt="Match Maker in Safari on iPhone with the install banner: Tap Share then Add to Home Screen" loading="lazy" width="390" height="844"></a>
   </div>
@@ -261,16 +278,61 @@
       <h3>Game done</h3>
       <ul>
         <li>When the match is over, <b>Game done</b> blinks red with a “ting ting”.</li>
-        <li>Tap it: the winner is taken from the score and saved in <b>History</b>; the court empties.</li>
-        <li>Put the next players on and repeat.</li>
+        <li>Tap it: the winner is taken from the score and saved in <b>History</b>.</li>
+        <li>If you planned the next game (step 8), it goes straight on the court. Otherwise the court empties — put the next players on and repeat.</li>
       </ul>
     </div>
     <a class="shot" href="guide/tab-hist.webp"><img src="guide/tab-hist.webp" alt="History tab with matches, teams and winners" loading="lazy" width="1280" height="800"></a>
   </div>
 
-  <div class="step">
+  <div class="step" id="next">
     <div>
       <span class="n">8</span>
+      <h3>Next games — refill a court in one tap</h3>
+      <ul>
+        <li>While the courts are playing, tap <b class="k">+ Plan next game</b> under the courts (same fair rules as Auto match), or <b class="k">Pick players</b> to choose 4 yourself. Plan as many as you like: Next 1, Next 2…</li>
+        <li>Planned players are kept aside: they leave the waiting queue and Auto match skips them.</li>
+        <li>When a match ends, tap <b class="k">Game done</b>: <b>Next 1 goes straight on that court</b>. Wrong court? Tap <b class="k">Undo</b> on the message within 8 seconds.</li>
+        <li>A game only goes on a court whose levels fit (e.g. a D game skips an A/B court). <b>Fill empty courts</b> also uses planned games first.</li>
+        <li><b>↑</b> moves a game up, <b>Reshuffle</b> picks new players, <b>✕</b> sends them back to the queue.</li>
+        <li>Someone in a planned game went home or rests? The gap fills by itself with the closest-level waiting player.</li>
+      </ul>
+    </div>
+    <a class="shot" href="guide/tab-next.webp"><img src="guide/tab-next.webp" alt="Next games under the courts: Next 1 planned, and the message after Game done with Undo" loading="lazy" width="1280" height="820"></a>
+  </div>
+
+  <div class="step">
+    <div>
+      <span class="n">9</span>
+      <h3>Replace a player in a planned game</h3>
+      <ul>
+        <li>Tap the player's name in <b>Next games</b>.</li>
+        <li>Type in <b>Search waiting players</b> or sort by <b>Played</b>, <b>Level</b> or <b>Guest</b>, then tap who should play instead. The replaced player goes back to the queue.</li>
+        <li>Under <b>Swap with another planned game</b>, tap a player to swap the two between games.</li>
+        <li><b>Rest</b> and <b>Went home</b> are there too.</li>
+      </ul>
+    </div>
+    <a class="shot" href="guide/tab-nextpl.webp"><img src="guide/tab-nextpl.webp" alt="Replace sheet: search box, waiting players, and players from another planned game to swap" loading="lazy" width="1280" height="820"></a>
+  </div>
+
+  <div class="step">
+    <div>
+      <span class="n">10</span>
+      <h3>Change the teams — drag and drop</h3>
+      <ul>
+        <li>Drag a player onto another player <b>on the same court</b>: they swap places. Across the net this changes the teams.</li>
+        <li><b>Laptop:</b> just drag with the mouse. <b>Tablet / phone:</b> press and hold the name a moment (a small buzz), then drag. A quick swipe still scrolls; a tap still opens the player.</li>
+        <li>The player you drop on gets a green outline.</li>
+        <li>Works until the first point is scored — after that the teams are locked so the score stays right.</li>
+        <li>Works the same inside a planned game in Next games.</li>
+      </ul>
+    </div>
+    <a class="shot" href="guide/tab-drag.webp"><img src="guide/tab-drag.webp" alt="Dragging Carl onto Sara S on Court 1 to swap them and change the teams" loading="lazy" width="1280" height="630"></a>
+  </div>
+
+  <div class="step">
+    <div>
+      <span class="n">11</span>
       <h3>Payments</h3>
       <ul>
         <li>Fees count up by themselves as games are played.</li>
@@ -283,7 +345,7 @@
 
   <div class="step">
     <div>
-      <span class="n">9</span>
+      <span class="n">12</span>
       <h3>Settings</h3>
       <ul>
         <li>Courts, Doubles/Singles, match format, skill mixing, subscriber priority, <b>Equal rounds</b>, fees.</li>
@@ -376,7 +438,7 @@
   <table>
     <tr><th>Device</th><th>Updates</th><th>Data</th></tr>
     <tr><td>Android tablet (APK)</td><td>“New version available — Update” bar, or Settings → Update app. Court tablets update themselves while waiting.</td><td>Kept on that tablet</td></tr>
-    <tr><td>PC, Android phone, iPhone</td><td>New version shows the next time the app is opened</td><td>Kept in that browser / app</td></tr>
+    <tr><td>PC, Android phone, iPhone</td><td>New version shows the next time the app is opened (iPhone: close the app fully and open it again)</td><td>Kept in that browser / app</td></tr>
   </table>
   <div class="tip warn">Each device keeps its own players, attendance and payments — they don't sync with each other (except tablets using Tablet sync). Back up with <b>Export Excel report</b>. Uninstalling or clearing app data erases it.</div>
 </section>

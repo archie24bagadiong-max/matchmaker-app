@@ -153,8 +153,8 @@ body.display .cmenu{display:none}
 .ng-n{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:17px;text-transform:uppercase;min-width:62px}
 .ng.first .ng-n{color:var(--C)}
 .ng-t{display:flex;flex-wrap:wrap;gap:6px;align-items:center;flex:1;min-width:220px}
-.ng-s{display:flex;flex-wrap:wrap;gap:6px}
-@media (max-width:640px){.ng-t{order:3;flex-basis:100%;min-width:0}.ng-f{order:4}}
+.ng-s{display:flex;flex-wrap:nowrap;gap:6px}
+@media (max-width:640px){.ng-t{order:3;flex-basis:100%;min-width:0}.ng-f{order:4}.ng-s{flex-wrap:wrap}}
 .ng-vs{font-weight:700;color:var(--muted);font-size:13px;padding:0 2px}
 .ng-hole{border:1px dashed var(--border);border-radius:10px;padding:6px 10px;color:var(--muted);font-size:13px}
 .ng-a{display:flex;gap:6px;margin-left:auto}
@@ -673,7 +673,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=72;
+const APP_VERSION=73;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1515,7 +1515,7 @@ function vHelp(){
     <li><b>Club tablets (Android):</b> download <b>MatchMaker.apk</b> from the QR page → Install (Play Protect: More details → Install anyway). Needed for Tablet sync and court tablets.</li>
     <li><b>PC / laptop:</b> open the website in Chrome or Edge → <b>Install</b> (address bar icon or the green bar at the bottom).${shot('pc-courts','On a laptop: courts side by side and the waiting queue in level columns')}</li>
     <li><b>Android phone:</b> scan the QR code → tap <b>Install</b> on the green bar.</li>
-    <li><b>iPhone / iPad:</b> open <b>archie24bagadiong-max.github.io/matchmaker-app/iphone.html</b> in Safari → <b>Install Match Maker</b> → Allow → Settings → Profile Downloaded → Install. Or: open the app in Safari → <b>Share</b> → <b>Add to Home Screen</b>.${shot('iphone-install','iPhone in Safari: tap Share, then Add to Home Screen',1)}</li></ul>
+    <li><b>iPhone / iPad:</b> open <b>archie24bagadiong-max.github.io/matchmaker-app/iphone.html</b> in Safari → <b>Install Match Maker</b> → Allow → Settings → Profile Downloaded → Install. Or: open the app in Safari → <b>Share</b> → <b>Add to Home Screen</b>.${shot('iphone-installer','iPhone installer page: tap Install Match Maker, then follow the 4 steps',1)}${shot('iphone-install','iPhone in Safari: tap Share, then Add to Home Screen',1)}</li></ul>
     <p class="hint">Website: archie24bagadiong-max.github.io/matchmaker-app · QR code &amp; APK: …/qr.html. Each device keeps its own data.</p>`)}
   ${sec('first','1. First time setup',`<ol>
     <li>Install the app (see 0). A newer version updates by itself and keeps your data — don't uninstall.</li>
@@ -1540,13 +1540,18 @@ function vHelp(){
     <li><b>Waiting queue → Level columns:</b> a column per level and one for guests; whoever just played goes to the bottom and moves up as others play. Type in <b>Search waiting players</b> to find someone fast, tap them → <b>Court N</b> to put them in that court's next empty box.${shot('tab-queue','Waiting queue in level columns, with guests in their own column')}</li>
     <li>Scores are kept on the court tablet, or tap <b>🏸 Keep score</b> on the court card.</li>
     <li>Someone can't play? Tap their name → <b>Can't play</b>, or pick a substitute. Later tap <b>Back to play</b>.</li>
-    <li><b>Change the teams:</b> drag a player onto another player on the same court to swap them (on a tablet or phone: press and hold a moment, then drag). Across the net this changes the teams. Works until the first point is scored. Same in Next games.</li>
     <li>Tap any court (its name or empty space) to open its menu: Game done, scoreboard, reshuffle, clear, players and levels.</li>
-    <li>Match over? The <b>Game done</b> button blinks red with a “ting ting” sound when the score shows the match is finished. Tap <b>Game done</b>. The winner is picked from the score and saved to History. The court empties — or the next planned game goes straight on (see below).</li>
-    <li><b>Next games:</b> while courts are busy, tap <b>+ Plan next game</b> (same rules as Auto match) or <b>Pick players</b> under the courts. When a match ends, <b>Game done</b> puts Next 1 on that court at once — tap <b>Undo</b> on the message if it was wrong. If a planned player goes home or rests, the gap is filled with the closest-level waiting player. Tap a player in a planned game to replace them: search the waiting players or swap with someone in another planned game. ↑ moves a game up, Reshuffle picks new players, ✕ sends them back to the queue.</li>
+    <li>Match over? The <b>Game done</b> button blinks red with a “ting ting” sound when the score shows the match is finished. Tap <b>Game done</b>. The winner is picked from the score and saved to History. The court empties — or the next planned game goes straight on (topic 4).</li>
+    <li><b>Plan the next games</b> while courts play, and <b>change the teams</b> by dragging — see topic 4.</li>
     <li>Put the next players on and repeat.</li>
     <li><b>Payments:</b> tap <b>💵 Cash</b> or <b>📱 STC Pay</b> as players pay, or <b>½ Part</b> for part of it. Anything unpaid at <b>Start new session</b> stays as a dated balance under <b>Payments → Balances owed</b>; money received pays the oldest bill first.</li></ol>`)}
-  ${sec('score','4. Keeping score',`<ol>
+  ${sec('next','4. Next games and changing teams',`<ol>
+    <li><b>Plan ahead:</b> while courts play, tap <b>+ Plan next game</b> under the courts (same fair rules as Auto match) or <b>Pick players</b> to choose 4 yourself. They show as Next 1, Next 2… Planned players leave the waiting queue so nobody is used twice.</li>
+    <li><b>Game done</b> puts Next 1 straight on that court. Wrong? Tap <b>Undo</b> on the message (8 seconds). A game only goes on a court whose levels fit; <b>Fill empty courts</b> uses planned games first.${shot('tab-next','Next games under the courts, and the message after Game done with Undo')}</li>
+    <li><b>Replace a planned player:</b> tap their name → search or sort the waiting players → tap who plays instead. Or tap someone under <b>Swap with another planned game</b>. Rest and Went home are there too; a gap fills by itself with the closest-level waiting player.${shot('tab-nextpl','Replace sheet: search, waiting players, swap with another planned game')}</li>
+    <li><b>↑</b> moves a game up, <b>Reshuffle</b> picks new players, <b>✕</b> sends them back to the queue.</li>
+    <li><b>Change the teams:</b> drag a player onto another player on the same court to swap them — across the net that changes the teams. Laptop: drag with the mouse. Tablet / phone: press and hold a moment, then drag (a quick swipe still scrolls, a tap still opens the player). Works until the first point is scored, and inside planned games too.${shot('tab-drag','Dragging Carl onto Sara S to change the teams on Court 1')}</li></ol>`)}
+  ${sec('score','5. Keeping score',`<ol>
     <li>After the toss, tap <b>Serves first</b>. Use <b>⇄ Swap</b> so names match where players stand (only at 0–0).</li>
     <li>Tap the big number of the team that wins the rally.${shot('tab-score','Scoreboard on a tablet: score, server and receiver')}${shot('phone-score','Scoreboard on a phone',1)}</li>
     <li>The top line shows who serves, from which side, and who receives.</li>
@@ -1554,16 +1559,16 @@ function vHelp(){
     <li>Standard: best of 3 games to 21, win by 2, maximum 30. Change it in <b>Settings → Match format</b> (1–5 games, 11/15/21/35 points, best of or play all). Sides swap automatically at change of ends.</li>
     <li>Even number of games and it ends level (e.g. 1–1)? Tap <b>⚡ Play decider</b> for one extra game to 11, or keep the result (more total points wins; equal points = draw).</li>
     <li><b>Team names:</b> tap <b>+ Team name</b> at the top of each side and type any name for this match (or pick one used before). It's filled in automatically when both players share a team. ✕ clears it.</li></ol>`)}
-  ${sec('fees','5. Fees and payments',`<ul>
+  ${sec('fees','6. Fees and payments',`<ul>
     <li><b>Subscriber:</b> 2.50 SR per game.</li>
     <li><b>Guest:</b> 25 SR minimum for up to 3 games, then 3.33 SR per extra game (6 games = 35 SR).</li>
     <li>Fees update automatically as games are played. Change prices in Settings → Fees.</li>
     <li><b>Copy summary</b> on Payments gives a list to paste in WhatsApp.${shot('tab-pay','Payments: total due and collected (Cash / STC Pay), fee per player')}</li></ul>`)}
-  ${sec('end','6. End of the day',`<ol>
+  ${sec('end','7. End of the day',`<ol>
     <li>Payments → <b>Unpaid</b>: collect what's left.</li>
     <li><b>Export Excel report</b> (Payments: All dates, One date or Date range) and save it — your record <b>and</b> backup. If a device breaks: Settings → Backup &amp; restore → <b>Restore from backup file</b>.${shot('tab-hist','History: every match with teams and winner (Change winner fixes a mistake)')}</li>
     <li>Settings → <b>Start new session</b> (tap twice). Players, photos and history stay.</li></ol>`)}
-  ${sec('tasks','7. Quick answers',`<table class="htbl">
+  ${sec('tasks','8. Quick answers',`<table class="htbl">
     <tr><td>Add a player or guest</td><td>Players → name, level, type → Add</td></tr>
     <tr><td>Change level or Sub/Guest</td><td>Players → dropdown / Sub-Guest button</td></tr>
     <tr><td>Add a photo</td><td>Tap the name → Take photo</td></tr>
@@ -1573,11 +1578,16 @@ function vHelp(){
     <tr><td>Pick a team during a game</td><td>Scoreboard → tap the team box at the top of a side</td></tr>
     <tr><td>See only Monday's players</td><td>Settings → Show day → Mon (or Today)</td></tr>
     <tr><td>Someone went home</td><td>Waiting queue → name → Went home</td></tr>
+    <tr><td>Plan the next game</td><td>Courts → Next games → + Plan next game (or Pick players)</td></tr>
+    <tr><td>Replace someone in a planned game</td><td>Next games → tap the name → pick a waiting player</td></tr>
+    <tr><td>Change the teams on a court</td><td>Drag a player onto another (touch: hold, then drag) — before the first point</td></tr>
+    <tr><td>Game done put the wrong game on</td><td>Tap Undo on the message (8 seconds)</td></tr>
+    <tr><td>Install on iPhone</td><td>Safari → …/matchmaker-app/iphone.html → Install Match Maker</td></tr>
     <tr><td>Guests rarely play</td><td>Settings → Subscriber priority → Fair turns</td></tr>
     <tr><td>Wrong winner saved</td><td>History → Change winner</td></tr>
     <tr><td>Leave court mode</td><td>⚙ on the court tablet + PIN</td></tr>
     <tr><td>Display says offline</td><td>Same hotspot? Re-enter the Main address</td></tr>
-    <tr><td>New version</td><td>Tap Update on the top bar</td></tr></table>`)}
+    <tr><td>New version</td><td>Android: Settings → Update app · Laptop: Ctrl+Shift+R · iPhone: close and reopen</td></tr></table>`)}
   <p class="hint" style="margin-top:14px">Full guide with pictures: <a href="${GUIDE_URL}" target="_blank" rel="noopener">archie24bagadiong-max.github.io/matchmaker-app/guide.html</a> (needs internet).</p>
   ${DEV_CARD()}`;
 }

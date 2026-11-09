@@ -3,8 +3,8 @@
 # The signing key lives OUTSIDE the repo (D:\Codes\matchmaker-keys) — the repo is public. Back that folder up:
 # every future APK must be signed with the same key to install over an earlier one.
 param(
-  [int]$VersionCode = 12,
-  [string]$VersionName = '1.11',
+  [int]$VersionCode = 13,
+  [string]$VersionName = '1.12',
   [string]$KeyDir = 'D:\Codes\matchmaker-keys',
   [string]$Out = 'D:\Codes\matchmaker-build'
 )
