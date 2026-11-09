@@ -228,6 +228,8 @@ select.mini{width:auto;padding:6px 8px;border-radius:8px}
 .balrow{width:100%;text-align:left;background:none}
 .balsub{display:block;font-size:12px;color:var(--muted);font-weight:500;margin-top:2px;line-height:1.4}
 .baltot{color:#c0392b;font-size:15px;white-space:nowrap}
+.tocollect{margin:8px 2px 0;font-size:14.5px;color:#8a2a1f}
+.tocollect b{color:#c0392b}
 .baltbl th{font-size:12px;color:var(--muted);text-align:left;padding:4px 6px}
 .baltbl td{padding:5px 6px;font-size:13.5px}
 .money{font-family:'Barlow Condensed';font-size:22px}
@@ -606,7 +608,7 @@ const leftAmt=p=>Math.max(0,r2(r2(fee(p))-paidAmt(p)));
 const paidBy=(p,m)=>{ const x=(S.part&&S.part[p.id])||{}, ps=partSum(p.id); return r2((+x[m]||0)+(payM(p.id)===m?Math.max(0,r2(fee(p))-ps):0)); };
 const pmText=(c,st)=>[c>0?'Cash':'',st>0?'STC Pay':''].filter(Boolean).join(' + ');
 const rowPaid=r=>r.pa!=null?+r.pa:(r.pd?+r.f:0);
-const rowLeft=r=>Math.max(0,r2(+r.f-rowPaid(r)));
+const rowLeft=r=>r.wv?0:Math.max(0,r2(+r.f-rowPaid(r)));
 const rowCash=r=>r.pc!=null?+r.pc:(r.pd&&r.pm!=='STC Pay'?+r.f:0);
 const rowStc=r=>r.ps!=null?+r.ps:(r.pd&&r.pm==='STC Pay'?+r.f:0);
 /* keep every unpaid bill; trim only old fully paid rows */
@@ -648,7 +650,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=66;
+const APP_VERSION=67;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1149,8 +1151,8 @@ function vPay(){
     <div class="stat"><b class="money">${sr(got)}</b><span>Collected</span><span class="pmsplit">💵 Cash ${sr(gotM('cash'))}<br>📱 STC Pay ${sr(gotM('stc'))}</span></div>
     <div class="stat"><b class="money">${sr(tot(subs))}</b><span>${subs.length} members &amp; family</span></div>
     <div class="stat"><b class="money">${sr(tot(gs))}</b><span>${gs.length} guests</span></div>
-    <div class="stat"><b class="money" style="color:${leftToday>0?'#c0392b':'inherit'}">${sr(leftToday)}</b><span>Still to collect today</span></div>
-    <div class="stat"><b class="money" style="color:${owTot>0?'#c0392b':'inherit'}">${sr(owTot)}</b><span>Balances from earlier · ${owing.length} player${owing.length===1?'':'s'}</span></div></div>
+</div>
+  ${leftToday>0||owTot>0?`<div class="tocollect">To collect: today <b>${sr(leftToday)}</b> · earlier <b>${sr(owTot)}</b></div>`:''}
   <p class="hint">${Math.round(games)} games played today · Subscriber ${sr(S.fee.sp)}/game · Guest ${sr(S.fee.gp)} for ${S.fee.gn} games, ${sr(S.fee.gp+S.fee.gx)} for ${S.fee.gn*2}</p>
   <h2>Games &amp; fees per player</h2>
   <div class="card">
@@ -1166,11 +1168,10 @@ function vPay(){
     :`<div class="emptybox"><b>No players to show</b>${dc&&hidRows?'No '+DAY_L[dc]+' players checked in. Choose All days to see everyone.':'Only players checked in today appear here.'}<div style="margin-top:12px"><button class="btn pri" data-act="go" data-tab="checkin">Take attendance</button></div></div>`}
     <p class="hint">Games are counted automatically when you tap “Game done” on a court. <b>½ Part</b> takes part of a fee; what is left carries over as a balance when a new session starts.</p>
   </div>
-  <h2>Balances owed <small>unpaid bills from earlier sessions, by date · tap a player to collect</small></h2>
+  <h2>Balances owed <small>tap a name to collect</small></h2>
   <div class="card">
-    ${owing.length?`<div class="list">${owing.map(x=>`<button class="item tapr balrow" data-act="bal" data-id="${x.p.id}">${catBadge(x.p.c)}<div class="nm">${esc(x.p.n)}<small class="balsub">${x.b.map(r=>esc(fmtBill(r.day))+' · '+sr(rowLeft(r))).join('<br>')}</small></div><b class="baltot">${sr(x.t)}</b></button>`).join('')}</div>
-    <p class="hint">Total owed: <b>${sr(owTot)}</b>. Money received pays the oldest bill first.</p>`
-    :'<div class="hint" style="margin:0">Nobody owes anything from earlier sessions. 👍</div>'}
+    ${owing.length?`<div class="list">${owing.map(x=>`<button class="item tapr balrow" data-act="bal" data-id="${x.p.id}"><div class="nm">${esc(x.p.n)} <small style="color:var(--muted);font-weight:500">${x.b.length} bill${x.b.length===1?'':'s'}</small></div><b class="baltot">${sr(x.t)}</b></button>`).join('')}</div>`
+    :'<div class="hint" style="margin:0">Nobody owes anything. 👍</div>'}
   </div>
   <h2>Excel report</h2>
   <div class="card">
@@ -1524,7 +1525,7 @@ function buildReport(){
   const wb=XLSX.utils.book_new();
   const add=(name,aoa,widths)=>{const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=widths.map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws,name);};
   add('Players',[['Name','Full Name','Level','Type','Active','Gender','Team','Days']].concat(PLs.slice().sort((a,b)=>lvCmp(a.c,b.c)||a.n.localeCompare(b.n)).map(p=>[p.n,p.fn||'',p.c,T(p.t),p.st||'',p.g==='M'?'Male':p.g==='F'?'Female':'',p.tm||'',(p.dy||[]).join(', ')])),[22,30,8,10,9,9,20,22]);
-  const pst=r=>+r.f<=0?'-':rowLeft(r)<=0.009?'Paid':rowPaid(r)>0?'Part paid':'Unpaid';
+  const pst=r=>+r.f<=0?'-':r.wv?'Waived '+r.wv+' SR':rowLeft(r)<=0.009?'Paid':rowPaid(r)>0?'Part paid':'Unpaid';
   add('Payments',[['Date','Player','Team','Level','Type','Games','Fee (SR)','Paid (SR)','Balance (SR)','Status','Method','Last payment']].concat(pay.slice().sort((a,b)=>keyT(a.day)-keyT(b.day)||String(a.n).localeCompare(b.n)).map(r=>[dayDate(r.day),r.n,r.tm||((S.players.find(p=>p.n===r.n)||{}).tm||''),r.c,T(r.t),r.g,r.f,r2(rowPaid(r)),rowLeft(r),pst(r),rowPaid(r)>0?(r.pm||pmText(rowCash(r),rowStc(r))||'Cash'):'',r.sd&&r.sd!==r.day?dayDate(r.sd):''])),[13,24,18,10,12,8,10,10,12,10,16,13]);
   { // every unpaid / part-paid bill, by player then date, with a running total per player
     const open=pay.filter(r=>rowLeft(r)>0.009).sort((a,b)=>String(a.n).localeCompare(b.n)||keyT(a.day)-keyT(b.day));
@@ -1533,8 +1534,8 @@ function buildReport(){
       run=r2(run+rowLeft(r)); grand=r2(grand+rowLeft(r)); out.push([dayDate(r.day),r.n,r.g,r.f,r2(rowPaid(r)),rowLeft(r),run,pst(r)]); });
     if(cur!==null) out.push(['','TOTAL '+cur,'','','','',run,'']);
     add('Balances',[['Bill date','Player','Games','Fee (SR)','Paid (SR)','Balance (SR)','Player total owed (SR)','Status']].concat(out).concat(open.length?[[],['','ALL PLAYERS','','','','',grand,'']]:[['Nothing owed','','','','','','','']]),[13,26,8,10,10,12,20,10]); }
-  { const L={in:'Checked in',out:'Checked out',pay:'Payment received',unpay:'Payment cancelled',session:'New session started'};
-    const ev=LG.map(e=>({d:e.d,a:L[e.k]||e.k,p:e.n||'',c:'',x:e.k==='pay'?(e.bal?'Balance for '+e.bal:(e.g?e.g+' games':'')+(e.part?' · part payment':'')):'',amt:(e.k==='pay'||e.k==='unpay')?(e.k==='unpay'?-e.amt:e.amt):'',m:e.m||''}));
+  { const L={in:'Checked in',out:'Checked out',pay:'Payment received',unpay:'Payment cancelled',waive:'Balance waived',session:'New session started'};
+    const ev=LG.map(e=>({d:e.d,a:L[e.k]||e.k,p:e.n||'',c:'',x:e.k==='waive'?'Bill of '+e.bal+' · '+e.amt+' SR':e.k==='pay'?(e.bal?'Balance for '+e.bal:(e.g?e.g+' games':'')+(e.part?' · part payment':'')):'',amt:(e.k==='pay'||e.k==='unpay')?(e.k==='unpay'?-e.amt:e.amt):'',m:e.m||''}));
     H.forEach(x=>{ const ns=(ids,n2)=>ids.map((id,j)=>(byId(id)||{}).n||n2[j]).join(' & ');
       if(x.s&&x.s!==x.d) ev.push({d:x.s,a:'Match started',p:ns(x.a,x.an)+' vs '+ns(x.b,x.bn),c:x.c,x:'',amt:'',m:''});
       ev.push({d:x.d,a:'Match finished',p:ns(x.a,x.an)+' vs '+ns(x.b,x.bn),c:x.c,x:(x.w==='a'?ns(x.a,x.an)+(x.ta?' ('+x.ta+')':'')+' won':x.w==='b'?ns(x.b,x.bn)+(x.tb?' ('+x.tb+')':'')+' won':x.w==='d'?'Draw':'No result')+(x.sc?' · '+x.sc:''),amt:'',m:''}); });
@@ -1549,10 +1550,10 @@ function buildReport(){
   const tstat=teamStats(H);
   add('Team Statistics',[['Team','Played','Won','Lost','Win %','Players']].concat(tstat.map(r=>[r.n,r.p,r.w,r.l,r.w+r.l?Math.round(r.w*1000/(r.w+r.l))/10+'%':'-',R.pl.filter(p=>p.tm===r.n).map(p=>p.n).join(', ')]).concat(tstat.length?[]:[['No team results yet','','','','','']])),[24,8,8,8,8,50]);
   add('Win Statistics',[['Player','Team','Level','Type','Played','Won','Lost','Win %']].concat(ws.map(r=>[r.n,(S.players.find(p=>p.n===r.n)||{}).tm||'',r.c,r.t,r.p,r.w,r.l,r.w+r.l?Math.round(r.w*1000/(r.w+r.l))/10+'%':'-'])),[24,18,10,12,8,8,8,8]);
-  const days={}; pay.forEach(r=>{const d=days[r.day]||(days[r.day]={pl:0,who:new Set(),g:0,due:0,col:0,cash:0,stc:0,sub:0,gst:0});if((r.g>0||rowPaid(r)>0)&&!d.who.has(r.id||r.n)){d.who.add(r.id||r.n);d.pl++;}d.g+=r.g;d.due+=+r.f;d.col+=rowPaid(r);d.cash+=rowCash(r);d.stc+=rowStc(r);if(r.t==='G')d.gst+=+r.f;else d.sub+=+r.f;});
+  const days={}; pay.forEach(r=>{const d=days[r.day]||(days[r.day]={pl:0,who:new Set(),g:0,due:0,col:0,cash:0,stc:0,sub:0,gst:0});if((r.g>0||rowPaid(r)>0)&&!d.who.has(r.id||r.n)){d.who.add(r.id||r.n);d.pl++;}d.g+=r.g;d.due+=+r.f;d.col+=rowPaid(r);d.left=(d.left||0)+rowLeft(r);d.cash+=rowCash(r);d.stc+=rowStc(r);if(r.t==='G')d.gst+=+r.f;else d.sub+=+r.f;});
   const mt={}; H.forEach(x=>{const k=dayKey(x.d);mt[k]=(mt[k]||0)+1;});
   const dk=[...new Set(Object.keys(days).concat(Object.keys(mt)))].sort((a,b)=>dayDate(a).localeCompare(dayDate(b)));
-  add('Daily Summary',[['Date','Players','Matches','Total due (SR)','Collected (SR)','Cash (SR)','STC Pay (SR)','Outstanding (SR)','Members & Family (SR)','Guests (SR)']].concat(dk.map(k=>{const d=days[k]||{pl:0,due:0,col:0,cash:0,stc:0,sub:0,gst:0};return [dayDate(k),d.pl,mt[k]||0,r2(d.due),r2(d.col),r2(d.cash),r2(d.stc),r2(d.due-d.col),r2(d.sub),r2(d.gst)];})),[13,9,9,14,14,11,13,15,15,12]);
+  add('Daily Summary',[['Date','Players','Matches','Total due (SR)','Collected (SR)','Cash (SR)','STC Pay (SR)','Outstanding (SR)','Members & Family (SR)','Guests (SR)']].concat(dk.map(k=>{const d=days[k]||{pl:0,due:0,col:0,cash:0,stc:0,sub:0,gst:0};return [dayDate(k),d.pl,mt[k]||0,r2(d.due),r2(d.col),r2(d.cash),r2(d.stc),r2(d.left||0),r2(d.sub),r2(d.gst)];})),[13,9,9,14,14,11,13,15,15,12]);
   /* hidden Backup sheet: the whole app (not only this report's dates/day) in ≤30 000-character pieces (Excel cell limit 32 767) */
   const bk=backupText(), rb=[['Match Maker backup — do not edit. To restore: Settings → Backup & restore → Restore from backup file.'],['MMBACKUP1',new Date().toISOString(),S.players.length+' players']];
   for(let i=0;i<bk.length;i+=30000) rb.push([bk.slice(i,i+30000)]);
@@ -1857,7 +1858,7 @@ document.addEventListener('click',e=>{
   if(IS_REMOTE&&(remoteState()!=='ok'||/^sc-t|^court-exit/.test(a))) return;
   if(IS_DISPLAY&&a==='court-menu') return;
   if(IS_DISPLAY&&!VIEW_OK.has(a)){ toast('Display tablet — make changes on the Main tablet'); return; }
-  if(!['del','reset','wipe','h-del','h-clear','sc-reset','ph-del','team-del','demo-clear','rdis'].includes(a)) confirmKey=null;
+  if(!['del','reset','wipe','h-del','h-clear','sc-reset','ph-del','team-del','demo-clear','rdis','bal-waive'].includes(a)) confirmKey=null;
   if(el.closest('#sheet')&&['gen','finish','score','cancel','reshuffle','sheet-close'].includes(a)){ closeSheet(); menuCourt=null; }
   switch(a){
     case 'court-menu': if(!IS_DISPLAY) sheetCourt(ci); break;
@@ -2022,7 +2023,11 @@ document.addEventListener('click',e=>{
       logEv('pay',{n:pl.n,amt:a,m:PM[m],g:S.games[id]||0,part:1}); closeSheet(); save(); render();
       toast(leftAmt(pl)>0?`${pl.n}: ${sr(a)} received · ${sr(leftAmt(pl))} left`:`${pl.n}: fully paid`); break; }
     case 'part-clear': { const pl=byId(id); const ps=partSum(id); if(pl&&ps>0){ delete S.part[id]; delete S.paid[id]; logEv('unpay',{n:pl.n,amt:ps,m:'Part payments'}); } closeSheet(); save(); render(); break; }
-    case 'bal': sheetBal(id); break;
+    case 'bal': confirmKey=null; sheetBal(id); break;
+    case 'bal-waive': { const pl=byId(id), r=S.ledger[+k]; if(!pl||!r||(r.id?r.id!==pl.id:r.n!==pl.n)||rowLeft(r)<=0.009){ sheetBal(id); break; }
+      if(confirmKey!=='wv'+k){ confirmKey='wv'+k; sheetBal(id); break; }
+      confirmKey=null; const amt=rowLeft(r); r.wv=amt; r.sd=dayKey(Date.now()); logEv('waive',{n:pl.n,amt,bal:dayDate(r.day)});
+      save(); render(); toast(`${pl.n}: ${sr(amt)} waived for ${dayDate(r.day)}`); if(balOf(pl)>0) sheetBal(id); else closeSheet(); break; }
     case 'bal-go': { const pl=byId(id); if(!pl) break; let v=r2(parseFloat(String(($('#bal-a')||{}).value||'').replace(',','.'))); const m=k==='stc'?'stc':'cash';
       if(!(v>0)){ toast('Type the amount received'); break; }
       const got=[], td=dayKey(Date.now()); let used=0;
@@ -2073,12 +2078,11 @@ function sheetPart(id){ const p=byId(id); if(!p) return; const f=r2(fee(p)), pa=
   <div class="acts">${partSum(id)>0?`<button class="btn warn" data-act="part-clear" data-id="${id}">Undo part payments (${sr(partSum(id))})</button>`:''}<button class="btn" data-act="sheet-close">Close</button></div>`);
   setTimeout(()=>{ const i=$('#part-a'); if(i){ i.focus(); i.select(); } },250); }
 function sheetBal(id){ const p=byId(id); if(!p) return; const B=bills(p), tot=balOf(p);
-  let run=0;
-  openSheet(`<h3>${esc(p.n)} — balance owed</h3><div class="hint" style="margin:0 0 8px">${B.length} unpaid bill${B.length===1?'':'s'} from earlier sessions, oldest first. Money received pays the oldest first.</div>
-  <table class="htbl baltbl"><tr><th>Date</th><th>Games</th><th>Fee</th><th>Paid</th><th>Left</th><th>Running</th></tr>${B.map(r=>{ run=r2(run+rowLeft(r)); return `<tr><td>${esc(fmtBill(r.day))}</td><td>${r.g||0}</td><td>${sr(r.f)}</td><td>${sr(rowPaid(r))}</td><td><b>${sr(rowLeft(r))}</b></td><td>${sr(run)}</td></tr>`; }).join('')}
-  <tr><td colspan="4"><b>Total owed</b></td><td colspan="2"><b style="color:#c0392b">${sr(tot)}</b></td></tr></table>
-  ${tot>0?`<label for="bal-a" style="font-weight:600;font-size:14px;margin-top:10px;display:block">Amount received now (SR)</label><input type="text" id="bal-a" inputmode="decimal" value="${tot}">
-  <div class="acts"><button class="btn pri" data-act="bal-go" data-id="${id}" data-k="cash">💵 Received in Cash</button><button class="btn pri" data-act="bal-go" data-id="${id}" data-k="stc" style="background:#4f2d7f;border-color:#4f2d7f">📱 Received by STC Pay</button></div>`:''}
+  openSheet(`<h3>${esc(p.n)} owes ${sr(tot)}</h3>
+  <div class="list">${B.map(r=>{ const ix=S.ledger.indexOf(r); return `<div class="item"><div class="nm">${esc(fmtBill(r.day))}${rowPaid(r)>0?`<small class="balsub">${sr(r.f)} fee, ${sr(rowPaid(r))} paid</small>`:''}</div><b>${sr(rowLeft(r))}</b><button class="btn sm ghost" data-act="bal-waive" data-id="${id}" data-k="${ix}">${confirmKey==='wv'+ix?'Sure?':'Waive'}</button></div>`; }).join('')}</div>
+  ${tot>0?`<label for="bal-a" style="font-weight:600;font-size:14px;margin-top:12px;display:block">Amount received</label><input type="text" id="bal-a" inputmode="decimal" value="${tot}">
+  <div class="acts"><button class="btn pri" data-act="bal-go" data-id="${id}" data-k="cash">💵 Cash</button><button class="btn pri" data-act="bal-go" data-id="${id}" data-k="stc" style="background:#4f2d7f;border-color:#4f2d7f">📱 STC Pay</button></div>
+  <p class="hint">Pays the oldest bill first. <b>Waive</b> cancels a bill without payment.</p>`:''}
   <div class="acts"><button class="btn" data-act="sheet-close">Close</button></div>`); }
 function sheetRestore(){ const d=restorePending; if(!d) return; const st=d.state, days=new Set((st.ledger||[]).map(x=>x.day));
   openSheet(`<h3>Restore this backup?</h3><div class="hint" style="margin:0 0 10px">Made <b>${esc(new Date(+d.at||0).toLocaleString())}</b> · version ${fmtVer(+d.ver||0)}</div>
