@@ -287,6 +287,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 | 7 Nov 2026 | Page v29 (1.29) | Set the serve before starting: tap the player who serves first, then the player who receives (0–0, first game); serving team can still be changed until the first point |
 | 7 Nov 2026 | Page v30 (1.30) | Payments: mark each player paid by 💵 Cash or 📱 STC Pay; Collected shows the split; Excel Payments sheet has a Method column and Daily Summary has Cash / STC Pay totals |
 | 7 Nov 2026 | Page v31 (2.0) | Export all activity: new Activity Log sheet (check-ins/outs, match start and finish with result, payments received/cancelled with amount and Cash / STC Pay, new sessions — all with date and time). Export button also in Settings |
+| 9 Nov 2026 | Page v57 (2.26) | Tap a waiting player → Assign to a court: one button per court not playing (shows boxes filled, “game starts” on the last box, “other levels” when outside the court’s levels); puts the player in the next empty box and starts the game when full |
 | 9 Nov 2026 | Page v56 (2.25) | Waiting queue gets a Search waiting players box (name or full name) that filters every Arrange view and shows “n of N” |
 | 9 Nov 2026 | Page v55 (2.24) | Waiting queue Level columns: each player shows Name / Level / Gender / Type (Member, Family, Guest) and games played (e.g. Alvin / C+ / M / Guest — 1 game); gender left out when not set |
 | 9 Nov 2026 | Page v54 (2.23) | Settings → Match format → Points per game adds 35 (win by 2, maximum 44; interval and change of ends at 18) |
