@@ -650,7 +650,7 @@ const isOff=p=>p.st==='No';
 const parseType=v=>{ const s=String(v||'').trim(); return /^fam/i.test(s)?'F':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=67;
+const APP_VERSION=68;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1515,7 +1515,7 @@ function buildReport(){
   const today=dayKey(Date.now()), R=reportScope();
   const pay=S.ledger.concat(todayRows()).filter(r=>R.inP(r.id,r.n)&&R.inD(keyTime(r.day)));
   const H=S.hist.filter(x=>R.inD(x.d)&&x.a.concat(x.b).some((id,j)=>R.inP(id,(x.an||[]).concat(x.bn||[])[j])));
-  const LG=(S.log||[]).filter(e=>R.inD(e.d)&&(e.k==='session'?true:R.inP(null,e.n)));
+  const LG=(S.log||[]).filter(e=>R.inD(e.d)&&(e.k==='session'||e.k==='wipe'||e.k==='del'?true:R.inP(null,e.n)));
   let PLs=R.pl; if(R.rr){ const seen=new Set(), byN=n=>S.players.find(q=>q.n===n);
     pay.forEach(r=>{ if(r.id) seen.add(r.id); const q=byN(r.n); if(q) seen.add(q.id); });
     H.forEach(x=>x.a.concat(x.b).forEach(id=>seen.add(id)));
@@ -1534,8 +1534,8 @@ function buildReport(){
       run=r2(run+rowLeft(r)); grand=r2(grand+rowLeft(r)); out.push([dayDate(r.day),r.n,r.g,r.f,r2(rowPaid(r)),rowLeft(r),run,pst(r)]); });
     if(cur!==null) out.push(['','TOTAL '+cur,'','','','',run,'']);
     add('Balances',[['Bill date','Player','Games','Fee (SR)','Paid (SR)','Balance (SR)','Player total owed (SR)','Status']].concat(out).concat(open.length?[[],['','ALL PLAYERS','','','','',grand,'']]:[['Nothing owed','','','','','','','']]),[13,26,8,10,10,12,20,10]); }
-  { const L={in:'Checked in',out:'Checked out',pay:'Payment received',unpay:'Payment cancelled',waive:'Balance waived',session:'New session started'};
-    const ev=LG.map(e=>({d:e.d,a:L[e.k]||e.k,p:e.n||'',c:'',x:e.k==='waive'?'Bill of '+e.bal+' · '+e.amt+' SR':e.k==='pay'?(e.bal?'Balance for '+e.bal:(e.g?e.g+' games':'')+(e.part?' · part payment':'')):'',amt:(e.k==='pay'||e.k==='unpay')?(e.k==='unpay'?-e.amt:e.amt):'',m:e.m||''}));
+  { const L={in:'Checked in',out:'Checked out',pay:'Payment received',unpay:'Payment cancelled',waive:'Balance waived',session:'New session started',del:'Player deleted',wipe:'All players deleted'};
+    const ev=LG.map(e=>({d:e.d,a:L[e.k]||e.k,p:e.n||'',c:'',x:e.k==='wipe'?(e.names||''):e.k==='waive'?'Bill of '+e.bal+' · '+e.amt+' SR':e.k==='pay'?(e.bal?'Balance for '+e.bal:(e.g?e.g+' games':'')+(e.part?' · part payment':'')):'',amt:(e.k==='pay'||e.k==='unpay')?(e.k==='unpay'?-e.amt:e.amt):'',m:e.m||''}));
     H.forEach(x=>{ const ns=(ids,n2)=>ids.map((id,j)=>(byId(id)||{}).n||n2[j]).join(' & ');
       if(x.s&&x.s!==x.d) ev.push({d:x.s,a:'Match started',p:ns(x.a,x.an)+' vs '+ns(x.b,x.bn),c:x.c,x:'',amt:'',m:''});
       ev.push({d:x.d,a:'Match finished',p:ns(x.a,x.an)+' vs '+ns(x.b,x.bn),c:x.c,x:(x.w==='a'?ns(x.a,x.an)+(x.ta?' ('+x.ta+')':'')+' won':x.w==='b'?ns(x.b,x.bn)+(x.tb?' ('+x.tb+')':'')+' won':x.w==='d'?'Draw':'No result')+(x.sc?' · '+x.sc:''),amt:'',m:''}); });
@@ -1728,9 +1728,12 @@ function vSettings(){
   <h2>Backup roster</h2>
   <div class="card">
     <textarea readonly id="exp">${esc(exp)}</textarea>
-    <div class="row" style="margin-top:8px"><button class="btn" data-act="copy">Copy list</button><button class="btn warn" data-act="wipe">${confirmKey==='wipe'?'Tap again — deletes all players':'Delete all players'}</button></div>
+    <div class="row" style="margin-top:8px"><button class="btn" data-act="copy">Copy list</button></div>
     <p class="hint">Paste this list into "Add many at once" to restore.</p>
   </div>
+  <h2>Delete all players</h2>
+  <div class="card"><p class="hint" style="margin-top:0">Removes all ${S.players.length} player${S.players.length===1?'':'s'}, their photos and today's attendance, games and payments. Match history, balances, the activity log and your settings stay. Export a backup first if you may need them back.</p>
+  <button class="btn warn" data-act="wipe"${S.players.length?'':' disabled'}>${confirmKey==='wipe'?'Tap again — deletes all '+S.players.length+' players':'Delete all players'}</button></div>
   <h2>Export</h2>
   <div class="card"><p class="hint" style="margin-top:0">All activity in one Excel file: check-ins, matches, payments (Cash / STC Pay), statistics and daily totals.${dayCur()?' <b>Show day is '+DAY_L[dayCur()]+'</b>: only active '+DAY_L[dayCur()]+' players and '+DAY_L[dayCur()]+' records are exported.':''}</p><button class="btn pri" data-act="export">${dayCur()?'⬇ Export '+DAY_L[dayCur()]+' report (Excel)':'⬇ Export all activity (Excel)'}</button></div>
   <h2>About</h2>
@@ -1936,7 +1939,7 @@ document.addEventListener('click',e=>{
     case 'rename': sheetRename(id); break;
     case 'del':
       if(confirmKey!=='del'+id){confirmKey='del'+id;render();break;}
-      confirmKey=null; if(PH[id]){ delete PH[id]; persistPhotos(); photoDbWrite(id,''); } S.players=S.players.filter(p=>p.id!==id); ['present','resting','games','lastEnd'].forEach(x=>delete S[x][id]);
+      confirmKey=null; logEv('del',{n:pnm(id)}); if(PH[id]){ delete PH[id]; persistPhotos(); photoDbWrite(id,''); } S.players=S.players.filter(p=>p.id!==id); ['present','resting','games','lastEnd'].forEach(x=>delete S[x][id]);
       S.courts.forEach(c=>c.p=c.p.filter(x=>x!==id)); save(); render(); break;
     case 'courts+': S.courts.push({lv:GROUPS.slice(),p:[],t:0}); save(); render(); break;
     case 'courts-':{ const last=S.courts[S.courts.length-1]; if(last.p.length){toast('Clear the last court first');break;} S.courts.pop(); save(); render(); break;}
@@ -1948,7 +1951,11 @@ document.addEventListener('click',e=>{
       confirmKey=null; archiveDay(); logEv('session',{}); S.present={};S.resting={};S.games={};S.lastEnd={};S.partners={};S.paid={};S.part={};S.sess=Date.now(); S.courts.forEach(c=>{c.p=[];c.t=0;}); save(); render(); toast('New session started'); break;
     case 'wipe':
       if(confirmKey!=='wipe'){confirmKey='wipe';render();break;}
-      confirmKey=null; const keep=S.courts.length; S=fresh(); S.courts=Array.from({length:keep},()=>({lv:GROUPS.slice(),p:[],t:0})); save(); render(); break;
+      confirmKey=null; { const cnt=S.players.length, names=S.players.map(p=>p.n);
+        if(Object.keys(PH).length){ Object.keys(PH).forEach(i=>photoDbWrite(i,'')); PH={}; persistPhotos(); }
+        S.players=[]; S.present={}; S.resting={}; S.games={}; S.lastEnd={}; S.partners={}; S.paid={}; S.part={};
+        S.courts.forEach(c=>{c.p=[];c.t=0;c.sc=null;});
+        logEv('wipe',{n:'All players ('+cnt+')',names:names.join(', ')}); save(); render(); toast(cnt+' players deleted'); } break;
     case 'slot': sheetSlot(ci,+k); break;
     case 'slot-set':{ const c=S.courts[ci]; if(!c||c.p.length) { closeSheet(); break; }
       const d=slots(c); if(id){ const j=d.indexOf(id); if(j>=0) d[j]=null; } d[+k]=id||null; c.d=d;
