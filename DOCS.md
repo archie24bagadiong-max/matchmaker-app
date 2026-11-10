@@ -233,16 +233,16 @@ Every player pays a **type fee + shuttles**. Shuttles = the number of games play
 | Member Guest | 20 SR + shuttles | Subscriber |
 | Non-Member Guest | 25 SR + shuttles | Guest (own queue column) |
 
-Fee = type fee + games × 2.50
+Fee = type fee + games × 2.50, then **rounded to a whole SR (.50 rounds up)**: 2.50 → 3, 22.50 → 23. fee() = roundBill(feeRaw()); the Payments note shows the unrounded amount when rounding changed it.
 
 | Games | Subscriber / Family | Member Guest | Non-Member Guest |
 | --- | --- | --- | --- |
-| 1 | 2.50 | 22.50 | 27.50 |
-| 2 | 5.00 | 25.00 | 30.00 |
-| 3 | 7.50 | 27.50 | 32.50 |
-| 4 | 10.00 | 30.00 | 35.00 |
-| 5 | 12.50 | 32.50 | 37.50 |
-| 6 | 15.00 | 35.00 | 40.00 |
+| 1 | 3 (2.50) | 23 (22.50) | 28 (27.50) |
+| 2 | 5 | 25 | 30 |
+| 3 | 8 (7.50) | 28 (27.50) | 33 (32.50) |
+| 4 | 10 | 30 | 35 |
+| 5 | 13 (12.50) | 33 (32.50) | 38 (37.50) |
+| 6 | 15 | 35 | 40 |
 
 Settings → Fees has the shuttle price, the Member Guest fee and the Non-Member Guest fee (S.fee = {sp, mg, gp}). Before page v75 guests paid a 25 SR minimum covering 3 games; that setting (gn, gx) is dropped and players who were "Guest" are Non-Member Guests. Payments groups Subscribers & Family vs Guests (member and non-member); the Excel Daily Summary does the same. Start new session archives the day's payment rows into a ledger (up to 4,000 rows); payment history starts 7 Nov 2026. Bills already archived keep the amount they had.
 
@@ -309,6 +309,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 | 7 Nov 2026 | Page v29 (1.29) | Set the serve before starting: tap the player who serves first, then the player who receives (0–0, first game); serving team can still be changed until the first point |
 | 7 Nov 2026 | Page v30 (1.30) | Payments: mark each player paid by 💵 Cash or 📱 STC Pay; Collected shows the split; Excel Payments sheet has a Method column and Daily Summary has Cash / STC Pay totals |
 | 7 Nov 2026 | Page v31 (2.0) | Export all activity: new Activity Log sheet (check-ins/outs, match start and finish with result, payments received/cancelled with amount and Cash / STC Pay, new sessions — all with date and time). Export button also in Settings |
+| 10 Nov 2026 | Page v77 (3.15) | Bills rounded to whole SR, .50 rounds up (2.50 → 3, 22.50 → 23): Payments, totals, part payments, balances, Excel and Copy summary all use the rounded bill; the Payments note shows the unrounded amount; Settings, Payments and How to use explain it. Bills archived before this keep their amount. APK 1.16 |
 | 10 Nov 2026 | Page v76 (3.14) | Members list in Players → Edit → Active: Reg, Member-SUB (A-SUB), Member-Guest, Non-Member, No (inactive). Choosing a member status sets the payment term (Subscriber / Member Guest / Non-Member Guest); the type button and the add form keep the status in step; Excel import reads Member-SUB / Member-Guest / Non-Member and uses them for the fee when there is no Type column. Status badge shows Member-SUB. APK 1.15 |
 | 10 Nov 2026 | Page v75 (3.13) | New fees: every player pays a type fee + shuttles (games played × 2.50 SR). Subscriber 0 SR, Family 0 SR, Member Guest 20 SR (new type, ranks with Subscribers on courts), Non-Member Guest 25 SR (old Guest; keeps guest priority and queue column). Settings → Fees: shuttle, Member Guest fee, Non-Member Guest fee (old 3-game guest minimum dropped). Payments notes show fee + shuttles; filter Subscribers / Guests; Players add form, type button cycle, Excel import, Add many at once, Copy summary, Excel Payments / Daily Summary and How to use updated. APK 1.14 |
 | 9 Nov 2026 | Page v74 (3.12) | Context help: the header ? opens How to use with the topic for the current tab open and scrolled into view (Courts and Attendance → 3 Running a session, Players and Settings → 1 First time setup, Payments → 6 Fees, History → 7 End of the day); a small ? beside Next games opens topic 4; ← Back returns to the tab you came from. Display tablets can read the help |

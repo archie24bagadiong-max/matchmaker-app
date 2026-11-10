@@ -690,7 +690,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=76;
+const APP_VERSION=77;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -867,12 +867,13 @@ function prioritySort(list){
 }
 /* type fee for one session (charged once a player has played) */
 const typeFee=p=>p.t==='G'?S.fee.gp:p.t==='MG'?S.fee.mg:0;
-function fee(p){
-  const g=S.games[p.id]||0; if(!g) return 0;
-  return typeFee(p)+g*S.fee.sp;  // + shuttles: one per game played
-}
+/* the bill before rounding: type fee + shuttles (one per game played) */
+function feeRaw(p){ const g=S.games[p.id]||0; return g?typeFee(p)+g*S.fee.sp:0; }
+/* every bill is a whole SR: .50 rounds up (2.50 → 3, 22.50 → 23) */
+const roundBill=v=>Math.round(r2(v));
+function fee(p){ return roundBill(feeRaw(p)); }
 const sr=v=>(Math.round(v*100)/100).toFixed(2).replace(/\.00$/,'')+' SR';
-const feeRulesText=()=>`Subscriber &amp; Family 0 SR + shuttles · Member Guest ${sr(S.fee.mg)} + shuttles · Non-Member Guest ${sr(S.fee.gp)} + shuttles · shuttle ${sr(S.fee.sp)} per game played`;
+const feeRulesText=()=>`Subscriber &amp; Family 0 SR + shuttles · Member Guest ${sr(S.fee.mg)} + shuttles · Non-Member Guest ${sr(S.fee.gp)} + shuttles · shuttle ${sr(S.fee.sp)} per game played · bills rounded to whole SR (.50 rounds up)`;
 function waiting(){
   const oc=onCourt(), dr=drafted(), pl=planned();
   return prioritySort(S.players.filter(p=>S.present[p.id]&&!S.resting[p.id]&&oc[p.id]===undefined&&!dr.has(p.id)&&!pl.has(p.id)&&dayOk(p)));
@@ -1283,7 +1284,7 @@ function vPay(){
     ${gone.length?`<div class="daybar" style="background:#fff6e6;border-color:#f1d29a;color:#6b4a00">${payGone?'Showing':'Hidden:'} ${gone.length} player${gone.length===1?'':'s'} not in Attendance who played today (${sr(goneDue)}${goneUnpaid.length?', '+goneUnpaid.length+' unpaid':''})<span class="grow"></span><button class="btn sm" data-act="pay-gone">${payGone?'Hide':'Show'}</button></div>`:''}
     <div class="chips">${['All','Subscribers','Guests','Unpaid'].map(k=>`<button class="chip ${payFilter===k?'on':''}" data-act="pay-f" data-k="${k}">${k}</button>`).join('')}</div>
     ${list.length?`<div class="phead"><span class="pinfo">Player</span><span class="pg">Games</span><span class="pfee">Fee / Paid</span></div><div class="list">${list.map(p=>{const g=S.games[p.id]||0,f=fee(p);
-      const tf=typeFee(p), note=g?(tf?sr(tf)+' '+TYPE_L[p.t]+' fee + ':'')+g+' shuttle'+(g===1?'':'s')+' × '+sr(S.fee.sp):'Nothing due until they play'+(tf?' (then '+sr(tf)+' fee + '+sr(S.fee.sp)+' per game)':' (then '+sr(S.fee.sp)+' per game)');
+      const tf=typeFee(p), note=g?(tf?sr(tf)+' '+TYPE_L[p.t]+' fee + ':'')+g+' shuttle'+(g===1?'':'s')+' × '+sr(S.fee.sp)+(r2(feeRaw(p))!==fee(p)?' = '+sr(feeRaw(p))+', rounded to '+sr(fee(p)):''):'Nothing due until they play'+(tf?' (then '+sr(tf)+' fee + '+sr(S.fee.sp)+' per game)':' (then '+sr(S.fee.sp)+' per game)');
       return `<div class="prow">
         <div class="pinfo"><div class="nmc">${catBadge(p.c)}<span class="pn">${esc(p.n)}</span>${typeBadge(p)}</div><div class="pnote">${note}</div>${balOf(p)>0?`<button class="balflag" data-act="bal" data-id="${p.id}">⚠ Owes ${sr(balOf(p))} from ${bills(p).length} earlier bill${bills(p).length===1?'':'s'}</button>`:''}</div>
         <div class="pg"><b>${g}</b></div>
@@ -1593,6 +1594,7 @@ function vHelp(){
     <li><b>Non-Member Guest:</b> 25 SR fee + shuttles.</li>
     <li><b>Members</b> (Players → Edit → Active): <b>Member-SUB (A-SUB)</b> pays as a Subscriber, <b>Member-Guest</b> as a Member Guest, <b>Non-Member</b> as a Non-Member Guest. Choosing one sets the fee.</li>
     <li><b>Shuttles</b> = the number of games played × 2.50 SR. Example: a Member Guest who plays 4 games pays 20 + 4 × 2.50 = 30 SR. Nobody owes anything until they play.</li>
+    <li><b>Rounding:</b> every bill is a whole SR; .50 rounds up. 1 game as a Subscriber = 2.50 → <b>3 SR</b>; a Member Guest with 1 game = 22.50 → <b>23 SR</b>.</li>
     <li>Fees update automatically as games are played. Change prices in Settings → Fees.</li>
     <li><b>Copy summary</b> on Payments gives a list to paste in WhatsApp.${shot('tab-pay','Payments: total due and collected (Cash / STC Pay), fee per player')}</li></ul>`)}
   ${sec('end','7. End of the day',`<ol>
