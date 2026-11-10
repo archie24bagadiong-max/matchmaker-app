@@ -703,7 +703,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=82;
+const APP_VERSION=83;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -779,6 +779,9 @@ let S=fresh();
 try{ const raw=localStorage.getItem(LS_KEY); if(raw) S=normalize(JSON.parse(raw)); }catch(e){}
 
 let tab='courts', ciFilter='All', ciSearch='', wqSearch='', plSearch='', plFilter='All', confirmKey=null, plTeam='', ciTeam='';
+/* after an automatic update the app reopens on the screen it was on */
+let updJustDone=0;
+try{ const t=localStorage.getItem('mm_upd_tab'); if(t){ localStorage.removeItem('mm_upd_tab'); if(['courts','checkin','players','pay','hist','help','settings'].includes(t)) tab=t; updJustDone=1; } }catch(e){}
 
 /* ---------- persistence ---------- */
 let dbRef=null, writing=false, dirty=false, saveTimer=null, lastTs=0;
@@ -1852,9 +1855,9 @@ function vHist(){
 function vSettings(){
   const exp=S.players.map(p=>p.n+', '+p.c+(p.t!=='S'&&TYPE_L[p.t]?', '+TYPE_L[p.t]:'')+(p.g?', '+(p.g==='M'?'Male':'Female'):'')+(p.tm?', '+p.tm:'')).join('\n');
   return `<div class="card updcard" style="margin-top:10px">
-    <div class="row" style="align-items:center"><div style="flex:1;min-width:160px"><b style="font-size:16px">App version ${fmtVer(APP_VERSION)}</b><div class="hint" style="margin:2px 0 0">${!IS_APP?'Web version — always the latest when opened.':updBusy?'Downloading update…':updInfo?`<b style="color:var(--C)">New version ${esc(fmtVer(updInfo.version))} available</b>`:updChecked?'You have the latest version.':'Tap Update app to get the newest version.'}</div></div>
+    <div class="row" style="align-items:center"><div style="flex:1;min-width:160px"><b style="font-size:16px">App version ${fmtVer(APP_VERSION)}</b><div class="hint" style="margin:2px 0 0">${!IS_APP?'Web version — always the latest when opened.':updBusy?'Downloading update…':updInfo?`<b style="color:var(--C)">New version ${esc(fmtVer(updInfo.version))} available</b>`:updChecked?'You have the latest version.':'Checking for updates…'}</div></div>
     ${IS_APP?`<button class="btn pri" data-act="upd-app" ${updBusy?'disabled':''}>⟳ ${updInfo?'Install update':'Update app'}</button>`:''}</div>
-    ${IS_APP?'<p class="hint" style="margin:8px 0 0">Needs internet. Your players, payments, photos and history are kept.</p>':''}
+    ${IS_APP?'<p class="hint" style="margin:8px 0 0">Updates install by themselves whenever the app is opened (with internet); if someone is scoring or typing it waits until they finish. Update app checks and installs straight away. Your players, payments, photos and history are kept.</p>':''}
   </div>
   <button class="btn pri" style="width:100%;margin-top:10px" data-act="help">📖 How to use this app</button>
   ${IS_APP?`<h2>Tablet sync (local network)</h2>
@@ -2495,12 +2498,32 @@ function showUpdBanner(){
   if(!b){ b=document.createElement('div'); b.id='updbar'; document.querySelector('header').after(b); }
   b.innerHTML=`<span>New version ${esc(fmtVer(updInfo.version))} available</span><button class="btn sm lime" data-act="upd-go">Update</button>`;
 }
-async function checkUpdate(manual){
+/* Automatic updates (Android app): every time the app is opened or brought back, a newer version is downloaded and
+   installed by itself. It waits while someone is busy (scoreboard, a sheet, typing, dragging) and installs as soon as
+   they are done. A court tablet installs only when no match is on its court. The same version is tried automatically
+   at most once per 10 minutes, so a failed install never loops; the Update bar and Settings → Update app stay. */
+let updAuto=false, updWait=null;
+function updIdle(){
+  if(IS_COURT) return !S.courts[COURT_NO]||!S.courts[COURT_NO].p.length;
+  const a=document.activeElement;
+  return scoreOpen===null&&!document.getElementById('sheet').classList.contains('open')&&!dnd&&!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
+}
+function updAutoGo(){
+  clearTimeout(updWait); updWait=null;
+  if(!updAuto||!updInfo||updBusy) return;
+  let last={}; try{ last=JSON.parse(localStorage.getItem('mm_upd_try')||'{}')||{}; }catch(e){}
+  if(+last.v===+updInfo.version&&Date.now()-(+last.t||0)<10*60*1000){ updAuto=false; return; }
+  if(!updIdle()){ updWait=setTimeout(updAutoGo,2000); return; }
+  updAuto=false;
+  try{ localStorage.setItem('mm_upd_try',JSON.stringify({v:+updInfo.version,t:Date.now()})); }catch(e){}
+  doUpdate(true);
+}
+async function checkUpdate(manual,auto){
   if(!IS_APP) return;
   try{
     const r=await fetch(UPD_BASE+'version.json?t='+Date.now(),{cache:'no-store'});
     const j=await r.json(); updChecked=true;
-    if(+j.version>APP_VERSION){ updInfo=j; if(IS_COURT&&(!S.courts[COURT_NO]||!S.courts[COURT_NO].p.length)){ doUpdate(); return; } } else { updInfo=null; if(manual) toast('You have the latest version'); }
+    if(+j.version>APP_VERSION){ updInfo=j; if(auto||(IS_COURT&&updIdle())){ updAuto=true; showUpdBanner(); updAutoGo(); return; } } else { updInfo=null; if(manual) toast('You have the latest version'); }
   }catch(e){ if(manual) toast('No internet — could not check for updates'); }
   showUpdBanner(); if(tab==='settings') render();
 }
@@ -2510,17 +2533,17 @@ async function updateApp(){
   toast('Checking for updates…'); await checkUpdate(true);
   if(updInfo) doUpdate();
 }
-async function doUpdate(){
-  if(updBusy) return; updBusy=true; toast('Downloading update…'); if(tab==='settings') render();
+async function doUpdate(auto){
+  if(updBusy) return; updBusy=true; toast(auto?'Updating to version '+fmtVer(updInfo?updInfo.version:0)+'…':'Downloading update…'); if(tab==='settings') render();
   try{
     const r=await fetch(UPD_BASE+'index.html?t='+Date.now(),{cache:'no-store'});
     const t=await r.text();
     if(r.ok && t.length>20000 && t.indexOf('APP_VERSION=')>0 && /^\s*<!DOCTYPE html>/i.test(t)){
       try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){}
-      if(window.AndroidApp.saveUpdate(t)){ persistFlush(); location.reload(); return; }
+      if(window.AndroidApp.saveUpdate(t)){ persistFlush(); try{ localStorage.setItem('mm_upd_tab',tab); }catch(e){} location.reload(); return; }
     }
-    toast('Update failed — please try again');
-  }catch(e){ toast('No internet — could not update'); }
+    toast(auto?'Update could not be installed — tap Update to try again':'Update failed — please try again');
+  }catch(e){ if(!auto) toast('No internet — could not update'); }
   updBusy=false; if(tab==='settings') render();
 }
 /* ---------- local network sync ---------- */
@@ -2848,7 +2871,14 @@ if(IS_APP||IS_SERVED){
   if(IS_SERVED){ document.body.classList.add('served'); if(IS_COURT){ qrPing(); setInterval(qrPing,4000); setInterval(netBar,1000); } }
   syncHeader();
   // the Android app updates itself; a phone that scanned a QR code always gets the Main tablet's current page
-  if(IS_APP){ setTimeout(()=>checkUpdate(false),1200); setInterval(()=>checkUpdate(false),IS_COURT?3*60*1000:15*60*1000); }
+  if(IS_APP){
+    setTimeout(()=>checkUpdate(false,true),1200);                                   // opened: update by itself
+    setInterval(()=>checkUpdate(false),IS_COURT?3*60*1000:15*60*1000);               // while in use: Update bar only
+    let hidAt=0; document.addEventListener('visibilitychange',()=>{                    // brought back after 10 s or more
+      if(document.visibilityState==='hidden'){ hidAt=Date.now(); return; }
+      if(hidAt&&Date.now()-hidAt>=10000) checkUpdate(false,true); hidAt=0; });
+    if(updJustDone) setTimeout(()=>toast('Updated to version '+fmtVer(APP_VERSION)),600);
+  }
 }
 /* phone scoring by QR (any host: laptop website, tablet app, phone) */
 if(IS_JOIN){ document.body.classList.add('courtmode','served'); render(); rtcJoin(); setInterval(qrPing,4000); setInterval(netBar,1000); setInterval(syncHeader,3000); }
