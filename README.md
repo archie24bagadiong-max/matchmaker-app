@@ -25,7 +25,7 @@ Each device keeps its own data (players, attendance, payments, history). Back up
 - **Next games:** plan games ahead; **Game done** puts the next one straight on the finished court (with Undo). Tap a planned player to replace or swap them.
 - **Change teams:** drag a player onto another on the same court (touch: press and hold, then drag), until the first point is scored.
 - **Scoring:** official BWF rally scoring on the court card, on court tablets, or on any phone that scans the court's QR code.
-- **Fees and payments:** member and guest fees, cash / STC Pay, part payments and dated balances.
+- **Fees and payments:** type fee + shuttles (Subscriber 0 SR, Member Guest 20 SR, Non-Member Guest 25 SR, plus 2.50 SR per game played), cash / STC Pay, part payments and dated balances.
 - **History and reports:** every match with teams and winner; Excel report by date or date range.
 
 Full documentation: [DOCS.md](DOCS.md).

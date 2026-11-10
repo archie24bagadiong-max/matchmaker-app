@@ -21,7 +21,7 @@ Set up once, then each playing day the organizer runs the session from the Main 
 ### A. Before the first session (once)
 
 1. **Install the app** on every tablet: open MatchMaker.apk → allow this source → **Install** (Play Protect: **More details → Install anyway**). A newer APK installs over the old one and keeps the data.
-2. **Prepare the player list** in MatchMaker_Template.xlsx: Players sheet, columns Name, Level (A–D), Type (Subscriber or Guest). Keep Players as the first sheet.
+2. **Prepare the player list** in MatchMaker_Template.xlsx: Players sheet, columns Name, Level (A–D), Type (Subscriber, Family, Member Guest or Non-Member Guest). Keep Players as the first sheet.
 3. **Copy the Excel file to the Main tablet** (WhatsApp, email or Drive → save to Downloads).
 4. On the Main tablet: **Players → Choose file** → pick the file.
 5. Check **Settings**: Number of courts (for example 4), Doubles, Mixing skill levels, Subscriber priority, Fees.
@@ -74,9 +74,9 @@ Set up once, then each playing day the organizer runs the session from the Main 
 
 | I want to… | Do this |
 | --- | --- |
-| Add one player or guest | Players → name, level, Subscriber/Guest → Add |
+| Add one player or guest | Players → name, level, type (Subscriber, Family, Member Guest, Non-Member Guest) → Add |
 | Add many players | Players → Choose file, or paste `Maria, B, Guest` lines into Add many at once |
-| Change level or Sub/Guest | Players → dropdown, or tap Sub/Guest |
+| Change level or type | Players → dropdown, or tap the type button (cycles Subscriber → Family → Member Guest → Non-Member Guest) |
 | Change the teams on a court | Drag a player onto another on the same court (touch: press and hold, then drag); works until the first point is scored |
 | Help for the screen you are on | Tap ? at the top right: How to use opens at that screen's topic; ← Back returns |
 | Rename or add a photo | Players → Edit, or tap the name on a court / in the queue |
@@ -93,7 +93,7 @@ Set up once, then each playing day the organizer runs the session from the Main 
 
 First-time setup:
 1. Install MatchMaker.apk on the tablet.
-2. Fill the Players sheet of the Excel template: Name, Level (A–D), Type (Subscriber/Guest).
+2. Fill the Players sheet of the Excel template: Name, Level (A–D), Type (Subscriber, Family, Member Guest or Non-Member Guest).
 3. Players → Choose file → pick the Excel file.
 4. Check Settings: courts, Doubles, skill mixing, subscriber priority, fees.
 
@@ -112,12 +112,12 @@ Each session day:
 | --- | --- | --- |
 | Courts | Present/playing/waiting/resting counts, courts, Next games, queue, resting list | Fill empty courts, Auto match, Pick players, Game done, Reshuffle, Clear, court levels, replace a player, Back to play, + Plan next game, Start Next, Undo |
 | Attendance | Present per level, tick list | Tick/untick, check in all or by level, search |
-| Players | Add form, Excel import, bulk paste, roster | Add, Choose file, Add list, change level, Sub/Guest, rename, delete |
+| Players | Add form, Excel import, bulk paste, roster | Add, Choose file, Add list, change level, type, rename, delete |
 | Payments | Totals, per-player games and fee | Filter, mark Paid, Export Excel report, Copy summary |
 | History | Matches by day with court, teams, winner; wins leaderboard | Filter by date/court, Change winner, delete match, Export Excel |
 | Settings | Options | Courts 1–8, Doubles/Singles, mixing, priority, fees, Update app (top), Start new session, Clear history, Backup roster, Delete all players |
 
-Player tags: level badge A–D, SUB (blue) or GUEST (yellow), games played (e.g. 3g).
+Player tags: level badge A–D, SUB (blue), FAMILY (green), MEM GUEST (purple) or NM GUEST (yellow), games played (e.g. 3g).
 
 ## Matching rules
 
@@ -129,7 +129,7 @@ Player tags: level badge A–D, SUB (blue) or GUEST (yellow), games played (e.g.
 
 Levels: 8 grades, A+ strongest … D- beginner. Skill mixing works on the letter: Same only = A+ with A-; Next level OK = A with B, B with C… Court level buttons (A B C D) each cover the + and - of that letter. Data from before 8 Nov 2026 with plain A/B/C/D became A+/B+/C+/D+.
 
-Player types: Member, Family (pays the member fee) and Guest. Active status from the club roster: Reg, A-SUB, or No (inactive — hidden from Attendance until "Show inactive"). Gender (Male/Female) and Full Name are kept per player (Players → Edit).
+Player types: Subscriber (S), Family (F, pays like a Subscriber), Member Guest (MG) and Non-Member Guest (G); see Fees. Import and Add many at once read Subscriber / Member, Family, Member Guest (Mem Guest, MG) and Non-Member Guest (Non Member, NM Guest, NMG, or just Guest). Active status from the club roster: Reg, A-SUB, or No (inactive — hidden from Attendance until "Show inactive"). Gender (Male/Female) and Full Name are kept per player (Players → Edit).
 
 Can't play: replaced by closest-level substitute and moved to Resting until Back to play; the unfinished game is not counted for them.
 
@@ -224,21 +224,27 @@ Each player can have a photo, shown next to their name on the court cards, the s
 
 ## Fees
 
-Subscriber: 2.50 SR per game. Guest: 25 SR minimum covering 3 games, then 3.33 SR per extra game (6 games = 35 SR).
+Every player pays a **type fee + shuttles**. Shuttles = the number of games played × the shuttle price (2.50 SR). Nothing is due until a player has played a game.
 
-Guest fee = 25 + max(0, games − 3) × 10/3
-
-| Games | Subscriber | Guest |
+| Type | Fee | Court priority |
 | --- | --- | --- |
-| 1 | 2.50 | 25.00 |
-| 2 | 5.00 | 25.00 |
-| 3 | 7.50 | 25.00 |
-| 4 | 10.00 | 28.33 |
-| 5 | 12.50 | 31.67 |
-| 6 | 15.00 | 35.00 |
-| 7 | 17.50 | 38.33 |
+| Subscriber | 0 SR + shuttles | Subscriber |
+| Family | 0 SR + shuttles | Subscriber |
+| Member Guest | 20 SR + shuttles | Subscriber |
+| Non-Member Guest | 25 SR + shuttles | Guest (own queue column) |
 
-All fee numbers are editable in Settings → Fees. Above 6 games the 3.33 SR/game rate is an assumption. Start new session archives the day's payment rows into a ledger (up to 4,000 rows); payment history starts 7 Nov 2026.
+Fee = type fee + games × 2.50
+
+| Games | Subscriber / Family | Member Guest | Non-Member Guest |
+| --- | --- | --- | --- |
+| 1 | 2.50 | 22.50 | 27.50 |
+| 2 | 5.00 | 25.00 | 30.00 |
+| 3 | 7.50 | 27.50 | 32.50 |
+| 4 | 10.00 | 30.00 | 35.00 |
+| 5 | 12.50 | 32.50 | 37.50 |
+| 6 | 15.00 | 35.00 | 40.00 |
+
+Settings → Fees has the shuttle price, the Member Guest fee and the Non-Member Guest fee (S.fee = {sp, mg, gp}). Before page v75 guests paid a 25 SR minimum covering 3 games; that setting (gn, gx) is dropped and players who were "Guest" are Non-Member Guests. Payments groups Subscribers & Family vs Guests (member and non-member); the Excel Daily Summary does the same. Start new session archives the day's payment rows into a ledger (up to 4,000 rows); payment history starts 7 Nov 2026. Bills already archived keep the amount they had.
 
 ## Excel
 
@@ -303,6 +309,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 | 7 Nov 2026 | Page v29 (1.29) | Set the serve before starting: tap the player who serves first, then the player who receives (0–0, first game); serving team can still be changed until the first point |
 | 7 Nov 2026 | Page v30 (1.30) | Payments: mark each player paid by 💵 Cash or 📱 STC Pay; Collected shows the split; Excel Payments sheet has a Method column and Daily Summary has Cash / STC Pay totals |
 | 7 Nov 2026 | Page v31 (2.0) | Export all activity: new Activity Log sheet (check-ins/outs, match start and finish with result, payments received/cancelled with amount and Cash / STC Pay, new sessions — all with date and time). Export button also in Settings |
+| 10 Nov 2026 | Page v75 (3.13) | New fees: every player pays a type fee + shuttles (games played × 2.50 SR). Subscriber 0 SR, Family 0 SR, Member Guest 20 SR (new type, ranks with Subscribers on courts), Non-Member Guest 25 SR (old Guest; keeps guest priority and queue column). Settings → Fees: shuttle, Member Guest fee, Non-Member Guest fee (old 3-game guest minimum dropped). Payments notes show fee + shuttles; filter Subscribers / Guests; Players add form, type button cycle, Excel import, Add many at once, Copy summary, Excel Payments / Daily Summary and How to use updated. APK 1.14 |
 | 9 Nov 2026 | Page v74 (3.12) | Context help: the header ? opens How to use with the topic for the current tab open and scrolled into view (Courts and Attendance → 3 Running a session, Players and Settings → 1 First time setup, Payments → 6 Fees, History → 7 End of the day); a small ? beside Next games opens topic 4; ← Back returns to the tab you came from. Display tablets can read the help |
 | 9 Nov 2026 | Page v73 (3.11) | How to use: new topic 4 Next games and changing teams (screenshots tab-next, tab-nextpl, tab-drag), iPhone installer picture, new Quick answers; picture guide (guide.html) gets the iPhone installer and steps 8-10 (Next games, replace a planned player, drag to change teams); README rewritten. Planned-game teams keep each pair on one line on wide screens |
 | 9 Nov 2026 | Page v72 (3.10) | iPhone installer: iphone.html (QR icons/qr-iphone.svg) with Option 1 one-tap install profile MatchMaker.mobileconfig (Web Clip, full screen, unsigned so iOS shows Not Verified; fixed UUIDs so reinstall replaces it) and Option 2 Share → Add to Home Screen. Detects Chrome/in-app browsers (copy link for Safari), PC/Android (shows QR), already installed. Linked from the iPhone install banner, How to use and qr.html |
