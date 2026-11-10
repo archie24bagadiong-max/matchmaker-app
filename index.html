@@ -650,9 +650,17 @@ const rowStc=r=>r.ps!=null?+r.ps:(r.pd&&r.pm==='STC Pay'?+r.f:0);
 function ledgerTrim(L){ if(L.length<=4000) return L; const open=L.filter(r=>rowLeft(r)>0.009), done=L.filter(r=>rowLeft(r)<=0.009); return done.slice(-Math.max(0,4000-open.length)).concat(open).sort((a,b)=>(a.ss||0)-(b.ss||0)); }
 const keyT=k=>{const [y,m,d]=String(k).split('-').map(Number);return new Date(y,(m||1)-1,d||1).getTime();};
 /* unpaid bills from earlier sessions, oldest first */
-function bills(p){ return S.ledger.filter(r=>(r.id?r.id===p.id:r.n===p.n)&&rowLeft(r)>0.009).sort((a,b)=>keyT(a.day)-keyT(b.day)||(a.ss||0)-(b.ss||0)); }
+let BILLS_IX=null;   // set only while vPay() draws: ledger rows grouped by player id / name
+function billsIndex(){ const m=new Map(); S.ledger.forEach((r,i)=>{ const k=r.id?'i'+r.id:'n'+r.n; let l=m.get(k); if(!l) m.set(k,l=[]); l.push([i,r]); }); return m; }
+function bills(p){ let src; if(BILLS_IX){ const a=BILLS_IX.get('i'+p.id)||[], b=BILLS_IX.get('n'+p.n)||[]; src=(b.length?a.concat(b).sort((x,y)=>x[0]-y[0]):a).map(x=>x[1]); } else src=S.ledger.filter(r=>r.id?r.id===p.id:r.n===p.n);
+  return src.filter(r=>rowLeft(r)>0.009).sort((a,b)=>keyT(a.day)-keyT(b.day)||(a.ss||0)-(b.ss||0)); }
 const balOf=p=>r2(bills(p).reduce((a,r)=>a+rowLeft(r),0));
-const fmtBill=k=>new Date(keyT(k)).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+/* date/time formatters made once: toLocale…String(options) builds a new formatter on every call, which made long
+   History / Payments lists slow to draw */
+const DTF=(()=>{ const mk=o=>{ try{ const f=new Intl.DateTimeFormat(undefined,o); return d=>f.format(d); }catch(e){ return null; } };
+  return { day:mk({weekday:'short',day:'numeric',month:'short',year:'numeric'}), time:mk({hour:'numeric',minute:'2-digit'}) }; })();
+const fmtDate=d=>DTF.day?DTF.day(d):d.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+const fmtBill=k=>fmtDate(new Date(keyT(k)));
 /* playing days (schedule): p.dy = ['Mon','Thu',…]; Settings → Show day filters Attendance and Players */
 const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], DAY_L={Mon:'Monday',Tue:'Tuesday',Wed:'Wednesday',Thu:'Thursday',Fri:'Friday',Sat:'Saturday',Sun:'Sunday'};
 const normDays=a=>Array.isArray(a)?DAYS.filter(d=>a.includes(d)):[];
@@ -690,7 +698,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=79;
+const APP_VERSION=80;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -840,7 +848,11 @@ async function flush(){
 /* ---------- helpers ---------- */
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const byId=id=>S.players.find(p=>p.id===id);
+/* player lookup by id: an index rebuilt only when the players list changes (it was a full search on every call,
+   many hundreds of times per redraw). Keeps find()'s "first match wins" for duplicate ids. */
+let BYID=null, BYID_A=null, BYID_N=-1;
+const byId=id=>{ const a=S.players; if(a!==BYID_A||a.length!==BYID_N){ BYID=new Map(); for(const p of a) if(p&&!BYID.has(p.id)) BYID.set(p.id,p); BYID_A=a; BYID_N=a.length; }
+  const p=BYID.get(id); if(p&&p.id===id) return p; if(p){ BYID_A=null; return S.players.find(q=>q.id===id); } return undefined; };
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const need=()=>S.mode==='doubles'?4:2;
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.remove('act');t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2200);}
@@ -900,9 +912,10 @@ function nextFix(){
   S.next=S.next.filter(g=>g&&Array.isArray(g.p)&&g.p.length===n);
   S.next.forEach(g=>{ g.p=g.p.map(id=>id&&byId(id)&&S.present[id]&&!S.resting[id]&&oc[id]===undefined&&!dr.has(id)&&!seen.has(id)?(seen.add(id),id):null); });
   S.next=S.next.filter(g=>g.p.some(Boolean));
+  let met=null;
   S.next.forEach(g=>{
     if(!g.p.some(x=>!x)) return;
-    const kept=g.p.filter(Boolean).map(byId), avg=kept.reduce((a,p)=>a+(RATE[p.c]||0),0)/kept.length, met=metMap();
+    const kept=g.p.filter(Boolean).map(byId), avg=kept.reduce((a,p)=>a+(RATE[p.c]||0),0)/kept.length; if(!met) met=metMap();
     let filled=false;
     for(let k=0;k<g.p.length;k++){ if(g.p[k]) continue;
       const best=waiting().filter(p=>S.courts.some(c=>onLv(c,p)))
@@ -982,7 +995,7 @@ function pickGroup(pool,n){
 function pickGroupIn(pool,n){
   // the longest-waiting player who can make a full group is the seed; the others are added one at a time:
   // fewest games, then subscriber priority, then players who have NOT played with the group yet, then closest level, then wait
-  const met=metMap();
+  const met=metMap(), pos=new Map(pool.map((p,i)=>[p,i]));
   for(let s=0;s<pool.length;s++){
     const seed=pool[s];
     let cands=pool.filter((p,i)=>i!==s&&allowed(p.c,seed.c));
@@ -990,8 +1003,8 @@ function pickGroupIn(pool,n){
     const g=[seed];
     while(g.length<n){
       const ids=g.map(p=>p.id);
-      const best=cands.map(p=>({p,score:roundW(p)+(S.prio==='strong'&&isG(p)?100000:0)+metWith(met,p.id,ids)*MET_W+dist(p.c,seed.c)*1000+pool.indexOf(p)}))
-        .sort((a,b)=>a.score-b.score)[0].p;
+      let best=null, bs=Infinity;
+      for(const p of cands){ const sc=roundW(p)+(S.prio==='strong'&&isG(p)?100000:0)+metWith(met,p.id,ids)*MET_W+dist(p.c,seed.c)*1000+pos.get(p); if(sc<bs){ bs=sc; best=p; } }
       g.push(best); cands=cands.filter(p=>p!==best);
     }
     return g;
@@ -1277,7 +1290,8 @@ let payFilter='All', payGone=false;
    f fee, pa paid so far, pc / ps cash / STC Pay part of it, pd 1 when fully paid, sd last payment day, ss session. */
 const PM={cash:'Cash',stc:'STC Pay'};
 const payM=id=>{ const v=S.paid[id]; return !v?'':(v==='stc'?'stc':'cash'); };
-function vPay(){
+function vPay(){ BILLS_IX=billsIndex(); try{ return vPayDraw(); } finally{ BILLS_IX=null; } }
+function vPayDraw(){
   // only players ticked in Attendance; players who played and were then unchecked are hidden unless "Show" is tapped
   const gone=S.players.filter(p=>!S.present[p.id]&&(S.games[p.id]||0)>0&&dayOk(p)), goneDue=gone.reduce((a,p)=>a+fee(p),0), goneUnpaid=gone.filter(p=>leftAmt(p)>0);
   const allRows=S.players.filter(p=>S.present[p.id]||(payGone&&(S.games[p.id]||0)>0)), rows=allRows.filter(dayOk);
@@ -1668,7 +1682,7 @@ function repRange(){ const td=ymd(Date.now());
   if(repMode==='date'){ const f=repFrom||td; return {f,t:f}; }
   if(repMode==='range'){ let f=repFrom||td, t=repTo||td; if(f>t){ const x=f; f=t; t=x; } return {f,t}; }
   return null; }
-const fmtYmd=k=>{const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short',year:'numeric'});};
+const fmtYmd=k=>{const [y,m,d]=k.split('-').map(Number);return fmtDate(new Date(y,m-1,d));};
 function repDesc(){ const rr=repRange(), dc=dayCur();
   return (rr?(rr.f===rr.t?fmtYmd(rr.f):fmtYmd(rr.f)+' → '+fmtYmd(rr.t)):'All dates')+(dc?' · active '+DAY_L[dc]+' players only, '+DAY_L[dc]+'s only':' · all players'); }
 /* Settings → Show day set: only that day's active players and records dated on that weekday. Report dates: only records in that date / range. */
@@ -1783,8 +1797,8 @@ function clearSamples(){
   save(); render(); toast('Sample entries removed');
 }
 function dayKey(t){const d=new Date(t);return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
-function fmtTime(t){try{return new Date(t).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});}catch(e){return '';}}
-function fmtDay(t){try{return new Date(t).toLocaleDateString([], {weekday:'short',day:'numeric',month:'short',year:'numeric'});}catch(e){return '';}}
+function fmtTime(t){try{const d=new Date(t);return DTF.time?DTF.time(d):d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});}catch(e){return '';}}
+function fmtDay(t){try{return fmtDate(new Date(t));}catch(e){return '';}}
 function teamStats(H){
   const st={};
   H.forEach(x=>{ [['a',x.ta],['b',x.tb]].forEach(([s,n])=>{ if(!n) return; const r=st[n]||(st[n]={n,p:0,w:0,l:0}); r.p++; if(x.w===s) r.w++; else if(x.w) r.l++; }); });
@@ -1811,9 +1825,9 @@ function vHist(){
   H=H.slice().reverse();
   let h=tabs+`<div class="chips" style="margin-bottom:12px">${['All'].concat(courtsUsed.map(String)).map(k=>`<button class="chip ${histCourt===k?'on':''}" data-act="h-f" data-k="${k}">${k==='All'?'All courts':'Court '+k}</button>`).join('')}</div>`;
   if(!H.length) return h+`<div class="card emptybox"><b>No matches yet</b>Finished games show up here with the court and the winning team.</div>`;
-  let lastDay='';
+  let lastDay=''; const perDay=new Map(); S.hist.forEach(y=>{ const k=dayKey(y.d); perDay.set(k,(perDay.get(k)||0)+1); });
   H.forEach((x,idx)=>{
-    const dk=dayKey(x.d); if(dk!==lastDay){lastDay=dk; h+=`<h2 style="margin-top:${idx?18:4}px">${fmtDay(x.d)} <small>${S.hist.filter(y=>dayKey(y.d)===dk).length} matches</small></h2>`;}
+    const dk=dayKey(x.d); if(dk!==lastDay){lastDay=dk; h+=`<h2 style="margin-top:${idx?18:4}px">${fmtDay(x.d)} <small>${perDay.get(dk)||0} matches</small></h2>`;}
     const mins=Math.max(1,Math.round((x.d-x.s)/60000));
     const team=(ids,ns,won,tn)=>`<div class="ht ${won?'won':''}">${won?'<span class="trophy">🏆 Winner</span>':''}${tn?`<div class="htn">${esc(tn)}</div>`:''}${ids.map((id,j)=>{const p=byId(id);return `<div class="tm">${p?catBadge(p.c):''}<span>${esc(p?p.n:ns[j])}</span>${p?typeBadge(p):''}</div>`}).join('')}</div>`;
     h+=`<div class="card hcard"><div class="hh"><b>Court ${x.c}</b><span>${fmtTime(x.d)} · ${mins} min</span></div>
@@ -2440,11 +2454,16 @@ async function importFile(f){
   }catch(err){ toast('Could not read that file — try saving it as .xlsx or .csv'); }
   const fi=document.getElementById('file-in'); if(fi) fi.value='';
 }
+/* typing in a search box: one redraw per screen frame (fast typing on a big list no longer redraws for every key) */
+let searchRaf=0, searchId='';
+function searchRender(id){ searchId=id; if(searchRaf) return; searchRaf=requestAnimationFrame(()=>{ searchRaf=0;
+  const o=document.getElementById(searchId), pos=o?o.selectionStart:null; render();
+  const i=document.getElementById(searchId); if(i){ i.focus(); if(pos!=null) try{ i.setSelectionRange(pos,pos); }catch(_){} } }); }
 document.addEventListener('input',e=>{
   if(e.target.id==='sh-s'){ shFilter(e.target.value); return; }
-  if(e.target.id==='ci-s'){ ciSearch=e.target.value; const pos=e.target.selectionStart; render(); const i=$('#ci-s'); i.focus(); try{i.setSelectionRange(pos,pos);}catch(_){} }
-  if(e.target.id==='wq-s'){ wqSearch=e.target.value; const pos=e.target.selectionStart; render(); const i=$('#wq-s'); if(i){ i.focus(); try{i.setSelectionRange(pos,pos);}catch(_){} } }
-  if(e.target.id==='pl-s'){ plSearch=e.target.value; const pos=e.target.selectionStart; render(); const i=$('#pl-s'); i.focus(); try{i.setSelectionRange(pos,pos);}catch(_){} }
+  if(e.target.id==='ci-s'){ ciSearch=e.target.value; searchRender('ci-s'); }
+  if(e.target.id==='wq-s'){ wqSearch=e.target.value; searchRender('wq-s'); }
+  if(e.target.id==='pl-s'){ plSearch=e.target.value; searchRender('pl-s'); }
 });
 document.addEventListener('submit',e=>{
   e.preventDefault();
