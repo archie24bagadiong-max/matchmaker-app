@@ -690,7 +690,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=77;
+const APP_VERSION=78;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -902,11 +902,11 @@ function nextFix(){
   S.next=S.next.filter(g=>g.p.some(Boolean));
   S.next.forEach(g=>{
     if(!g.p.some(x=>!x)) return;
-    const kept=g.p.filter(Boolean).map(byId), avg=kept.reduce((a,p)=>a+(RATE[p.c]||0),0)/kept.length;
+    const kept=g.p.filter(Boolean).map(byId), avg=kept.reduce((a,p)=>a+(RATE[p.c]||0),0)/kept.length, met=metMap();
     let filled=false;
     for(let k=0;k<g.p.length;k++){ if(g.p[k]) continue;
       const best=waiting().filter(p=>S.courts.some(c=>onLv(c,p)))
-        .map((p,j)=>({p,score:roundW(p)+(S.prio==='strong'&&isG(p)?100000:0)+Math.abs((RATE[p.c]||0)-avg)*1000+j})).sort((a,b)=>a.score-b.score)[0];
+        .map((p,j)=>({p,score:roundW(p)+(S.prio==='strong'&&isG(p)?100000:0)+metWith(met,p.id,g.p.filter(Boolean))*MET_W+Math.abs((RATE[p.c]||0)-avg)*1000+j})).sort((a,b)=>a.score-b.score)[0];
       if(best){ g.p[k]=best.p.id; filled=true; } }
     if(filled&&n===4&&g.p.every(Boolean)) g.p=arrange(g.p);
   });
@@ -958,6 +958,17 @@ function allowed(a,b){ const d=Math.abs(GROUPS.indexOf(grp(a))-GROUPS.indexOf(gr
 /* ---------- matching ---------- */
 /* Equal rounds: weight that makes fewer games always win over level/guest preferences */
 const roundW=p=>S.rounds?(S.games[p.id]||0)*1e7:0;
+/* No repeats: how often two players have already been in the same game this session (partners or opponents),
+   counting finished matches and games on court now. Weighs more than one level step, less than rounds / guest priority. */
+const MET_W=1500, PARTNER_W=15;
+function metMap(){
+  const since=S.sess||new Date(new Date().setHours(0,0,0,0)).getTime(), m=new Map();
+  const add=ids=>{ const v=ids.filter(Boolean); for(let i=0;i<v.length;i++) for(let j=i+1;j<v.length;j++){ const k=pkey(v[i],v[j]); m.set(k,(m.get(k)||0)+1); } };
+  (S.hist||[]).forEach(x=>{ if(x&&(x.d||0)>=since) add((x.a||[]).concat(x.b||[])); });
+  S.courts.forEach(c=>{ if(c.p&&c.p.length) add(c.p); });
+  return m;
+}
+const metWith=(m,id,ids)=>ids.reduce((a,x)=>a+(m.get(pkey(id,x))||0),0);
 function pickGroup(pool,n){
   if(S.rounds){
     // nobody plays game N+1 while someone waiting has fewer: try only the lowest round first, and let in the
@@ -969,13 +980,21 @@ function pickGroup(pool,n){
   return pickGroupIn(pool,n);
 }
 function pickGroupIn(pool,n){
-  // the longest-waiting player who can make a full group is the seed; others chosen around them
+  // the longest-waiting player who can make a full group is the seed; the others are added one at a time:
+  // fewest games, then subscriber priority, then players who have NOT played with the group yet, then closest level, then wait
+  const met=metMap();
   for(let s=0;s<pool.length;s++){
     const seed=pool[s];
-    const cands=pool.filter((p,i)=>i!==s&&allowed(p.c,seed.c))
-      .map(p=>({p,score:roundW(p)+(S.prio==='strong'&&isG(p)?100000:0)+dist(p.c,seed.c)*1000+pool.indexOf(p)}))
-      .sort((a,b)=>a.score-b.score).map(x=>x.p);
-    if(cands.length>=n-1) return [seed].concat(cands.slice(0,n-1));
+    let cands=pool.filter((p,i)=>i!==s&&allowed(p.c,seed.c));
+    if(cands.length<n-1) continue;
+    const g=[seed];
+    while(g.length<n){
+      const ids=g.map(p=>p.id);
+      const best=cands.map(p=>({p,score:roundW(p)+(S.prio==='strong'&&isG(p)?100000:0)+metWith(met,p.id,ids)*MET_W+dist(p.c,seed.c)*1000+pool.indexOf(p)}))
+        .sort((a,b)=>a.score-b.score)[0].p;
+      g.push(best); cands=cands.filter(p=>p!==best);
+    }
+    return g;
   }
   return null;
 }
@@ -986,8 +1005,9 @@ function arrange(ids){
   for(const o of opts){
     const P=o.map(i=>ids[i]); const r=id=>RATE[byId(id).c];
     const diff=Math.abs(r(P[0])+r(P[1])-r(P[2])-r(P[3]));
+    // a partner from earlier this session costs more than one level step of imbalance
     const rep=(S.partners[pkey(P[0],P[1])]||0)+(S.partners[pkey(P[2],P[3])]||0);
-    const cost=diff*10+rep;
+    const cost=diff*10+rep*PARTNER_W;
     if(cost<bc){bc=cost;best=P;}
   }
   // inside each team, the higher level goes in box 1 (teams stay the same)
@@ -1579,6 +1599,7 @@ function vHelp(){
     <li><b>Game done</b> puts Next 1 straight on that court. Wrong? Tap <b>Undo</b> on the message (8 seconds). A game only goes on a court whose levels fit; <b>Fill empty courts</b> uses planned games first.${shot('tab-next','Next games under the courts, and the message after Game done with Undo')}</li>
     <li><b>Replace a planned player:</b> tap their name → search or sort the waiting players → tap who plays instead. Or tap someone under <b>Swap with another planned game</b>. Rest and Went home are there too; a gap fills by itself with the closest-level waiting player.${shot('tab-nextpl','Replace sheet: search, waiting players, swap with another planned game')}</li>
     <li><b>↑</b> moves a game up, <b>Reshuffle</b> picks new players, <b>✕</b> sends them back to the queue.</li>
+    <li><b>No repeats:</b> Auto match, Plan next game, Fill empty courts and Reshuffle avoid putting players together again who already played in the same game this session, and avoid repeating partners. When a level has only a few players (or Mixing is <b>Same only</b>) some repeats can't be avoided.</li>
     <li><b>Change the teams:</b> drag a player onto another player on the same court to swap them — across the net that changes the teams. Laptop: drag with the mouse. Tablet / phone: press and hold a moment, then drag (a quick swipe still scrolls, a tap still opens the player). Works until the first point is scored, and inside planned games too.${shot('tab-drag','Dragging Carl onto Sara S to change the teams on Court 1')}</li></ol>`)}
   ${sec('score','5. Keeping score',`<ol>
     <li>After the toss, tap <b>Serves first</b>. Use <b>⇄ Swap</b> so names match where players stand (only at 0–0).</li>
