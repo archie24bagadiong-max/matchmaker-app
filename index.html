@@ -690,7 +690,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=78;
+const APP_VERSION=79;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1624,7 +1624,7 @@ function vHelp(){
     <li>Settings → <b>Start new session</b> (tap twice). Players, photos and history stay.</li></ol>`)}
   ${sec('tasks','8. Quick answers',`<table class="htbl">
     <tr><td>Add a player or guest</td><td>Players → name, level, type → Add</td></tr>
-    <tr><td>Change level or player type</td><td>Players → level dropdown / tap the type button (Subscriber → Family → Member Guest → Non-Member Guest)</td></tr>
+    <tr><td>Change level or player type</td><td>Players → level dropdown (or Edit → Level) / tap the type button (Subscriber → Family → Member Guest → Non-Member Guest)</td></tr>
     <tr><td>Add a photo</td><td>Tap the name → Take photo</td></tr>
     <tr><td>Give a player a team</td><td>Players → Edit → Team (or a Team column in Excel)</td></tr>
     <tr><td>Team results</td><td>History → Teams</td></tr>
@@ -2033,7 +2033,7 @@ function sheetRename(id){
   const p=byId(id);
   const L=t=>`<label style="font-weight:600;font-size:14px">${t}</label>`;
   openSheet(`<h3>Edit player</h3>${photoActs(id)}<form id="renf" data-id="${id}" class="acts">${L('Name (shown on courts)')}<input type="text" id="ren-n" maxlength="40" value="${esc(p.n)}">${L('Full name')}<input type="text" id="ren-fn" maxlength="80" placeholder="Optional" value="${esc(p.fn||'')}">
-  <div class="row"><div style="flex:1;min-width:110px">${L('Gender')}<select id="ren-g"><option value="">—</option><option value="M" ${p.g==='M'?'selected':''}>Male</option><option value="F" ${p.g==='F'?'selected':''}>Female</option></select></div>
+  <div class="row"><div style="flex:1;min-width:90px">${L('Level')}<select id="ren-c">${CATS.map(k=>`<option ${k===p.c?'selected':''}>${k}</option>`).join('')}</select></div><div style="flex:1;min-width:110px">${L('Gender')}<select id="ren-g"><option value="">—</option><option value="M" ${p.g==='M'?'selected':''}>Male</option><option value="F" ${p.g==='F'?'selected':''}>Female</option></select></div>
   <div style="flex:1;min-width:110px">${L('Active')}<select id="ren-st"><option value="">—</option>${STATUS.map(s=>`<option value="${s}" ${p.st===s?'selected':''}>${STATUS_L[s]}</option>`).join('')}</select></div></div>${L('Playing days')}<div class="daypick">${DAYS.map(d=>`<label><input type="checkbox" id="ren-dy-${d}" ${(p.dy||[]).includes(d)?'checked':''}><span>${d}</span></label>`).join('')}</div><label style="font-weight:600;font-size:14px">Team</label><input type="text" id="ren-tm" list="teamlist" maxlength="40" placeholder="No team" value="${esc(p.tm||'')}">${teamDatalist()}<button class="btn pri">Save</button></form>`);
   setTimeout(()=>{const i=$('#ren-n');i&&i.focus();},250);
 }
@@ -2451,7 +2451,7 @@ document.addEventListener('submit',e=>{
   if(e.target.id==='teamf'&&!IS_DISPLAY){ const v=(($('#team-n')||{}).value||'').trim().slice(0,40); if(!v) return; if(!(S.teams||[]).some(x=>x.toLowerCase()===v.toLowerCase())){ S.teams=(S.teams||[]).concat(v); save(); toast('Team added: '+v); } else toast('Already saved'); render(); setTimeout(()=>{const i=$('#team-n');i&&i.focus();},0); return; }
   if(IS_DISPLAY){ toast('Display tablet — make changes on the Main tablet'); return; }
   if(e.target.id==='addf'){ const n=$('#add-n').value.trim(); if(!n) return; S.players.push({id:uid(),n:n.slice(0,40),c:$('#add-c').value,t:$('#add-t').value,g:(($('#add-g')||{}).value||''),fn:'',st:TYPE_STATUS[$('#add-t').value]||'',tm:($('#add-tm').value||'').trim().slice(0,40)}); save(); render(); toast('Added '+n); setTimeout(()=>{const i=$('#add-n');i&&i.focus();},0); }
-  if(e.target.id==='renf'){ const p=byId(e.target.dataset.id); const n=$('#ren-n').value.trim(); if(p&&n){p.n=n.slice(0,40); p.tm=(($('#ren-tm')||{}).value||'').trim().slice(0,40); p.fn=(($('#ren-fn')||{}).value||'').trim().slice(0,80); p.g=(($('#ren-g')||{}).value||''); p.st=(($('#ren-st')||{}).value||''); if(STATUS_TYPE[p.st]) p.t=STATUS_TYPE[p.st]; p.dy=DAYS.filter(d=>{const x=$('#ren-dy-'+d);return x&&x.checked;}); save();} closeSheet(); render(); }
+  if(e.target.id==='renf'){ const p=byId(e.target.dataset.id); const n=$('#ren-n').value.trim(); if(p&&n){p.n=n.slice(0,40); p.tm=(($('#ren-tm')||{}).value||'').trim().slice(0,40); p.fn=(($('#ren-fn')||{}).value||'').trim().slice(0,80); p.g=(($('#ren-g')||{}).value||''); { const c=(($('#ren-c')||{}).value||''); if(CATS.includes(c)) p.c=c; } p.st=(($('#ren-st')||{}).value||''); if(STATUS_TYPE[p.st]) p.t=STATUS_TYPE[p.st]; p.dy=DAYS.filter(d=>{const x=$('#ren-dy-'+d);return x&&x.checked;}); save();} closeSheet(); render(); }
 });
 setInterval(()=>{document.querySelectorAll('[data-t]').forEach(el=>{el.textContent=elapsed(+el.dataset.t);});},30000);
 /* ---------- app updates (Android app only) ---------- */
