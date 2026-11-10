@@ -630,7 +630,11 @@ const normLv=c=>CATS.includes(c)?c:(GROUPS.includes(c)?c+'+':DEF_LV);
    Fee = type fee (Subscriber / Family 0, Member Guest S.fee.mg, Non-Member Guest S.fee.gp) + shuttles (games played × S.fee.sp).
    Member Guests rank with Subscribers on courts; only Non-Member Guests get guest priority and the guests' queue column.
    status (club roster "Active" column): Reg, A-SUB, No (= inactive, hidden from Attendance). Gender: M / F. */
-const STATUS=['Reg','A-SUB','No'];
+const STATUS=['Reg','A-SUB','Member-Guest','Non-Member','No'];
+const STATUS_L={Reg:'Reg','A-SUB':'Member-SUB (A-SUB)','Member-Guest':'Member-Guest','Non-Member':'Non-Member',No:'No (inactive)'};
+/* member status ↔ payment term: Member-SUB pays as a Subscriber, Member-Guest as a Member Guest, Non-Member as a Non-Member Guest */
+const STATUS_TYPE={'A-SUB':'S','Member-Guest':'MG','Non-Member':'G'};
+const TYPE_STATUS={S:'A-SUB',MG:'Member-Guest',G:'Non-Member'};
 /* ---- money: part payments and balances (see Payments) ---- */
 const r2=v=>Math.round(v*100)/100;
 const partSum=id=>{ const x=S.part&&S.part[id]; return x?(+x.cash||0)+(+x.stc||0):0; };
@@ -684,9 +688,9 @@ const isOff=p=>p.st==='No';
 const TYPE_RX=/^(guest|g|sub|subscriber|member|family|mg|nmg|mem(ber)?[\s.-]*guest|non[\s.-]*mem(ber)?([\s.-]*guest)?|nm[\s.-]*guest)$/i;
 const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
-const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/\s+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^A-?SUB/.test(s)?'A-SUB':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
+const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=75;
+const APP_VERSION=76;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -853,7 +857,7 @@ const teamMatch=(p,f)=>!f||(f==='__none'?!p.tm:p.tm===f);
 function catBadge(c){return `<span class="cat c${grp(c)}">${esc(c)}</span>`;}
 function typeBadge(p){const t=TYPES.includes(p.t)?p.t:'S';return `<span class="gb ${t==='S'?'sb':t==='F'?'fm':t==='MG'?'mg':''}" title="${TYPE_L[t]}">${TYPE_B[t]}</span>`;}
 function gBadge(p){return p&&p.g?`<span class="gnd g${p.g}" title="${p.g==='M'?'Male':'Female'}">${p.g==='M'?'♂':'♀'}</span>`:'';}
-function stBadge(p){return p&&p.st?`<span class="stb ${p.st==='No'?'off':''}">${p.st==='No'?'Inactive':esc(p.st)}</span>`:'';}
+function stBadge(p){return p&&p.st?`<span class="stb ${p.st==='No'?'off':''}">${p.st==='No'?'Inactive':esc(p.st==='A-SUB'?'Member-SUB':p.st)}</span>`:'';}
 function isG(p){return p.t==='G'?1:0;}
 function prioritySort(list){
   const g=(a,b)=>S.prio==='none'?0:isG(a)-isG(b);
@@ -1226,7 +1230,7 @@ function vPlayers(){
   <h2>Import from Excel / CSV</h2>
   <div class="card">
     <div class="filebtn btn pri">Choose file (.xlsx, .xls, .csv)<input type="file" id="file-in" accept=".xlsx,.xls,.csv,.ods,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" aria-label="Choose Excel or CSV file"></div>
-    <p class="hint">If the file picker doesn't open on your phone, open the sheet in Excel, select the Name and Level columns, copy, and paste into “Add many at once” below.<br>Uses the first sheet. Put names in one column and the level (A+, A-, B+, B-, C+, C-, D+, D-) in another — headers like <b>Name</b> and <b>Level</b> (or Category / Skill / Grade) are detected automatically. Without headers: column 1 = name, column 2 = level. A type column with <b>Subscriber</b> (or Member), <b>Family</b>, <b>Member Guest</b> or <b>Non-Member Guest</b> (plain Guest = Non-Member Guest; blank = Subscriber), an <b>Active</b> column (Reg, A-SUB, No = inactive), <b>Gender</b>, <b>Full Name</b> and <b>Days</b> (e.g. Monday · Mon, Wed · Mon-Fri · Weekend · Daily) are also read — the club's roster sheet works as it is. Players already in the roster get updated instead of being added twice.</p>
+    <p class="hint">If the file picker doesn't open on your phone, open the sheet in Excel, select the Name and Level columns, copy, and paste into “Add many at once” below.<br>Uses the first sheet. Put names in one column and the level (A+, A-, B+, B-, C+, C-, D+, D-) in another — headers like <b>Name</b> and <b>Level</b> (or Category / Skill / Grade) are detected automatically. Without headers: column 1 = name, column 2 = level. A type column with <b>Subscriber</b> (or Member), <b>Family</b>, <b>Member Guest</b> or <b>Non-Member Guest</b> (plain Guest = Non-Member Guest; blank = Subscriber), an <b>Active</b> column (Reg, Member-SUB / A-SUB, Member-Guest, Non-Member, No = inactive; a member status also sets the fee when there is no Type), <b>Gender</b>, <b>Full Name</b> and <b>Days</b> (e.g. Monday · Mon, Wed · Mon-Fri · Weekend · Daily) are also read — the club's roster sheet works as it is. Players already in the roster get updated instead of being added twice.</p>
   </div>
   <h2>Add many at once</h2>
   <div class="card">
@@ -1543,7 +1547,7 @@ function vHelp(){
     <p class="hint">Website: archie24bagadiong-max.github.io/matchmaker-app · QR code &amp; APK: …/qr.html. Each device keeps its own data.</p>`)}
   ${sec('first','1. First time setup',`<ol>
     <li>Install the app (see 0). A newer version updates by itself and keeps your data — don't uninstall.</li>
-    <li>Put your players in the Excel template (Players sheet: <b>Name</b>, <b>Level</b> A+ to D-, <b>Type</b> Subscriber / Family / Member Guest / Non-Member Guest, optional <b>Active</b> (Reg, A-SUB, No), <b>Gender</b>, <b>Full Name</b>, <b>Days</b> (Monday, Mon, Wed, Mon-Fri, Weekend, Daily) and <b>Team</b>; a <b>Teams</b> sheet adds custom team names).</li>
+    <li>Put your players in the Excel template (Players sheet: <b>Name</b>, <b>Level</b> A+ to D-, <b>Type</b> Subscriber / Family / Member Guest / Non-Member Guest, optional <b>Active</b> (Reg, Member-SUB / A-SUB, Member-Guest, Non-Member, No), <b>Gender</b>, <b>Full Name</b>, <b>Days</b> (Monday, Mon, Wed, Mon-Fri, Weekend, Daily) and <b>Team</b>; a <b>Teams</b> sheet adds custom team names).</li>
     <li>Copy the file to the Main tablet, then <b>Players → Choose file</b>.</li>
     <li>Check <b>Settings</b>: number of courts, Doubles, skill mixing, subscriber priority and fees.${shot('tab-rounds','Settings: Equal rounds, fees and Start new session')}</li>
     <li>Optional: tap a player's name → <b>📷 Take photo</b>.</li></ol>`)}
@@ -1587,6 +1591,7 @@ function vHelp(){
     <li><b>Subscriber</b> (and <b>Family</b>): 0 SR fee + shuttles.</li>
     <li><b>Member Guest:</b> 20 SR fee + shuttles.</li>
     <li><b>Non-Member Guest:</b> 25 SR fee + shuttles.</li>
+    <li><b>Members</b> (Players → Edit → Active): <b>Member-SUB (A-SUB)</b> pays as a Subscriber, <b>Member-Guest</b> as a Member Guest, <b>Non-Member</b> as a Non-Member Guest. Choosing one sets the fee.</li>
     <li><b>Shuttles</b> = the number of games played × 2.50 SR. Example: a Member Guest who plays 4 games pays 20 + 4 × 2.50 = 30 SR. Nobody owes anything until they play.</li>
     <li>Fees update automatically as games are played. Change prices in Settings → Fees.</li>
     <li><b>Copy summary</b> on Payments gives a list to paste in WhatsApp.${shot('tab-pay','Payments: total due and collected (Cash / STC Pay), fee per player')}</li></ul>`)}
@@ -2006,7 +2011,7 @@ function sheetRename(id){
   const L=t=>`<label style="font-weight:600;font-size:14px">${t}</label>`;
   openSheet(`<h3>Edit player</h3>${photoActs(id)}<form id="renf" data-id="${id}" class="acts">${L('Name (shown on courts)')}<input type="text" id="ren-n" maxlength="40" value="${esc(p.n)}">${L('Full name')}<input type="text" id="ren-fn" maxlength="80" placeholder="Optional" value="${esc(p.fn||'')}">
   <div class="row"><div style="flex:1;min-width:110px">${L('Gender')}<select id="ren-g"><option value="">—</option><option value="M" ${p.g==='M'?'selected':''}>Male</option><option value="F" ${p.g==='F'?'selected':''}>Female</option></select></div>
-  <div style="flex:1;min-width:110px">${L('Active')}<select id="ren-st"><option value="">—</option>${STATUS.map(s=>`<option value="${s}" ${p.st===s?'selected':''}>${s==='No'?'No (inactive)':s}</option>`).join('')}</select></div></div>${L('Playing days')}<div class="daypick">${DAYS.map(d=>`<label><input type="checkbox" id="ren-dy-${d}" ${(p.dy||[]).includes(d)?'checked':''}><span>${d}</span></label>`).join('')}</div><label style="font-weight:600;font-size:14px">Team</label><input type="text" id="ren-tm" list="teamlist" maxlength="40" placeholder="No team" value="${esc(p.tm||'')}">${teamDatalist()}<button class="btn pri">Save</button></form>`);
+  <div style="flex:1;min-width:110px">${L('Active')}<select id="ren-st"><option value="">—</option>${STATUS.map(s=>`<option value="${s}" ${p.st===s?'selected':''}>${STATUS_L[s]}</option>`).join('')}</select></div></div>${L('Playing days')}<div class="daypick">${DAYS.map(d=>`<label><input type="checkbox" id="ren-dy-${d}" ${(p.dy||[]).includes(d)?'checked':''}><span>${d}</span></label>`).join('')}</div><label style="font-weight:600;font-size:14px">Team</label><input type="text" id="ren-tm" list="teamlist" maxlength="40" placeholder="No team" value="${esc(p.tm||'')}">${teamDatalist()}<button class="btn pri">Save</button></form>`);
   setTimeout(()=>{const i=$('#ren-n');i&&i.focus();},250);
 }
 
@@ -2165,7 +2170,7 @@ document.addEventListener('click',e=>{
         if(parts.length===1){ const m=line.match(/^(.*?)[\s(]+([ABCD]\s*[+\-−–]?)\)?$/i); if(m&&m[1].trim()){name=m[1].trim();c=parseCat(m[2])||DEF_LV;} }
         const ex=S.players.find(p=>p.n.toLowerCase()===name.toLowerCase());
         if(ex){ ex.c=c; ex.t=t; if(tm) ex.tm=tm; if(g) ex.g=g; if(dy.length) ex.dy=dy; n++; return; }
-        S.players.push({id:uid(),n:name.slice(0,40),c,t,tm,g,fn:'',st:'',dy}); n++; });
+        S.players.push({id:uid(),n:name.slice(0,40),c,t,tm,g,fn:'',st:TYPE_STATUS[t]||'',dy}); n++; });
       save(); render(); toast(`Added ${n} player${n===1?'':'s'}`); break;}
     case 'sample': addSamples(); break;
     case 'demo-clear':
@@ -2253,7 +2258,7 @@ document.addEventListener('click',e=>{
     case 'upd-check': toast('Checking…'); checkUpdate(true); break;
     case 'upd-go': doUpdate(); break;
     case 'upd-app': updateApp(); break;
-    case 'settype':{ const p=byId(id); if(p){p.t=TYPES[(TYPES.indexOf(p.t)+1)%TYPES.length]||'S'; save(); render();} break;}
+    case 'settype':{ const p=byId(id); if(p){p.t=TYPES[(TYPES.indexOf(p.t)+1)%TYPES.length]||'S'; if(!p.st||STATUS_TYPE[p.st]) p.st=TYPE_STATUS[p.t]||''; save(); render();} break;}
     case 'prio': S.prio=k; save(); render(); break;
     case 'rounds': S.rounds=k==='1'; save(); render(); break;
     case 'pay-f': payFilter=k; render(); break;
@@ -2367,7 +2372,7 @@ function importRows(rows){
     for(let c=0;c<w;c++){ if(skip.includes(c)) continue; const n=body.filter(r=>r[c]&&fn(r[c])).length; if(n>bs&&n>=body.length*0.6){bs=n;best=c;} } return best; };
   const used=()=>[nameCol,catCol,ti,ai,gi,fni,tmi,dyi].filter(x=>x>=0);
   if(ti<0) ti=byVals(v=>TYPE_RX.test(v.trim()),used());
-  if(ai<0) ai=byVals(v=>!!parseStatus(v)&&/^(reg|a-?\s*sub|no)$/i.test(v.trim()),used());
+  if(ai<0) ai=byVals(v=>!!parseStatus(v)&&/^(reg|a-?\s*sub|no|member[\s-]*sub.*|member[\s-]*guest|non[\s-]*member)$/i.test(v.trim()),used());
   if(gi<0) gi=byVals(v=>/^(male|female)$/i.test(v.trim()),used());
   if(dyi<0) dyi=byVals(v=>isDaysText(v),used());
   if(catCol<0){ // guess: the column whose values are mostly A-D
@@ -2380,14 +2385,14 @@ function importRows(rows){
   rows.slice(start).forEach(r=>{
     const name=(r[nameCol]||'').slice(0,40); if(!name) return;
     let c=catCol>=0?parseCat(r[catCol]):null; if(!c){c=DEF_LV;noCat++;}
-    const t=ti>=0?parseType(r[ti]):null;
     const st=ai>=0?parseStatus(r[ai]):null, g=gi>=0?parseGender(r[gi]):null;
+    const t=(ti>=0?parseType(r[ti]):null)||STATUS_TYPE[st]||null;
     let fn=fni>=0?String(r[fni]||'').trim().slice(0,80):''; if(/^\[?blank\]?$/i.test(fn)) fn='';
     const ex=idx[name.toLowerCase()];
     const tm=tmi>=0?String(r[tmi]||'').trim().slice(0,40):null;
     const dy=dyi>=0?parseDays(r[dyi]):[];
     if(ex){ let ch=false; const set=(k,v)=>{ if(v&&ex[k]!==v){ ex[k]=v; ch=true; } }; set('c',c); set('t',t); set('st',st); set('g',g); set('fn',fn); if(tm!==null) set('tm',tm); if(dy.length&&dy.join()!==(ex.dy||[]).join()){ ex.dy=dy; ch=true; } if(ch) updated++; }
-    else { const p={id:uid(),n:name,c,t:t||'S',tm:tm||'',fn,g:g||'',st:st||'',dy}; S.players.push(p); idx[name.toLowerCase()]=p; added++; }
+    else { const p={id:uid(),n:name,c,t:t||'S',tm:tm||'',fn,g:g||'',st:st||TYPE_STATUS[t||'S']||'',dy}; S.players.push(p); idx[name.toLowerCase()]=p; added++; }
   });
   save(); render();
   const off=S.players.filter(isOff).length;
@@ -2422,8 +2427,8 @@ document.addEventListener('submit',e=>{
   e.preventDefault();
   if(e.target.id==='teamf'&&!IS_DISPLAY){ const v=(($('#team-n')||{}).value||'').trim().slice(0,40); if(!v) return; if(!(S.teams||[]).some(x=>x.toLowerCase()===v.toLowerCase())){ S.teams=(S.teams||[]).concat(v); save(); toast('Team added: '+v); } else toast('Already saved'); render(); setTimeout(()=>{const i=$('#team-n');i&&i.focus();},0); return; }
   if(IS_DISPLAY){ toast('Display tablet — make changes on the Main tablet'); return; }
-  if(e.target.id==='addf'){ const n=$('#add-n').value.trim(); if(!n) return; S.players.push({id:uid(),n:n.slice(0,40),c:$('#add-c').value,t:$('#add-t').value,g:(($('#add-g')||{}).value||''),fn:'',st:'',tm:($('#add-tm').value||'').trim().slice(0,40)}); save(); render(); toast('Added '+n); setTimeout(()=>{const i=$('#add-n');i&&i.focus();},0); }
-  if(e.target.id==='renf'){ const p=byId(e.target.dataset.id); const n=$('#ren-n').value.trim(); if(p&&n){p.n=n.slice(0,40); p.tm=(($('#ren-tm')||{}).value||'').trim().slice(0,40); p.fn=(($('#ren-fn')||{}).value||'').trim().slice(0,80); p.g=(($('#ren-g')||{}).value||''); p.st=(($('#ren-st')||{}).value||''); p.dy=DAYS.filter(d=>{const x=$('#ren-dy-'+d);return x&&x.checked;}); save();} closeSheet(); render(); }
+  if(e.target.id==='addf'){ const n=$('#add-n').value.trim(); if(!n) return; S.players.push({id:uid(),n:n.slice(0,40),c:$('#add-c').value,t:$('#add-t').value,g:(($('#add-g')||{}).value||''),fn:'',st:TYPE_STATUS[$('#add-t').value]||'',tm:($('#add-tm').value||'').trim().slice(0,40)}); save(); render(); toast('Added '+n); setTimeout(()=>{const i=$('#add-n');i&&i.focus();},0); }
+  if(e.target.id==='renf'){ const p=byId(e.target.dataset.id); const n=$('#ren-n').value.trim(); if(p&&n){p.n=n.slice(0,40); p.tm=(($('#ren-tm')||{}).value||'').trim().slice(0,40); p.fn=(($('#ren-fn')||{}).value||'').trim().slice(0,80); p.g=(($('#ren-g')||{}).value||''); p.st=(($('#ren-st')||{}).value||''); if(STATUS_TYPE[p.st]) p.t=STATUS_TYPE[p.st]; p.dy=DAYS.filter(d=>{const x=$('#ren-dy-'+d);return x&&x.checked;}); save();} closeSheet(); render(); }
 });
 setInterval(()=>{document.querySelectorAll('[data-t]').forEach(el=>{el.textContent=elapsed(+el.dataset.t);});},30000);
 /* ---------- app updates (Android app only) ---------- */
