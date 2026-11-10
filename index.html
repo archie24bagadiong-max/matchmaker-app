@@ -703,7 +703,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=81;
+const APP_VERSION=82;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -734,7 +734,7 @@ const CLIENT=Math.random().toString(36).slice(2);
 function fresh(){
   return {players:[],present:{},resting:{},games:{},lastEnd:{},partners:{},
     courts:[0,1,2].map(()=>({lv:GROUPS.slice(),p:[],t:0})),next:[],
-    mode:'doubles',mix:'adjacent',autoNext:true,prio:'strong',rounds:true,paid:{},part:{},sess:0,hist:[],ledger:[],log:[],teams:[],match:{n:3,pts:21,mode:'best'},fee:{gp:25,mg:20,sp:2.5},dayView:'Today'};
+    mode:'doubles',mix:'adjacent',autoNext:true,prio:'strong',rounds:true,paid:{},part:{},sess:0,hist:[],ledger:[],log:[],teams:[],match:{n:3,pts:21,mode:'best'},fee:{gp:25,mg:20,sp:2.5},dayView:'Today',hideOff:true};
 }
 /* activity log: every check-in, payment and session change, with time */
 function logEv(k,o){ if(IS_DISPLAY||IS_COURT) return; if(!Array.isArray(S.log)) S.log=[]; S.log.push(Object.assign({d:Date.now(),k},o||{})); if(S.log.length>6000) S.log=S.log.slice(-6000); }
@@ -766,6 +766,7 @@ function normalize(s){
   s.match={n:[1,2,3,4,5].includes(+mf.n)?+mf.n:3, pts:[11,15,21,35].includes(+mf.pts)?+mf.pts:21, mode:mf.mode==='all'?'all':'best'};
   if(!['strong','tie','none'].includes(s.prio)) s.prio='strong';
   if(!['All','Today'].concat(DAYS).includes(s.dayView)) s.dayView='Today';
+  s.hideOff=s.hideOff!==false;
   if(typeof s.paid!=='object'||!s.paid||Array.isArray(s.paid)) s.paid={};
   const f=(s.fee&&typeof s.fee==='object')?s.fee:{};
   const fv=(k,d)=>f[k]!==undefined&&f[k]!==null&&f[k]!==''&&isFinite(+f[k])&&+f[k]>=0?+f[k]:d;
@@ -777,7 +778,7 @@ function normalize(s){
 let S=fresh();
 try{ const raw=localStorage.getItem(LS_KEY); if(raw) S=normalize(JSON.parse(raw)); }catch(e){}
 
-let tab='courts', ciFilter='All', ciSearch='', wqSearch='', plSearch='', plFilter='All', confirmKey=null, plTeam='', ciTeam='', ciInactive=false;
+let tab='courts', ciFilter='All', ciSearch='', wqSearch='', plSearch='', plFilter='All', confirmKey=null, plTeam='', ciTeam='';
 
 /* ---------- persistence ---------- */
 let dbRef=null, writing=false, dirty=false, saveTimer=null, lastTs=0;
@@ -1241,7 +1242,7 @@ function vCheckin(){
   if(!S.players.length) return `<div class="card emptybox"><b>No players yet</b>Add your roster first.<div style="margin-top:12px"><button class="btn pri" data-act="go" data-tab="players">Add players</button></div></div>`;
   const counts=CATS.map(k=>`<div class="stat"><b>${S.players.filter(p=>p.c===k&&S.present[p.id]).length}</b><span>${k} present</span></div>`).join('');
   const offN=S.players.filter(p=>isOff(p)&&!S.present[p.id]).length;
-  let list=S.players.filter(p=>dayOk(p)&&(ciFilter==='All'||p.c===ciFilter)&&teamMatch(p,ciTeam)&&(ciInactive||!isOff(p)||S.present[p.id])&&(!ciSearch||(p.n+' '+(p.fn||'')).toLowerCase().includes(ciSearch.toLowerCase())));
+  let list=S.players.filter(p=>dayOk(p)&&(ciFilter==='All'||p.c===ciFilter)&&teamMatch(p,ciTeam)&&(!S.hideOff||!isOff(p)||S.present[p.id])&&(!ciSearch||(p.n+' '+(p.fn||'')).toLowerCase().includes(ciSearch.toLowerCase())));
   list.sort((a,b)=>(dayCur()?0:dayIdx(a)-dayIdx(b))||lvCmp(a.c,b.c)||a.n.localeCompare(b.n));
   const scope=(ciFilter==='All'?(ciTeam&&ciTeam!=='__none'?'all '+esc(ciTeam):'everyone'):'all '+ciFilter+(ciTeam&&ciTeam!=='__none'?' · '+esc(ciTeam):''));
   return `<div class="stats">${counts}</div>
@@ -1249,12 +1250,14 @@ function vCheckin(){
   <div class="card">
     ${dayBar()}${filterChips(ciFilter,'ci-f')}
     <div class="row" style="margin-top:10px"><input type="search" id="ci-s" style="flex:1;min-width:150px" placeholder="Search name…" value="${esc(ciSearch)}">${teamFilterSel(ciTeam,'ci-team')}</div>
-    <div class="row" style="margin-top:10px"><button class="btn sm" data-act="ci-all">Check in ${scope}</button><button class="btn sm" data-act="ci-none">Uncheck ${scope}</button>${offN?`<span class="grow"></span><button class="btn sm" data-act="ci-inact">${ciInactive?'Hide':'Show'} ${offN} inactive</button>`:''}</div>
+    <div class="row" style="margin-top:10px"><button class="btn sm" data-act="ci-all">Check in ${scope}</button><button class="btn sm" data-act="ci-none">Uncheck ${scope}</button>${offN?`<span class="grow"></span><button class="btn sm" data-act="hide-off" data-k="${S.hideOff?0:1}">${S.hideOff?'Show':'Hide'} ${offN} inactive</button>`:''}</div>
     <div class="list" style="margin-top:6px">${list.map(p=>`<div class="item tapr ${S.present[p.id]?'sel':''} ${isOff(p)?'off':''}" data-act="ci" data-id="${p.id}"><div class="check"></div>${av(p.id)}${catBadge(p.c)}<div class="nm">${esc(p.n)}${p.tm?`<small class="nmtm">${esc(p.tm)}</small>`:''}${dyTag(p)}</div>${gBadge(p)}${isOff(p)?stBadge(p):''}${typeBadge(p)}${S.resting[p.id]?`<button class="btn sm pri" data-act="unrest" data-id="${p.id}">Back to play</button>`:''}</div>`).join('')||'<div class="hint">No matches.</div>'}</div>
   </div>`;
 }
 function vPlayers(){
-  let list=S.players.filter(p=>dayOk(p)&&(plFilter==='All'||p.c===plFilter)&&teamMatch(p,plTeam)&&(!plSearch||p.n.toLowerCase().includes(plSearch.toLowerCase())));
+  // Hide inactive players (Settings): a search still finds them, so they can be made active again
+  let offHid=0;
+  let list=S.players.filter(p=>dayOk(p)&&(plFilter==='All'||p.c===plFilter)&&teamMatch(p,plTeam)&&(!plSearch||p.n.toLowerCase().includes(plSearch.toLowerCase()))&&(!S.hideOff||plSearch||!isOff(p)||S.present[p.id]||(offHid++,false)));
   list.sort((a,b)=>(dayCur()?0:dayIdx(a)-dayIdx(b))||lvCmp(a.c,b.c)||a.n.localeCompare(b.n));
   return `<h2>Add player</h2>
   <div class="card">
@@ -1283,6 +1286,7 @@ function vPlayers(){
   <div class="card">
     ${dayBar()}${filterChips(plFilter,'pl-f')}
     <div class="row" style="margin-top:10px"><input type="search" id="pl-s" style="flex:1;min-width:150px" placeholder="Search name…" value="${esc(plSearch)}">${teamFilterSel(plTeam,'pl-team')}</div>
+    ${offHid||(!S.hideOff&&S.players.some(isOff))?`<div class="row" style="margin-top:8px;align-items:center"><span class="hint" style="margin:0">${offHid?offHid+' inactive player'+(offHid===1?'':'s')+' hidden · search a name to find one':'Inactive players are shown'}</span><span class="grow"></span><button class="btn sm" data-act="hide-off" data-k="${S.hideOff?0:1}">${S.hideOff?'Show inactive':'Hide inactive'}</button></div>`:''}
     <div class="list" style="margin-top:6px">${list.map(p=>`<div class="item">
       <select class="mini" data-act="setcat" data-id="${p.id}">${CATS.map(k=>`<option ${k===p.c?'selected':''}>${k}</option>`).join('')}</select>
       <button class="typeb ${p.t==='G'?'g':p.t==='F'?'f':p.t==='MG'?'mg':''}" data-act="settype" data-id="${p.id}">${TYPE_L[p.t]}</button>
@@ -1870,6 +1874,9 @@ function vSettings(){
     <div><label>Show day (schedule)</label>
       <div class="seg dayseg">${['All','Today'].concat(DAYS).map(k=>`<button class="${dayViewNow()===k?'on':''}" data-act="day-view" data-k="${k}">${k==='All'?'All days':k==='Today'?'Today ('+dayToday()+')':k}</button>`).join('')}</div>
       <p class="hint">${dayCur()?`Attendance, Players, the Waiting queue and Payments show only <b>${DAY_L[dayCur()]}</b> players (${S.players.filter(dayOk).length} of ${S.players.length}).`:'Attendance, Players, the Waiting queue and Payments show everyone; lists are sorted Monday → Sunday by each player\'s first day.'} Set days with a <b>Days</b> column in Excel (Monday, Mon, Wed, Mon-Fri, Weekend, Daily) or Players → Edit. Auto match and Fill empty courts use only that day's players; anyone already on a court finishes their game. Choose All days to bring everyone back. <b>Today</b> is chosen automatically each day; a different day or All days lasts until midnight.${dayViewNow()==='Today'&&!daysSet()?' No player has playing days set yet, so everyone is shown.':''}</p></div>
+    <div><label>Hide inactive players</label>
+      <div class="seg"><button class="${S.hideOff?'on':''}" data-act="hide-off" data-k="1">On</button><button class="${S.hideOff?'':'on'}" data-act="hide-off" data-k="0">Off</button></div>
+      <p class="hint">On: players whose Active is <b>No</b> (Players → Edit, or the Active column in Excel) are hidden from Attendance and the Players list${S.players.some(isOff)?` (${S.players.filter(isOff).length} now)`:''}. Anyone already checked in still shows, and a search in Players still finds them. Off: everyone is listed, with an Inactive tag.</p></div>
     <div><label>Number of courts</label><div class="stepper"><button class="btn sm" data-act="courts-" ${S.courts.length<=1?'disabled':''}>−</button><b>${S.courts.length}</b><button class="btn sm" data-act="courts+" ${S.courts.length>=8?'disabled':''}>+</button></div></div>
     <div><label>Match format (scoring)</label>
       <div class="row"><span style="min-width:120px">Games per match</span><div class="seg" style="flex:1">${[1,2,3,4,5].map(n=>`<button class="${S.match.n===n?'on':''}" data-act="mf-n" data-k="${n}">${n}</button>`).join('')}</div></div>
@@ -2194,14 +2201,14 @@ document.addEventListener('click',e=>{
     case 'checkout': delete S.present[id]; delete S.resting[id]; logEv('out',{n:pnm(id)}); closeSheet(); save(); render(); break;
     case 'addto': if(S.courts[ci].p.length<need()){S.courts[ci].p.push(id);} closeSheet(); save(); render(); break;
     case 'ci-f': ciFilter=k; render(); break;
-    case 'ci-inact': ciInactive=!ciInactive; render(); break;
+    case 'hide-off': S.hideOff=k==='1'; save(); render(); toast(S.hideOff?'Inactive players hidden':'Inactive players shown'); break;
     case 'pl-f': plFilter=k; render(); break;
     case 'ci':{ const oc=onCourt();
       if(S.present[id]){ if(oc[id]!==undefined){toast('On court now — replace them from the Courts tab first');break;} delete S.present[id]; delete S.resting[id]; logEv('out',{n:pnm(id)}); }
       else { S.present[id]=1; logEv('in',{n:pnm(id)}); }
       save(); render(); break;}
     case 'ci-all': case 'ci-none':{ const oc=onCourt();
-      S.players.filter(p=>dayOk(p)&&(ciFilter==='All'||p.c===ciFilter)&&teamMatch(p,ciTeam)&&(a==='ci-none'||ciInactive||!isOff(p))).forEach(p=>{ if(a==='ci-all'){ if(!S.present[p.id]) logEv('in',{n:p.n}); S.present[p.id]=1; return; } if(S.present[p.id]&&oc[p.id]===undefined) logEv('out',{n:p.n}); if(oc[p.id]===undefined){delete S.present[p.id];delete S.resting[p.id];} });
+      S.players.filter(p=>dayOk(p)&&(ciFilter==='All'||p.c===ciFilter)&&teamMatch(p,ciTeam)&&(a==='ci-none'||!S.hideOff||!isOff(p))).forEach(p=>{ if(a==='ci-all'){ if(!S.present[p.id]) logEv('in',{n:p.n}); S.present[p.id]=1; return; } if(S.present[p.id]&&oc[p.id]===undefined) logEv('out',{n:p.n}); if(oc[p.id]===undefined){delete S.present[p.id];delete S.resting[p.id];} });
       save(); render(); break;}
     case 'bulk':{ const t=$('#bulk').value; let n=0;
       t.split(/\r?\n/).forEach(line=>{ line=line.trim(); if(!line) return;
