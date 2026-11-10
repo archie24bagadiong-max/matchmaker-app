@@ -681,13 +681,18 @@ function parseDays(v){
   return DAYS.filter(d=>out.has(d));
 }
 const dayToday=()=>DAYS[(new Date().getDay()+6)%7];
-const dayCur=()=>!S.dayView||S.dayView==='All'?null:S.dayView==='Today'?dayToday():S.dayView;
+/* Show day follows today by default: a day (or All days) picked in Settings lasts until midnight (S.dayViewOn),
+   then the lists go back to today's players. If no player has playing days set yet, everyone is shown. */
+const dayViewNow=()=>S.dayView&&S.dayView!=='Today'&&S.dayViewOn===dayKey(Date.now())?S.dayView:'Today';
+let DAYS_SET=null;   // does any player have playing days? worked out once per redraw / save
+const daysSet=()=>DAYS_SET!==null?DAYS_SET:(DAYS_SET=S.players.some(p=>p.dy&&p.dy.length));
+const dayCur=()=>{ const v=dayViewNow(); return v==='All'?null:v==='Today'?(daysSet()?dayToday():null):v; };
 const dayOk=p=>{ const d=dayCur(); return !d||(p.dy||[]).includes(d); };
 const dayIdx=p=>p.dy&&p.dy.length?DAYS.indexOf(p.dy[0]):7;
 const dyTag=p=>p.dy&&p.dy.length?`<small class="dytag">📅 ${p.dy.length===7?'Every day':p.dy.join(' · ')}</small>`:'';
 function dayBar(){ const d=dayCur(); if(!d) return '';
   const off=S.players.filter(p=>!(p.dy||[]).length).length;
-  return `<div class="daybar">📅 Showing <b>${DAY_L[d]}</b> players only${S.dayView==='Today'?' (today)':''}${off?` · ${off} with no day set are hidden`:''}<span class="grow"></span><button class="btn sm" data-act="day-view" data-k="All">Show all days</button></div>`; }
+  return `<div class="daybar">📅 Showing <b>${DAY_L[d]}</b> players only${dayViewNow()==='Today'?' (today)':''}${off?` · ${off} with no day set are hidden`:''}<span class="grow"></span><button class="btn sm" data-act="day-view" data-k="All">Show all days</button></div>`; }
 const TYPES=['S','F','MG','G'];
 const TYPE_L={S:'Subscriber',F:'Family',MG:'Member Guest',G:'Non-Member Guest'};
 const TYPE_B={S:'Sub',F:'Family',MG:'Mem Guest',G:'NM Guest'};  // short badge text
@@ -698,7 +703,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=80;
+const APP_VERSION=81;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -729,7 +734,7 @@ const CLIENT=Math.random().toString(36).slice(2);
 function fresh(){
   return {players:[],present:{},resting:{},games:{},lastEnd:{},partners:{},
     courts:[0,1,2].map(()=>({lv:GROUPS.slice(),p:[],t:0})),next:[],
-    mode:'doubles',mix:'adjacent',autoNext:true,prio:'strong',rounds:true,paid:{},part:{},sess:0,hist:[],ledger:[],log:[],teams:[],match:{n:3,pts:21,mode:'best'},fee:{gp:25,mg:20,sp:2.5},dayView:'All'};
+    mode:'doubles',mix:'adjacent',autoNext:true,prio:'strong',rounds:true,paid:{},part:{},sess:0,hist:[],ledger:[],log:[],teams:[],match:{n:3,pts:21,mode:'best'},fee:{gp:25,mg:20,sp:2.5},dayView:'Today'};
 }
 /* activity log: every check-in, payment and session change, with time */
 function logEv(k,o){ if(IS_DISPLAY||IS_COURT) return; if(!Array.isArray(S.log)) S.log=[]; S.log.push(Object.assign({d:Date.now(),k},o||{})); if(S.log.length>6000) S.log=S.log.slice(-6000); }
@@ -760,7 +765,7 @@ function normalize(s){
   const mf=(s.match&&typeof s.match==='object')?s.match:{};
   s.match={n:[1,2,3,4,5].includes(+mf.n)?+mf.n:3, pts:[11,15,21,35].includes(+mf.pts)?+mf.pts:21, mode:mf.mode==='all'?'all':'best'};
   if(!['strong','tie','none'].includes(s.prio)) s.prio='strong';
-  if(!['All','Today'].concat(DAYS).includes(s.dayView)) s.dayView='All';
+  if(!['All','Today'].concat(DAYS).includes(s.dayView)) s.dayView='Today';
   if(typeof s.paid!=='object'||!s.paid||Array.isArray(s.paid)) s.paid={};
   const f=(s.fee&&typeof s.fee==='object')?s.fee:{};
   const fv=(k,d)=>f[k]!==undefined&&f[k]!==null&&f[k]!==''&&isFinite(+f[k])&&+f[k]>=0?+f[k]:d;
@@ -803,6 +808,7 @@ document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==
 window.addEventListener('pagehide',persistFlush);
 window.addEventListener('beforeunload',persistFlush);
 function save(){
+  DAYS_SET=null;
   if(CAN_PLAN()&&S.next&&S.next.length) nextFix();
   if(IS_COURT) postScore();
   if(!persistTimer) persistTimer=setTimeout(persistNow,250);
@@ -1103,6 +1109,7 @@ function checkDone(){
 }
 document.addEventListener('pointerdown',()=>{ try{ audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume(); }catch(e){} },{once:true});
 function render(){
+  DAYS_SET=null;
   if(IS_COURT){ renderScore(); return; }
   checkDone();
   { const m=document.getElementById('app'); if(m) m.classList.toggle('wide',tab==='courts'); }
@@ -1169,7 +1176,7 @@ function vCourts(){
   if(present.length) h+=vNext();
   h+=`<h2>Waiting queue <small>${WQ_SORTS[wqSort][1]} · tap to manage</small></h2><div class="card">`;
   if(dayCur()){ const oc2=onCourt(), dr2=drafted(), hid=S.players.filter(p=>S.present[p.id]&&!S.resting[p.id]&&oc2[p.id]===undefined&&!dr2.has(p.id)&&!dayOk(p)).length;
-    h+=`<div class="daybar">📅 <b>${DAY_L[dayCur()]}</b> players only${S.dayView==='Today'?' (today)':''}${hid?` · ${hid} checked-in player${hid===1?'':'s'} from other days hidden (not used by Auto match)`:''}<span class="grow"></span><button class="btn sm" data-act="day-view" data-k="All">Show all days</button></div>`; }
+    h+=`<div class="daybar">📅 <b>${DAY_L[dayCur()]}</b> players only${dayViewNow()==='Today'?' (today)':''}${hid?` · ${hid} checked-in player${hid===1?'':'s'} from other days hidden (not used by Auto match)`:''}<span class="grow"></span><button class="btn sm" data-act="day-view" data-k="All">Show all days</button></div>`; }
   h+=`<div class="chips" style="margin:0 0 10px;align-items:center"><span class="hint" style="margin:0 4px 0 0">Arrange:</span>${Object.keys(WQ_SORTS).map(k=>`<button class="chip ${wqSort===k?'on':''}" data-act="wq-sort" data-k="${k}">${WQ_SORTS[k][0]}</button>`).join('')}</div>`;
   const wq=wqSearch.trim().toLowerCase(), wv=wq?w.filter(p=>(p.n+' '+(p.fn||'')).toLowerCase().includes(wq)):w;
   if(w.length) h+=`<div class="row" style="margin:0 0 10px"><input type="search" id="wq-s" style="flex:1;min-width:150px" placeholder="Search waiting players…" aria-label="Search waiting players" autocomplete="off" value="${esc(wqSearch)}">${wq?`<span class="hint" style="margin:0 0 0 8px;white-space:nowrap">${wv.length} of ${w.length}</span>`:''}</div>`;
@@ -1305,7 +1312,7 @@ function vPayDraw(){
   const games=rows.reduce((a,p)=>a+(S.games[p.id]||0),0)/(need());
   let list=rows.filter(p=>payFilter==='All'||(payFilter==='Guests'?isGuestFee(p):payFilter==='Unpaid'?leftAmt(p)>0||balOf(p)>0:!isGuestFee(p)));
   list.sort((a,b)=>((S.games[b.id]||0)-(S.games[a.id]||0))||a.n.localeCompare(b.n));
-  return `${dc?`<div class="daybar" style="margin-top:10px">📅 Payments for <b>${DAY_L[dc]}</b> players only${S.dayView==='Today'?' (today)':''}${hidRows?` · ${hidRows} player${hidRows===1?'':'s'} from other days hidden (${sr(hidDue)} due)`:''}<span class="grow"></span><button class="btn sm" data-act="day-view" data-k="All">Show all days</button></div>`:''}<div class="stats" style="grid-template-columns:repeat(2,1fr)">
+  return `${dc?`<div class="daybar" style="margin-top:10px">📅 Payments for <b>${DAY_L[dc]}</b> players only${dayViewNow()==='Today'?' (today)':''}${hidRows?` · ${hidRows} player${hidRows===1?'':'s'} from other days hidden (${sr(hidDue)} due)`:''}<span class="grow"></span><button class="btn sm" data-act="day-view" data-k="All">Show all days</button></div>`:''}<div class="stats" style="grid-template-columns:repeat(2,1fr)">
     <div class="stat"><b class="money">${sr(tot(rows))}</b><span>Total due today${dc?' · '+DAY_L[dc]:''}</span></div>
     <div class="stat"><b class="money">${sr(got)}</b><span>Collected</span><span class="pmsplit">💵 Cash ${sr(gotM('cash'))}<br>📱 STC Pay ${sr(gotM('stc'))}</span></div>
     <div class="stat"><b class="money">${sr(tot(subs))}</b><span>${subs.length} subscribers &amp; family</span></div>
@@ -1861,8 +1868,8 @@ function vSettings(){
   <h2>Session settings</h2>
   <div class="card set">
     <div><label>Show day (schedule)</label>
-      <div class="seg dayseg">${['All','Today'].concat(DAYS).map(k=>`<button class="${S.dayView===k?'on':''}" data-act="day-view" data-k="${k}">${k==='All'?'All days':k==='Today'?'Today ('+dayToday()+')':k}</button>`).join('')}</div>
-      <p class="hint">${dayCur()?`Attendance, Players, the Waiting queue and Payments show only <b>${DAY_L[dayCur()]}</b> players (${S.players.filter(dayOk).length} of ${S.players.length}).`:'Attendance, Players, the Waiting queue and Payments show everyone; lists are sorted Monday → Sunday by each player\'s first day.'} Set days with a <b>Days</b> column in Excel (Monday, Mon, Wed, Mon-Fri, Weekend, Daily) or Players → Edit. Auto match and Fill empty courts use only that day's players; anyone already on a court finishes their game. Choose All days to bring everyone back.</p></div>
+      <div class="seg dayseg">${['All','Today'].concat(DAYS).map(k=>`<button class="${dayViewNow()===k?'on':''}" data-act="day-view" data-k="${k}">${k==='All'?'All days':k==='Today'?'Today ('+dayToday()+')':k}</button>`).join('')}</div>
+      <p class="hint">${dayCur()?`Attendance, Players, the Waiting queue and Payments show only <b>${DAY_L[dayCur()]}</b> players (${S.players.filter(dayOk).length} of ${S.players.length}).`:'Attendance, Players, the Waiting queue and Payments show everyone; lists are sorted Monday → Sunday by each player\'s first day.'} Set days with a <b>Days</b> column in Excel (Monday, Mon, Wed, Mon-Fri, Weekend, Daily) or Players → Edit. Auto match and Fill empty courts use only that day's players; anyone already on a court finishes their game. Choose All days to bring everyone back. <b>Today</b> is chosen automatically each day; a different day or All days lasts until midnight.${dayViewNow()==='Today'&&!daysSet()?' No player has playing days set yet, so everyone is shown.':''}</p></div>
     <div><label>Number of courts</label><div class="stepper"><button class="btn sm" data-act="courts-" ${S.courts.length<=1?'disabled':''}>−</button><b>${S.courts.length}</b><button class="btn sm" data-act="courts+" ${S.courts.length>=8?'disabled':''}>+</button></div></div>
     <div><label>Match format (scoring)</label>
       <div class="row"><span style="min-width:120px">Games per match</span><div class="seg" style="flex:1">${[1,2,3,4,5].map(n=>`<button class="${S.match.n===n?'on':''}" data-act="mf-n" data-k="${n}">${n}</button>`).join('')}</div></div>
@@ -2270,7 +2277,7 @@ document.addEventListener('click',e=>{
     case 'mf-n': S.match.n=+k; save(); render(); break;
     case 'mf-p': S.match.pts=+k; save(); render(); break;
     case 'pay-gone': payGone=!payGone; render(); break;
-    case 'day-view': S.dayView=['All','Today'].concat(DAYS).includes(k)?k:'All'; save(); render(); toast(S.dayView==='All'?'Showing all days':'Showing '+DAY_L[dayCur()]+' players'); break;
+    case 'day-view': S.dayView=['All','Today'].concat(DAYS).includes(k)?k:'Today'; S.dayViewOn=dayKey(Date.now()); save(); render(); toast(!dayCur()?'Showing all days'+(S.dayView==='All'?' until midnight':''):'Showing '+DAY_L[dayCur()]+' players'+(S.dayView==='Today'?'':' until midnight')); break;
     case 'mf-m': S.match.mode=k==='all'?'all':'best'; save(); render(); break;
     case 'sc-help': scHelp=!scHelp; renderScore(); break;
     case 'team-del':{ if(confirmKey!=='td'+k){ confirmKey='td'+k; render(); break; } confirmKey=null; S.teams=(S.teams||[]).filter(x=>x!==k); save(); render(); break;}
