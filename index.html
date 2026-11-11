@@ -703,7 +703,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=84;
+const APP_VERSION=85;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1136,7 +1136,9 @@ function plBtn(id,ci){
 function vCourts(){
   if(CAN_PLAN()) nextFix();
   const present=S.players.filter(p=>S.present[p.id]);
-  const w=waiting(); const resting=S.players.filter(p=>S.present[p.id]&&S.resting[p.id]);
+  const w=waiting();
+  // Show day set: that day's players who have not arrived yet also wait in Resting; Back to play checks them in
+  const dc=dayCur(), resting=S.players.filter(p=>S.present[p.id]?S.resting[p.id]:(dc&&dayOk(p)&&!isOff(p)));
   let h=`<div class="stats">
     <div class="stat"><b>${present.length}</b><span>Present</span></div>
     <div class="stat"><b>${S.courts.reduce((a,c)=>a+c.p.length,0)}</b><span>Playing</span></div>
@@ -1190,7 +1192,7 @@ function vCourts(){
     : `<div class="wait">${wqGroups(wv).map(g=>(g.label?`<div class="wgrp">${g.label} <small>${g.list.length}</small></div>`:'')+g.list.map(p=>`<button class="wp" data-act="wait-pl" data-id="${p.id}">${catBadge(p.c)}${esc(p.n)} ${typeBadge(p)}<small>${S.games[p.id]||0}g</small></button>`).join('')).join('')}</div>`;
   h+=`</div>`;
   if(resting.length){
-    h+=`<h2>Resting / can't play <small>${resting.length}</small></h2><div class="card"><div class="list">${resting.map(p=>`<div class="item">${catBadge(p.c)}<div class="nm">${esc(p.n)}</div>${typeBadge(p)}${gpill(p.id)}<button class="btn sm pri" data-act="unrest" data-id="${p.id}">Back to play</button></div>`).join('')}</div></div>`;
+    h+=`<h2>Resting / can't play <small>${resting.length}</small></h2><div class="card"><div class="list">${resting.map(p=>`<div class="item">${catBadge(p.c)}<div class="nm">${esc(p.n)}${S.present[p.id]?'':'<small class="nmtm">not checked in yet</small>'}</div>${typeBadge(p)}${gpill(p.id)}<button class="btn sm pri" data-act="unrest" data-id="${p.id}">Back to play</button></div>`).join('')}</div></div>`;
   }
   return h;
 }
@@ -1876,7 +1878,7 @@ function vSettings(){
   <div class="card set">
     <div><label>Show day (schedule)</label>
       <div class="seg dayseg">${['All','Today'].concat(DAYS).map(k=>`<button class="${dayViewNow()===k?'on':''}" data-act="day-view" data-k="${k}">${k==='All'?'All days':k==='Today'?'Today ('+dayToday()+')':k}</button>`).join('')}</div>
-      <p class="hint">${dayCur()?`Attendance, Players, the Waiting queue and Payments show only <b>${DAY_L[dayCur()]}</b> players (${S.players.filter(dayOk).length} of ${S.players.length}).`:'Attendance, Players, the Waiting queue and Payments show everyone; lists are sorted Monday → Sunday by each player\'s first day.'} Set days with a <b>Days</b> column in Excel (Monday, Mon, Wed, Mon-Fri, Weekend, Daily) or Players → Edit. Auto match and Fill empty courts use only that day's players; anyone already on a court finishes their game. Picking a day puts everyone checked in (not on a court) into <b>Resting</b> — tap <b>Back to play</b> on Courts or Attendance for each player who plays. Choose All days to bring everyone back. <b>Today</b> is chosen automatically each day; a different day or All days lasts until midnight.${dayViewNow()==='Today'&&!daysSet()?' No player has playing days set yet, so everyone is shown.':''}</p></div>
+      <p class="hint">${dayCur()?`Attendance, Players, the Waiting queue and Payments show only <b>${DAY_L[dayCur()]}</b> players (${S.players.filter(dayOk).length} of ${S.players.length}).`:'Attendance, Players, the Waiting queue and Payments show everyone; lists are sorted Monday → Sunday by each player\'s first day.'} Set days with a <b>Days</b> column in Excel (Monday, Mon, Wed, Mon-Fri, Weekend, Daily) or Players → Edit. Auto match and Fill empty courts use only that day's players; anyone already on a court finishes their game. Picking a day puts all that day's players into <b>Resting</b> on Courts, including anyone not checked in yet — tap <b>Back to play</b> for each player who has arrived (it checks them in). Choose All days to bring everyone back. <b>Today</b> is chosen automatically each day; a different day or All days lasts until midnight.${dayViewNow()==='Today'&&!daysSet()?' No player has playing days set yet, so everyone is shown.':''}</p></div>
     <div><label>Hide inactive players</label>
       <div class="seg"><button class="${S.hideOff?'on':''}" data-act="hide-off" data-k="1">On</button><button class="${S.hideOff?'':'on'}" data-act="hide-off" data-k="0">Off</button></div>
       <p class="hint">On: players whose Active is <b>No</b> (Players → Edit, or the Active column in Excel) are hidden from Attendance and the Players list${S.players.some(isOff)?` (${S.players.filter(isOff).length} now)`:''}. Anyone already checked in still shows, and a search in Players still finds them. Off: everyone is listed, with an Inactive tag.</p></div>
@@ -2200,7 +2202,7 @@ document.addEventListener('click',e=>{
     case 'sub-pick': replace(ci,id,el.dataset.in,false); break;
     case 'wait-pl': sheetWaiting(id); break;
     case 'rest': S.resting[id]=1; closeSheet(); save(); render(); break;
-    case 'unrest': delete S.resting[id]; save(); render(); toast(byId(id).n+' is back in the queue'); break;
+    case 'unrest': delete S.resting[id]; if(!S.present[id]){ S.present[id]=1; logEv('in',{n:pnm(id)}); } save(); render(); toast(byId(id).n+' is back in the queue'); break;
     case 'checkout': delete S.present[id]; delete S.resting[id]; logEv('out',{n:pnm(id)}); closeSheet(); save(); render(); break;
     case 'addto': if(S.courts[ci].p.length<need()){S.courts[ci].p.push(id);} closeSheet(); save(); render(); break;
     case 'ci-f': ciFilter=k; render(); break;
