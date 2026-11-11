@@ -703,7 +703,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=86;
+const APP_VERSION=87;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1247,13 +1247,13 @@ function vCheckin(){
   if(!S.players.length) return `<div class="card emptybox"><b>No players yet</b>Add your roster first.<div style="margin-top:12px"><button class="btn pri" data-act="go" data-tab="players">Add players</button></div></div>`;
   const counts=CATS.map(k=>`<div class="stat"><b>${S.players.filter(p=>p.c===k&&S.present[p.id]).length}</b><span>${k} present</span></div>`).join('');
   const offN=S.players.filter(p=>isOff(p)&&!S.present[p.id]).length;
-  let list=S.players.filter(p=>dayOk(p)&&(ciFilter==='All'||p.c===ciFilter)&&teamMatch(p,ciTeam)&&(!S.hideOff||!isOff(p)||S.present[p.id])&&(!ciSearch||(p.n+' '+(p.fn||'')).toLowerCase().includes(ciSearch.toLowerCase())));
+  let list=S.players.filter(p=>dayOk(p)&&teamMatch(p,ciTeam)&&(!S.hideOff||!isOff(p)||S.present[p.id])&&(!ciSearch||(p.n+' '+(p.fn||'')).toLowerCase().includes(ciSearch.toLowerCase())));
   list.sort((a,b)=>(dayCur()?0:dayIdx(a)-dayIdx(b))||lvCmp(a.c,b.c)||a.n.localeCompare(b.n));
   const scope=(ciFilter==='All'?(ciTeam&&ciTeam!=='__none'?'all '+esc(ciTeam):'everyone'):'all '+ciFilter+(ciTeam&&ciTeam!=='__none'?' · '+esc(ciTeam):''));
   return `<div class="stats">${counts}</div>
   <h2>Who's here today?</h2>
   <div class="card">
-    ${dayBar()}${filterChips(ciFilter,'ci-f')}
+    <label>Show day (schedule)</label><div class="seg dayseg">${['All','Today'].concat(DAYS).map(k=>`<button class="${dayViewNow()===k?'on':''}" data-act="day-view" data-k="${k}">${k==='All'?'All days':k==='Today'?'Today ('+dayToday()+')':k}</button>`).join('')}</div>
     <div class="row" style="margin-top:10px"><input type="search" id="ci-s" style="flex:1;min-width:150px" placeholder="Search name…" value="${esc(ciSearch)}">${teamFilterSel(ciTeam,'ci-team')}</div>
     <div class="row" style="margin-top:10px"><button class="btn sm" data-act="ci-all">Check in ${scope}</button><button class="btn sm" data-act="ci-none">Uncheck ${scope}</button>${offN?`<span class="grow"></span><button class="btn sm" data-act="hide-off" data-k="${S.hideOff?0:1}">${S.hideOff?'Show':'Hide'} ${offN} inactive</button>`:''}</div>
     <div class="list" style="margin-top:6px">${list.map(p=>`<div class="item tapr ${S.present[p.id]?'sel':''} ${isOff(p)?'off':''}" data-act="ci" data-id="${p.id}"><div class="check"></div>${av(p.id)}${catBadge(p.c)}<div class="nm">${esc(p.n)}${p.tm?`<small class="nmtm">${esc(p.tm)}</small>`:''}${dyTag(p)}</div>${gBadge(p)}${isOff(p)?stBadge(p):''}${typeBadge(p)}${S.resting[p.id]?`<button class="btn sm pri" data-act="unrest" data-id="${p.id}">Back to play</button>`:''}</div>`).join('')||'<div class="hint">No matches.</div>'}</div>
@@ -1262,7 +1262,7 @@ function vCheckin(){
 function vPlayers(){
   // Hide inactive players (Settings): a search still finds them, so they can be made active again
   let offHid=0;
-  let list=S.players.filter(p=>dayOk(p)&&teamMatch(p,plTeam)&&(!plSearch||p.n.toLowerCase().includes(plSearch.toLowerCase()))&&(!S.hideOff||plSearch||!isOff(p)||S.present[p.id]||(offHid++,false)));
+  let list=S.players.filter(p=>dayOk(p)&&(plFilter==='All'||p.c===plFilter)&&teamMatch(p,plTeam)&&(!plSearch||p.n.toLowerCase().includes(plSearch.toLowerCase()))&&(!S.hideOff||plSearch||!isOff(p)||S.present[p.id]||(offHid++,false)));
   list.sort((a,b)=>(dayCur()?0:dayIdx(a)-dayIdx(b))||lvCmp(a.c,b.c)||a.n.localeCompare(b.n));
   return `<h2>Add player</h2>
   <div class="card">
@@ -1289,7 +1289,7 @@ function vPlayers(){
   </div>
   <h2>Roster <small>${S.players.filter(p=>p.t==='S').length} subscribers · ${S.players.filter(p=>p.t==='F').length} family · ${S.players.filter(p=>p.t==='MG').length} member guests · ${S.players.filter(p=>p.t==='G').length} non-member guests${S.players.some(isOff)?' · '+S.players.filter(isOff).length+' inactive':''} · tap the type to switch</small></h2>
   <div class="card">
-    <label>Show day (schedule)</label><div class="seg dayseg">${['All','Today'].concat(DAYS).map(k=>`<button class="${dayViewNow()===k?'on':''}" data-act="day-view" data-k="${k}">${k==='All'?'All days':k==='Today'?'Today ('+dayToday()+')':k}</button>`).join('')}</div>
+    ${dayBar()}${filterChips(plFilter,'pl-f')}
     <div class="row" style="margin-top:10px"><input type="search" id="pl-s" style="flex:1;min-width:150px" placeholder="Search name…" value="${esc(plSearch)}">${teamFilterSel(plTeam,'pl-team')}</div>
     ${offHid||(!S.hideOff&&S.players.some(isOff))?`<div class="row" style="margin-top:8px;align-items:center"><span class="hint" style="margin:0">${offHid?offHid+' inactive player'+(offHid===1?'':'s')+' hidden · search a name to find one':'Inactive players are shown'}</span><span class="grow"></span><button class="btn sm" data-act="hide-off" data-k="${S.hideOff?0:1}">${S.hideOff?'Show inactive':'Hide inactive'}</button></div>`:''}
     <div class="list" style="margin-top:6px">${list.map(p=>`<div class="item">
@@ -2213,7 +2213,7 @@ document.addEventListener('click',e=>{
       else { S.present[id]=1; logEv('in',{n:pnm(id)}); }
       save(); render(); break;}
     case 'ci-all': case 'ci-none':{ const oc=onCourt();
-      S.players.filter(p=>dayOk(p)&&(ciFilter==='All'||p.c===ciFilter)&&teamMatch(p,ciTeam)&&(a==='ci-none'||!S.hideOff||!isOff(p))).forEach(p=>{ if(a==='ci-all'){ if(!S.present[p.id]) logEv('in',{n:p.n}); S.present[p.id]=1; return; } if(S.present[p.id]&&oc[p.id]===undefined) logEv('out',{n:p.n}); if(oc[p.id]===undefined){delete S.present[p.id];delete S.resting[p.id];} });
+      S.players.filter(p=>dayOk(p)&&teamMatch(p,ciTeam)&&(a==='ci-none'||!S.hideOff||!isOff(p))).forEach(p=>{ if(a==='ci-all'){ if(!S.present[p.id]) logEv('in',{n:p.n}); S.present[p.id]=1; return; } if(S.present[p.id]&&oc[p.id]===undefined) logEv('out',{n:p.n}); if(oc[p.id]===undefined){delete S.present[p.id];delete S.resting[p.id];} });
       save(); render(); break;}
     case 'bulk':{ const t=$('#bulk').value; let n=0;
       t.split(/\r?\n/).forEach(line=>{ line=line.trim(); if(!line) return;
