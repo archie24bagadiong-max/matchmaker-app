@@ -703,7 +703,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=83;
+const APP_VERSION=84;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1876,7 +1876,7 @@ function vSettings(){
   <div class="card set">
     <div><label>Show day (schedule)</label>
       <div class="seg dayseg">${['All','Today'].concat(DAYS).map(k=>`<button class="${dayViewNow()===k?'on':''}" data-act="day-view" data-k="${k}">${k==='All'?'All days':k==='Today'?'Today ('+dayToday()+')':k}</button>`).join('')}</div>
-      <p class="hint">${dayCur()?`Attendance, Players, the Waiting queue and Payments show only <b>${DAY_L[dayCur()]}</b> players (${S.players.filter(dayOk).length} of ${S.players.length}).`:'Attendance, Players, the Waiting queue and Payments show everyone; lists are sorted Monday → Sunday by each player\'s first day.'} Set days with a <b>Days</b> column in Excel (Monday, Mon, Wed, Mon-Fri, Weekend, Daily) or Players → Edit. Auto match and Fill empty courts use only that day's players; anyone already on a court finishes their game. Choose All days to bring everyone back. <b>Today</b> is chosen automatically each day; a different day or All days lasts until midnight.${dayViewNow()==='Today'&&!daysSet()?' No player has playing days set yet, so everyone is shown.':''}</p></div>
+      <p class="hint">${dayCur()?`Attendance, Players, the Waiting queue and Payments show only <b>${DAY_L[dayCur()]}</b> players (${S.players.filter(dayOk).length} of ${S.players.length}).`:'Attendance, Players, the Waiting queue and Payments show everyone; lists are sorted Monday → Sunday by each player\'s first day.'} Set days with a <b>Days</b> column in Excel (Monday, Mon, Wed, Mon-Fri, Weekend, Daily) or Players → Edit. Auto match and Fill empty courts use only that day's players; anyone already on a court finishes their game. Picking a day puts everyone checked in (not on a court) into <b>Resting</b> — tap <b>Back to play</b> on Courts or Attendance for each player who plays. Choose All days to bring everyone back. <b>Today</b> is chosen automatically each day; a different day or All days lasts until midnight.${dayViewNow()==='Today'&&!daysSet()?' No player has playing days set yet, so everyone is shown.':''}</p></div>
     <div><label>Hide inactive players</label>
       <div class="seg"><button class="${S.hideOff?'on':''}" data-act="hide-off" data-k="1">On</button><button class="${S.hideOff?'':'on'}" data-act="hide-off" data-k="0">Off</button></div>
       <p class="hint">On: players whose Active is <b>No</b> (Players → Edit, or the Active column in Excel) are hidden from Attendance and the Players list${S.players.some(isOff)?` (${S.players.filter(isOff).length} now)`:''}. Anyone already checked in still shows, and a search in Players still finds them. Off: everyone is listed, with an Inactive tag.</p></div>
@@ -2287,7 +2287,10 @@ document.addEventListener('click',e=>{
     case 'mf-n': S.match.n=+k; save(); render(); break;
     case 'mf-p': S.match.pts=+k; save(); render(); break;
     case 'pay-gone': payGone=!payGone; render(); break;
-    case 'day-view': S.dayView=['All','Today'].concat(DAYS).includes(k)?k:'Today'; S.dayViewOn=dayKey(Date.now()); save(); render(); toast(!dayCur()?'Showing all days'+(S.dayView==='All'?' until midnight':''):'Showing '+DAY_L[dayCur()]+' players'+(S.dayView==='Today'?'':' until midnight')); break;
+    case 'day-view':{ S.dayView=['All','Today'].concat(DAYS).includes(k)?k:'Today'; S.dayViewOn=dayKey(Date.now());
+      // picking a day puts everyone checked in (and not on a court) into Resting; tap Back to play for each player
+      let nr=0; if(k!=='All'&&dayCur()){ const oc=onCourt(); S.players.forEach(p=>{ if(S.present[p.id]&&oc[p.id]===undefined&&!S.resting[p.id]){ S.resting[p.id]=1; nr++; } }); }
+      save(); render(); toast((!dayCur()?'Showing all days'+(S.dayView==='All'?' until midnight':''):'Showing '+DAY_L[dayCur()]+' players'+(S.dayView==='Today'?'':' until midnight'))+(nr?' · '+nr+' checked-in player'+(nr===1?'':'s')+' set to Resting':'')); break;}
     case 'mf-m': S.match.mode=k==='all'?'all':'best'; save(); render(); break;
     case 'sc-help': scHelp=!scHelp; renderScore(); break;
     case 'team-del':{ if(confirmKey!=='td'+k){ confirmKey='td'+k; render(); break; } confirmKey=null; S.teams=(S.teams||[]).filter(x=>x!==k); save(); render(); break;}
