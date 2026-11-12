@@ -603,6 +603,45 @@ html.sheet-open,html.sheet-open body{overflow:hidden}
 #netbar{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 8px);transform:translateX(-50%);z-index:95;background:#ffb347;color:#3a1d00;font-weight:700;font-size:14px;padding:8px 14px;border-radius:999px;box-shadow:0 4px 16px rgba(0,0,0,.3);max-width:calc(100vw - 24px);text-align:center}
 body.served .gear{display:none!important}
 .linkbtn{border:0;background:none;color:var(--court2);text-decoration:underline;padding:0;font-size:12px}
+/* tournament bracket: two halves meeting at the champion in the middle */
+.bwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:14px 10px}
+.bk{display:flex;gap:28px;width:max-content;margin:0 auto}
+.bc{display:flex;flex-direction:column;width:156px}
+.bc.chc{width:170px}
+.blab{font-family:"Barlow Condensed";font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);text-align:center;margin-bottom:6px;white-space:nowrap}
+.bcol{flex:1;display:flex;flex-direction:column;min-height:var(--h)}
+.bcell{flex:1;display:flex;align-items:center;position:relative;padding:5px 0}
+.bx{position:relative;width:100%;min-height:46px;border:2px solid #23395b;border-radius:9px;background:#fff;display:flex;align-items:center;gap:7px;padding:5px 8px;text-align:left;font:inherit;color:var(--ink)}
+button.bx{cursor:pointer}
+.bx .ball{flex:0 0 auto;width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#e6ff8a,#b5dc2c);box-shadow:inset 0 0 0 1.5px #8fb51c}
+.bx .bn{flex:1;min-width:0;font-size:13px;line-height:1.2;font-weight:600}
+.bx .bn i{display:block;font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bx .bs{display:block;font-size:11px;color:var(--muted);font-weight:600}
+.bx.tbd,.bx.bye{border-style:dashed;border-color:#b9c4d6;color:var(--muted)}
+.bx.tbd .ball,.bx.bye .ball{opacity:.35}
+.bx.lost{opacity:.45}
+.bx.won{border-color:#25a065;background:#e8f6ee}
+.bx.rdy{border-color:#8fb51c;box-shadow:0 0 0 3px rgba(200,241,105,.55)}
+.bx.oncrt{border-color:#e89b0c;background:#fdf1dc}
+.bx .crt{position:absolute;top:-9px;right:6px;background:#e89b0c;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px}
+.bx.champ{border-color:#c9a227;background:linear-gradient(#fff8dc,#fdeeb0);min-height:62px}
+.bx.champ .bn{font-size:15px}
+/* connector lines: stub out of every box, a bracket joining each two boxes, stub into the next box */
+.bk .bcell.out::after{content:'';position:absolute;top:50%;width:14px;border-top:2px solid #23395b}
+.bk .L .bcell.out::after{left:100%}
+.bk .R .bcell.out::after{right:100%}
+.bk .bcell.in::before{content:'';position:absolute;top:25%;bottom:25%;border-left:2px solid #23395b}
+.bk .L .bcell.in::before{left:-16px}
+.bk .R .bcell.in::before{right:-16px}
+.bk .bcell.in .bx::before,.bk .chc .bx::before,.bk .chc .bx::after{content:'';position:absolute;top:50%;width:16px;border-top:2px solid #23395b}
+.bk .L .bcell.in .bx::before,.bk .chc .bx::before{right:100%}
+.bk .R .bcell.in .bx::before,.bk .chc .bx::after{left:100%}
+.tpair{display:flex;align-items:center;gap:8px;padding:9px 4px;border-bottom:1px solid var(--border)}
+.tpair:last-child{border-bottom:0}
+.tpair .no{font-family:"Barlow Condensed";font-weight:700;color:var(--muted);width:26px}
+.tpair .nm2{flex:1;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+.ttag{background:#c9a227;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:6px;font-family:Barlow,sans-serif}
+.tchamp{text-align:center;font-family:"Barlow Condensed";font-size:22px;font-weight:700;color:#8a6d0b;background:#fff8dc;border:2px solid #c9a227;border-radius:12px;padding:10px;margin-bottom:12px}
 </style>
 </head>
 <body>
@@ -618,6 +657,7 @@ body.served .gear{display:none!important}
   <button data-tab="checkin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m4 12 5 5L20 6"/></svg>Attendance</button>
   <button data-tab="players"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M17 11a3 3 0 1 0 0-6M22 21c0-3-2-5-4-5.5"/></svg>Players</button>
   <button data-tab="pay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20M6 15h4"/></svg>Payments</button>
+  <button data-tab="tour"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 5h5v5M2 19h5v-5M7 7.5h3v9H7M10 12h4M22 5h-5v5M22 19h-5v-5M17 7.5h-3v9h3"/></svg>Bracket</button>
   <button data-tab="hist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3"/></svg>History</button>
   <button data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
 </nav>
@@ -721,7 +761,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=95;
+const APP_VERSION=96;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -752,7 +792,7 @@ const CLIENT=Math.random().toString(36).slice(2);
 function fresh(){
   return {players:[],present:{},resting:{},games:{},lastEnd:{},partners:{},
     courts:[0,1,2].map(()=>({lv:GROUPS.slice(),p:[],t:0})),next:[],
-    mode:'doubles',mix:'adjacent',autoNext:true,prio:'strong',rounds:true,paid:{},part:{},sess:0,hist:[],ledger:[],log:[],teams:[],match:{n:3,pts:21,mode:'best'},fee:{gp:25,mg:20,fm:20,sp:2.5},feeV:1,dayView:'Today',hideOff:true};
+    mode:'doubles',mix:'adjacent',autoNext:true,prio:'strong',rounds:true,paid:{},part:{},sess:0,hist:[],ledger:[],log:[],teams:[],match:{n:3,pts:21,mode:'best'},fee:{gp:25,mg:20,fm:20,sp:2.5},feeV:1,dayView:'Today',hideOff:true,tour:{pairs:[],pos:[],w:{}}};
 }
 /* activity log: every check-in, payment and session change, with time */
 function logEv(k,o){ if(IS_DISPLAY||IS_COURT) return; if(!Array.isArray(S.log)) S.log=[]; S.log.push(Object.assign({d:Date.now(),k},o||{})); if(S.log.length>6000) S.log=S.log.slice(-6000); }
@@ -764,7 +804,7 @@ function normalize(s){
   if(!Array.isArray(s.players)) s.players=[];
   s.players=s.players.filter(p=>p&&p.id&&typeof p.n==='string').map(p=>({id:String(p.id),n:p.n.slice(0,40),c:normLv(p.c),t:TYPES.includes(p.t)?p.t:'S',tm:typeof p.tm==='string'?p.tm.trim().slice(0,40):'',fn:typeof p.fn==='string'?p.fn.trim().slice(0,80):'',g:p.g==='M'||p.g==='F'?p.g:'',st:STATUS.includes(p.st)?p.st:'',dy:normDays(p.dy)}));
   if(!Array.isArray(s.courts)||!s.courts.length) s.courts=d.courts;
-  s.courts=s.courts.map(c=>{ let lv=Array.isArray(c&&c.lv)?[...new Set(c.lv.map(grp))].filter(x=>GROUPS.includes(x)).sort():[]; if(!lv.length) lv=GROUPS.slice(); return {lv,p:Array.isArray(c&&c.p)?c.p.map(String):[],t:+(c&&c.t)||0,sc:(c&&c.sc&&typeof c.sc==='object'&&c.sc.pos)?c.sc:null,d:Array.isArray(c&&c.d)?c.d.slice(0,4).map(x=>typeof x==='string'&&x?x:null):[]}; });
+  s.courts=s.courts.map(c=>{ let lv=Array.isArray(c&&c.lv)?[...new Set(c.lv.map(grp))].filter(x=>GROUPS.includes(x)).sort():[]; if(!lv.length) lv=GROUPS.slice(); return {lv,p:Array.isArray(c&&c.p)?c.p.map(String):[],t:+(c&&c.t)||0,sc:(c&&c.sc&&typeof c.sc==='object'&&c.sc.pos)?c.sc:null,d:Array.isArray(c&&c.d)?c.d.slice(0,4).map(x=>typeof x==='string'&&x?x:null):[],tm:typeof(c&&c.tm)==='string'?c.tm:''}; });
   if(!Array.isArray(s.next)) s.next=[];
   s.next=s.next.filter(g=>g&&Array.isArray(g.p)&&g.p.length).slice(0,40).map(g=>({p:g.p.slice(0,4).map(x=>typeof x==='string'&&x?x:null)}));
   if(!Array.isArray(s.teams)) s.teams=[];
@@ -793,6 +833,10 @@ function normalize(s){
   // v89: Family fee is 20 SR (club 4th Qtr sheet); v88 had added it at 0
   if(!(s.feeV>=1)){ if(!s.fee.fm) s.fee.fm=20; s.feeV=1; }
   if(typeof s.qm!=='string') s.qm='';
+  { const T=(s.tour&&typeof s.tour==='object')?s.tour:{};
+    const pos=Array.isArray(T.pos)?T.pos.slice(0,64).map(x=>Number.isInteger(x)?x:null):[];
+    s.tour={pairs:Array.isArray(T.pairs)?T.pairs.filter(x=>Array.isArray(x)&&x.length===2&&x.every(y=>typeof y==='string')).slice(0,64):[],
+      pos:pos.length>=2&&(pos.length&(pos.length-1))===0?pos:[], w:(T.w&&typeof T.w==='object'&&!Array.isArray(T.w))?T.w:{}}; }
   return s;
 }
 
@@ -802,7 +846,7 @@ try{ const raw=localStorage.getItem(LS_KEY); if(raw) S=normalize(JSON.parse(raw)
 let tab='courts', ciFilter='All', ciSearch='', wqSearch='', plSearch='', plFilter='All', confirmKey=null, plTeam='', ciTeam='';
 /* after an automatic update the app reopens on the screen it was on */
 let updJustDone=0;
-try{ const t=localStorage.getItem('mm_upd_tab'); if(t){ localStorage.removeItem('mm_upd_tab'); if(['courts','checkin','players','pay','hist','help','settings'].includes(t)) tab=t; updJustDone=1; } }catch(e){}
+try{ const t=localStorage.getItem('mm_upd_tab'); if(t){ localStorage.removeItem('mm_upd_tab'); if(['courts','checkin','players','pay','tour','hist','help','settings'].includes(t)) tab=t; updJustDone=1; } }catch(e){}
 
 /* ---------- persistence ---------- */
 let dbRef=null, writing=false, dirty=false, saveTimer=null, lastTs=0;
@@ -1097,6 +1141,7 @@ function finish(i,count,win){
     c.p.forEach(id=>{S.games[id]=(S.games[id]||0)+1;S.lastEnd[id]=now;});
     if(c.p.length===4){[[0,1],[2,3]].forEach(([a,b])=>{const k=pkey(c.p[a],c.p[b]);S.partners[k]=(S.partners[k]||0)+1;});}
   }
+  if(c.tm){ if(count&&c.p.length&&(win==='a'||win==='b')) tRecord(c.tm,win==='a'?c.p.slice(0,c.p.length/2):c.p.slice(c.p.length/2),scSummary(c.sc)); c.tm=''; }
   c.p=[];c.t=0;c.sc=null;
   const nx=count?startNext(i):0;
   save(); render();
@@ -1120,6 +1165,114 @@ function replace(courtIdx,outId,inId,rest){
   closeSheet(); save(); render();
 }
 
+/* ---------- tournament (knockout bracket of doubles pairs) ----------
+   S.tour.pairs: [[id,id],…]  S.tour.pos: pair index per first-round slot (null = bye), length 2/4/8/16/32/64
+   S.tour.w['k-j']: result of match j in round k ({s:0|1 which slot won, sc:score}). Later rounds are worked out from the results.
+   A court playing a tournament match carries c.tm = 'k-j'; Game done records the winner (finish → tRecord). */
+let tSel=[], tSearch='';
+const tOn=()=>S.tour.pos.length>=2;
+const tL=()=>Math.round(Math.log2(S.tour.pos.length||1));
+function tRoundName(k){ const left=tL()-k; return left<=1?'Final':left===2?'Semifinal':left===3?'Quarterfinal':'Round of '+(2**left); }
+function tSlots(){ const T=S.tour, L=tL(), R=[T.pos.slice()];
+  for(let k=0;k<L;k++){ const pr=R[k], nx=[];
+    for(let j=0;j<pr.length/2;j++){ const a=pr[2*j], b=pr[2*j+1];
+      if(k===0&&(a===null||b===null)) nx.push(a===null?(b===null?null:b):a);   // bye: the other pair goes through
+      else if(Number.isInteger(a)&&Number.isInteger(b)){ const r=T.w[k+'-'+j]; nx.push(r?(r.s?b:a):undefined); }
+      else nx.push(undefined); }
+    R.push(nx); }
+  return R; }
+const tPairIds=i=>S.tour.pairs[i]||[];
+const tPairName=i=>tPairIds(i).map(pnm).join(' / ');
+function tMatch(key,R){ if(!tOn()||typeof key!=='string') return null; R=R||tSlots(); const [k,j]=key.split('-').map(Number); if(!(k>=0&&k<tL())||!(j>=0&&j<R[k].length/2)) return null;
+  const a=R[k][2*j], b=R[k][2*j+1], r=S.tour.w[key], ci=S.courts.findIndex(c=>c.tm===key&&c.p.length);
+  return {k,j,a,b,r,ci,ready:Number.isInteger(a)&&Number.isInteger(b)&&!r}; }
+function tRecord(key,ids,sc){ const m=tMatch(key); if(!m||!m.ready) return;
+  const ov=i=>ids.filter(x=>tPairIds(i).includes(x)).length;
+  S.tour.w[key]={s:ov(m.a)>=ov(m.b)?0:1,sc:sc||''}; }
+/* seeding order for a bracket of n: 1 v n, 2 v n-1 …, top seeds kept in different halves */
+function tSeedOrder(n){ let o=[1]; while(o.length<n){ const m=o.length*2; o=o.flatMap(x=>[x,m+1-x]); } return o; }
+function tStart(mode){ const P=S.tour.pairs; if(P.length<2){ toast('Make at least 2 pairs first'); return; }
+  let n=2; while(n<P.length) n*=2;
+  const order=P.map((p,i)=>i);
+  if(mode==='rand'){ for(let i=order.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [order[i],order[j]]=[order[j],order[i]]; } }
+  else { const st=i=>tPairIds(i).reduce((a,id)=>a+(RATE[(byId(id)||{}).c]||0),0); order.sort((x,y)=>st(y)-st(x)||x-y); }
+  S.tour.pos=tSeedOrder(n).map(sd=>sd<=order.length?order[sd-1]:null); S.tour.w={};
+  save(); render(); toast(`Bracket of ${n} made`+(n>P.length?` · ${n-P.length} bye${n-P.length>1?'s':''}`:'')); }
+function tAutoPair(){ const used=new Set(S.tour.pairs.flat());
+  const pool=S.players.filter(p=>S.present[p.id]&&!S.resting[p.id]&&!used.has(p.id)).sort((a,b)=>(RATE[b.c]||0)-(RATE[a.c]||0)||a.n.localeCompare(b.n));
+  if(pool.length<2){ toast('Not enough present players who are not paired yet'); return; }
+  let n=0; while(pool.length>=2){ const hi=pool.shift(), lo=pool.pop(); S.tour.pairs.push([hi.id,lo.id]); n++; }
+  save(); render(); toast(`${n} pair${n>1?'s':''} made`+(pool.length?` · ${pool[0].n} left without a partner`:'')); }
+function tBox(v,cls,extra,key){ const nm=Number.isInteger(v)?tPairIds(v).map(id=>`<i>${esc(pnm(id))}</i>`).join(''):v===null?'<i>Bye</i>':'<i>—</i>';
+  const tag=key?'button':'div';
+  return `<${tag} class="bx ${cls}" ${key?`data-act="t-m" data-k="${key}"`:''}><span class="ball"></span><span class="bn">${nm}${extra||''}</span></${tag}>`; }
+function vTour(){
+  const T=S.tour;
+  if(!tOn()){
+    const used=new Set(T.pairs.flat()), n=T.pairs.length; let sz=2; while(sz<n) sz*=2;
+    const free=S.players.filter(p=>S.present[p.id]&&!S.resting[p.id]&&!used.has(p.id)).length;
+    return `<h2>Tournament <small>doubles knockout</small></h2>
+    <div class="card">
+      <p class="hint" style="margin:0 0 10px">Make the pairs, then start the draw. ${free} present player${free===1?'':'s'} not paired yet.</p>
+      <div class="row" style="flex-wrap:wrap;gap:8px"><button class="btn pri" data-act="t-auto">Auto-pair present players</button><button class="btn" data-act="t-add">+ Add pair</button>${n?`<button class="btn warn" data-act="t-clr">${confirmKey==='tclr'?'Sure? Tap again':'Clear pairs'}</button>`:''}</div>
+    </div>
+    <h2>Pairs <small>${n}</small></h2>
+    <div class="card">${n?T.pairs.map((pr,i)=>`<div class="tpair"><span class="no">#${i+1}</span><span class="nm2">${pr.map(id=>{ const p=byId(id); return p?`<span>${catBadge(p.c)} ${esc(p.n)}</span>`:'<span>?</span>'; }).join('')}</span><button class="btn sm ghost" data-act="t-del" data-k="${i}" aria-label="Remove pair">✕</button></div>`).join('')
+      :'<div class="hint" style="margin:0">No pairs yet.</div>'}</div>
+    ${n>=2?`<h2>Start</h2><div class="card"><p class="hint" style="margin:0 0 10px">${n} pairs → bracket of ${sz}${sz>n?` · ${sz-n} top seed${sz-n>1?'s get a bye':' gets a bye'} into round 2`:''}.</p>
+      <div class="row" style="flex-wrap:wrap;gap:8px"><button class="btn pri" data-act="t-start" data-k="lvl">Start — seeded by level</button><button class="btn" data-act="t-start" data-k="rand">Start — random draw</button></div></div>`:''}`;
+  }
+  const R=tSlots(), L=tL(), N=T.pos.length, champ=R[L][0];
+  const cell=(k,j)=>{ const v=R[k][j], key=k+'-'+(j>>1), m=tMatch(key,R);
+    let cls='', extra='';
+    if(v===null) cls='bye'; else if(v===undefined) cls='tbd';
+    if(m&&Number.isInteger(v)){ if(m.r) cls+=(R[k+1][j>>1]===v?' won':' lost');
+      else if(m.ci>=0){ cls+=' oncrt'; extra=`<span class="crt">Court ${m.ci+1}</span>`; }
+      else if(m.ready) cls+=' rdy'; }
+    if(k>0){ const pm=T.w[(k-1)+'-'+j]; if(pm&&pm.sc&&Number.isInteger(v)) extra+=`<span class="bs">${esc(pm.sc)}</span>`; }
+    const tap=m&&Number.isInteger(m.a)&&Number.isInteger(m.b);
+    return `<div class="bcell ${k>0?'in ':''}out">${tBox(v,cls,extra,tap?key:'')}</div>`; };
+  const col=(k,side)=>{ const half=R[k].length/2, js=[...Array(half).keys()].map(x=>side==='L'?x:x+half);
+    return `<div class="bc ${side}"><div class="blab">${tRoundName(k)}</div><div class="bcol">${js.map(j=>cell(k,j)).join('')}</div></div>`; };
+  const cols=[]; for(let k=0;k<L;k++) cols.push(col(k,'L'));
+  const fm=T.w[(L-1)+'-0'];
+  cols.push(`<div class="bc chc"><div class="blab">🏆 Champion</div><div class="bcol"><div class="bcell">${tBox(champ,'champ'+(Number.isInteger(champ)?'':' tbd'),fm&&fm.sc&&Number.isInteger(champ)?`<span class="bs">${esc(fm.sc)}</span>`:'','')}</div></div></div>`);
+  for(let k=L-1;k>=0;k--) cols.push(col(k,'R'));
+  const ready=[]; for(let k=0;k<L;k++) for(let j=0;j<R[k].length/2;j++){ const m=tMatch(k+'-'+j,R); if(m&&m.ready&&m.ci<0) ready.push(m); }
+  const live=S.courts.map((c,i)=>c.tm&&c.p.length?i:-1).filter(i=>i>=0);
+  const line=(m,right)=>`<button class="item tapr" style="text-align:left;background:#fff;width:100%" data-act="t-m" data-k="${m.k}-${m.j}"><div class="nm" style="flex:1">${tRoundName(m.k)} · ${esc(tPairName(m.a))} <small style="color:var(--muted)">vs</small> ${esc(tPairName(m.b))}</div>${right}</button>`;
+  return `<div class="row" style="margin:4px 0 10px;align-items:center"><h2 style="margin:0;flex:1">Tournament <small>${T.pairs.length} pairs · bracket of ${N}</small></h2><button class="btn sm warn" data-act="t-reset">${confirmKey==='treset'?'Sure? Tap again':'New tournament'}</button></div>
+  ${Number.isInteger(champ)?`<div class="tchamp">🏆 Champion: ${esc(tPairName(champ))}</div>`:''}
+  <div class="card bwrap"><div class="bk" style="--h:${Math.max(1,N/2)*62}px">${cols.join('')}</div></div>
+  ${ready.length||live.length?`<h2>Up next <small>tap to send to a court</small></h2><div class="card"><div class="list">
+    ${live.map(i=>{ const m=tMatch(S.courts[i].tm,R); return m?line(m,`<b style="color:#c07a00">Court ${i+1}</b>`):''; }).join('')}
+    ${ready.map(m=>line(m,'<b style="color:#25a065">Ready</b>')).join('')}
+  </div></div>`:''}
+  <p class="hint">Tap a match to send it to a free court or to pick the winner. <b>Game done</b> on a court moves the winner up by itself. On a phone, swipe the bracket sideways.</p>`;
+}
+function sheetTMatch(key){ const m=tMatch(key); if(!m||!Number.isInteger(m.a)||!Number.isInteger(m.b)){ closeSheet(); return; }
+  const nm=i=>tPairIds(i).map(id=>{ const p=byId(id); return p?`${catBadge(p.c)} ${esc(p.n)}`:'?'; }).join('<br>');
+  let body='';
+  if(m.r){ const nx=tMatch((m.k+1)+'-'+(m.j>>1)), locked=!!(nx&&(nx.r||nx.ci>=0));
+    body=`<p style="margin:6px 0 12px">Winner: <b>${esc(tPairName(m.r.s?m.b:m.a))}</b>${m.r.sc?` · ${esc(m.r.sc)}`:''}</p>
+    <div class="acts">${locked?'':`<button class="btn warn" data-act="t-undo" data-k="${key}">Undo result</button>`}<button class="btn" data-act="sheet-close">Close</button></div>${locked?'<p class="hint">This pair\'s next match has already started, so this result is fixed.</p>':''}`; }
+  else if(m.ci>=0){ body=`<p class="hint" style="margin:6px 0 12px">Playing on <b>Court ${m.ci+1}</b>. Tap <b>Game done</b> there when it ends — the winner moves up the bracket by itself.</p>
+    <div class="acts"><button class="btn pri" data-act="t-go">Go to Courts</button><button class="btn" data-act="sheet-close">Close</button></div>`; }
+  else { const free=S.courts.map((c,i)=>!c.p.length?i:-1).filter(i=>i>=0);
+    body=`<div style="font-weight:600;margin:10px 0 6px">Send to a court</div>
+    ${free.length?`<div class="row" style="flex-wrap:wrap;gap:8px">${free.map(i=>`<button class="btn pri" data-act="t-send" data-k="${key}" data-c="${i}">Court ${i+1}</button>`).join('')}</div>`:'<p class="hint" style="margin:0">No free court — finish or clear a court first.</p>'}
+    <div style="font-weight:600;margin:16px 0 6px">Or tap the winner (no court)</div>
+    <div class="row" style="gap:8px"><button class="btn" style="flex:1" data-act="t-win" data-k="${key}" data-v="0">${esc(tPairName(m.a))}</button><button class="btn" style="flex:1" data-act="t-win" data-k="${key}" data-v="1">${esc(tPairName(m.b))}</button></div>
+    <div class="acts"><button class="btn" data-act="sheet-close">Close</button></div>`; }
+  openSheet(`<h3>${tRoundName(m.k)}</h3><div class="row" style="align-items:center;gap:10px;margin:6px 0"><div style="flex:1">${nm(m.a)}</div><b style="color:var(--muted)">vs</b><div style="flex:1;text-align:right">${nm(m.b)}</div></div>${body}`); }
+function sheetTAdd(){ const used=new Set(S.tour.pairs.flat()), q=tSearch.trim().toLowerCase();
+  const list=S.players.filter(p=>!used.has(p.id)&&!isOff(p)&&(!q||p.n.toLowerCase().includes(q))).sort((a,b)=>(S.present[b.id]?1:0)-(S.present[a.id]?1:0)||a.n.localeCompare(b.n));
+  openSheet(`<h3>Add pair <small style="color:var(--muted);font-weight:500">${tSel.length}/2 chosen</small></h3>
+  <input type="search" id="t-q" placeholder="Search players" value="${esc(tSearch)}" style="margin-bottom:8px">
+  <div class="list" style="max-height:50vh;overflow:auto">${list.map(p=>`<button class="item tapr" data-act="t-pk" data-id="${p.id}" style="${tSel.includes(p.id)?'background:#e8f6ee;border-color:#25a065':''}"><div class="nm">${catBadge(p.c)} ${esc(p.n)}${S.present[p.id]?'':' <small style="color:var(--muted)">not checked in</small>'}</div>${tSel.includes(p.id)?'<b style="color:#25a065">✓</b>':''}</button>`).join('')||'<div class="hint">No players left to pair.</div>'}</div>
+  <div class="acts"><button class="btn" data-act="sheet-close">Close</button></div>`);
+  const i=$('#t-q'); if(i) i.addEventListener('input',()=>{ tSearch=i.value; const pos=i.selectionStart; sheetTAdd(); const j=$('#t-q'); if(j){ j.focus(); try{ j.setSelectionRange(pos,pos); }catch(e){} } }); }
+
 /* ---------- render ---------- */
 /* finished matches: red blinking Game done + a "ting ting" chime on the Main tablet */
 let doneSeen=null, audioCtx=null;
@@ -1142,7 +1295,7 @@ function render(){
   DAYS_SET=null;
   if(IS_COURT){ renderScore(); return; }
   checkDone();
-  { const m=document.getElementById('app'); if(m) m.classList.toggle('wide',tab==='courts'); }
+  { const m=document.getElementById('app'); if(m) m.classList.toggle('wide',tab==='courts'||tab==='tour'); }
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
   const app=$('#app');
   if(tab==='courts') app.innerHTML=vCourts();
@@ -1150,6 +1303,7 @@ function render(){
   else if(tab==='players') app.innerHTML=vPlayers();
   else if(tab==='pay') app.innerHTML=vPay();
   else if(tab==='hist') app.innerHTML=vHist();
+  else if(tab==='tour') app.innerHTML=vTour();
   else if(tab==='help') app.innerHTML=vHelp();
   else app.innerHTML=vSettings();
   if(scoreOpen!==null) renderScore();
@@ -1170,9 +1324,6 @@ function vCourts(){
     <div class="stat s-pl"><b>${S.courts.reduce((a,c)=>a+c.p.length,0)}</b><span>Playing</span></div>
     <div class="stat s-wa"><b>${w.length+planned().size}</b><span>Waiting</span></div>
     <div class="stat s-re"><b>${resting.length}</b><span>Resting</span></div></div>`;
-  if(!present.length){
-    h+=`<div class="card emptybox" style="margin-top:14px"><b>No one checked in yet</b>${S.players.length?'Mark today\'s attendees first.':'Add your players, then mark attendance.'}<div style="margin-top:12px"><button class="btn pri" data-act="go" data-tab="${S.players.length?'checkin':'players'}">${S.players.length?'Take attendance':'Add players'}</button></div></div>`;
-  }
   h+=`<h2>Courts <small>${S.mode==='doubles'?'Doubles':'Singles'}</small><span class="grow"></span>${IS_HOST()?'<button class="btn sm" data-act="qr" data-k="all">📱 Score with a phone</button>':''}<button class="btn lime sm" data-act="fill-all">Fill empty courts</button></h2><div class="courts n${S.courts.length}">`;
   S.courts.forEach((c,i)=>{
     const lv=GROUPS.map(k=>`<button class="${c.lv.includes(k)?'on':''}" data-act="lv" data-c="${i}" data-k="${k}">${k}</button>`).join('');
@@ -1193,7 +1344,7 @@ function vCourts(){
       pitch=`<div class="side">${tl(L)}${L.map(id=>plBtn(id,i)).join('')}</div><div class="net"></div><div class="side">${tl(R)}${R.map(id=>plBtn(id,i)).join('')}</div>`;
     }
     h+=`<div class="court ${c.sc&&c.sc.done&&c.p.length?'cfin':''}" data-act="court-menu" data-c="${i}">
-      <div class="court-h"><b>Court ${i+1}</b>${(S.remote||{})[i]&&!IS_COURT?`<span class="rbadge ${Date.now()-(RSEEN[i]||0)<12000?'live':''}" data-rs="${i}" title="A phone is scoring this court">📱 <i class="on">Connected</i><i class="off">Reconnecting…</i></span>`:''}${c.sc&&c.sc.done&&c.p.length?'<span class="cfin-tag">🔔 Done</span>':''}<span class="t" data-t="${c.t}">${elapsed(c.t)}</span><span class="cmenu" aria-hidden="true">⋯</span></div>
+      <div class="court-h"><b>Court ${i+1}</b>${c.tm&&c.p.length&&tOn()?`<span class="ttag">🏆 ${tRoundName(+c.tm.split('-')[0])}</span>`:''}${(S.remote||{})[i]&&!IS_COURT?`<span class="rbadge ${Date.now()-(RSEEN[i]||0)<12000?'live':''}" data-rs="${i}" title="A phone is scoring this court">📱 <i class="on">Connected</i><i class="off">Reconnecting…</i></span>`:''}${c.sc&&c.sc.done&&c.p.length?'<span class="cfin-tag">🔔 Done</span>':''}<span class="t" data-t="${c.t}">${elapsed(c.t)}</span><span class="cmenu" aria-hidden="true">⋯</span></div>
       <div class="lv"><span>Levels</span>${lv}</div>
       <div class="pitch">${pitch}</div>
       ${c.p.length?scoreStrip(i):''}
@@ -1601,7 +1752,7 @@ function sheetWinner(ci){
 let histCourt='All', histRange='today', histView='matches';
 let scHelp=false, helpOpen='session', helpFrom='courts';
 /* the ? button opens How to use at the topic for the screen you are on; Back returns to that screen */
-const HELP_FOR={courts:'session',checkin:'session',players:'first',pay:'fees',hist:'end',settings:'first'};
+const HELP_FOR={courts:'session',checkin:'session',players:'first',pay:'fees',tour:'tour',hist:'end',settings:'first'};
 function openHelp(topic){
   if(tab!=='help') helpFrom=tab;
   helpOpen=topic||HELP_FOR[helpFrom]||'session'; tab='help'; closeSheet(); render();
@@ -1658,6 +1809,12 @@ function vHelp(){
     <li><b>↑</b> moves a game up, <b>Reshuffle</b> picks new players, <b>✕</b> sends them back to the queue.</li>
     <li><b>No repeats:</b> Auto match, Plan next game, Fill empty courts and Reshuffle avoid putting players together again who already played in the same game this session, and avoid repeating partners. When a level has only a few players (or Mixing is <b>Same only</b>) some repeats can't be avoided.</li>
     <li><b>Change the teams:</b> drag a player onto another player on the same court to swap them — across the net that changes the teams. Laptop: drag with the mouse. Tablet / phone: press and hold a moment, then drag (a quick swipe still scrolls, a tap still opens the player). Works until the first point is scored, and inside planned games too.${shot('tab-drag','Dragging Carl onto Sara S to change the teams on Court 1')}</li></ol>`)}
+  ${sec('tour','4b. Tournament bracket (knockout)',`<ol>
+    <li>Open <b>Bracket</b>. Make doubles pairs: <b>Auto-pair present players</b> (strongest with weakest, so pairs are even) or <b>+ Add pair</b> to choose 2 players yourself. ✕ removes a pair.</li>
+    <li><b>Start — seeded by level</b> (strongest pairs kept apart until the end) or <b>Start — random draw</b>. Any number of pairs works: when it is not 4, 8, 16 or 32, the top seeds get a <b>Bye</b> into round 2.</li>
+    <li>Tap a match (both pairs known, green glow) → <b>Court N</b> sends it to that free court. Score it as usual; <b>Game done</b> moves the winner up the bracket by itself.</li>
+    <li>No court needed? In the same sheet tap the winning pair. <b>Undo result</b> works until that pair's next match has started.</li>
+    <li>The final's winner shows as 🏆 Champion in the middle. <b>New tournament</b> clears the bracket (pairs are kept).</li></ol>`)}
   ${sec('score','5. Keeping score',`<ol>
     <li>After the toss, tap <b>Serves first</b>. Use <b>⇄ Swap</b> so names match where players stand (only at 0–0).</li>
     <li>Tap the big number of the team that wins the rally.${shot('tab-score','Scoreboard on a tablet: score, server and receiver')}${shot('phone-score','Scoreboard on a phone',1)}</li>
@@ -2304,6 +2461,27 @@ document.addEventListener('click',e=>{
   if(el.closest('#sheet')&&['gen','finish','score','cancel','reshuffle','sheet-close'].includes(a)){ closeSheet(); menuCourt=null; }
   switch(a){
     case 'court-menu': if(!IS_DISPLAY) sheetCourt(ci); break;
+    case 't-auto': tAutoPair(); break;
+    case 't-add': tSel=[]; tSearch=''; sheetTAdd(); break;
+    case 't-pk':{ const i=tSel.indexOf(id); if(i>=0) tSel.splice(i,1); else tSel.push(id);
+      if(tSel.length===2){ S.tour.pairs.push(tSel.slice()); const nm=tSel.map(pnm).join(' / '); tSel=[]; tSearch=''; save(); render(); sheetTAdd(); toast('Pair added: '+nm); } else sheetTAdd(); break;}
+    case 't-del': if(!tOn()){ S.tour.pairs.splice(+k,1); save(); render(); } break;
+    case 't-clr': if(confirmKey!=='tclr'){ confirmKey='tclr'; render(); break; } confirmKey=null; S.tour.pairs=[]; save(); render(); break;
+    case 't-start': tStart(k); break;
+    case 't-reset': if(confirmKey!=='treset'){ confirmKey='treset'; render(); break; } confirmKey=null; S.tour.pos=[]; S.tour.w={}; S.courts.forEach(c=>c.tm=''); save(); render(); toast('Bracket cleared — pairs kept'); break;
+    case 't-m': sheetTMatch(k); break;
+    case 't-go': closeSheet(); tab='courts'; render(); window.scrollTo(0,0); break;
+    case 't-win':{ const m=tMatch(k); if(!m||!m.ready||m.ci>=0){ closeSheet(); break; } const v=+el.dataset.v?1:0; S.tour.w[k]={s:v,sc:''}; closeSheet(); save(); render(); toast('Winner: '+tPairName(v?m.b:m.a)); break;}
+    case 't-undo':{ const m=tMatch(k); if(m&&m.r){ const nx=tMatch((m.k+1)+'-'+(m.j>>1)); if(!(nx&&(nx.r||nx.ci>=0))){ delete S.tour.w[k]; save(); render(); toast('Result removed'); } } closeSheet(); break;}
+    case 't-send':{ const m=tMatch(k), c=S.courts[ci]; if(!m||!m.ready||m.ci>=0||!c){ closeSheet(); break; }
+      if(S.mode!=='doubles'){ toast('Tournament matches are doubles — switch Settings to Doubles'); break; }
+      if(c.p.length){ toast('Court '+(ci+1)+' is busy'); sheetTMatch(k); break; }
+      const ids=tPairIds(m.a).concat(tPairIds(m.b)), oc=onCourt(), busy=ids.find(x=>oc[x]!==undefined);
+      if(busy){ toast(pnm(busy)+' is playing on Court '+(oc[busy]+1)); break; }
+      S.next.forEach(g=>{ g.p=g.p.map(x=>ids.includes(x)?null:x); });   // out of planned games; the gap fills by itself
+      ids.forEach(x=>{ delete S.resting[x]; if(!S.present[x]){ S.present[x]=1; logEv('in',{n:pnm(x)}); } });
+      c.p=ids; c.d=[]; c.t=Date.now(); c.sc=null; c.tm=k;
+      closeSheet(); save(); render(); toast(tRoundName(m.k)+' on Court '+(ci+1)); break;}
     case 'sheet-close': break;
     case 'stg-check': storageCheck(true).then(()=>toast(STG.persist?'Data is protected on this device':'Browser did not protect it — install the app to keep data safe')); break;
     case 'restore-go':{ const d=restorePending; restorePending=null; closeSheet(); if(!d||IS_DISPLAY||IS_COURT) break;
@@ -2353,7 +2531,7 @@ document.addEventListener('click',e=>{
     case 'h-win':{ const x=S.hist.find(x=>String(x.d)===id); if(x){ x.w=x.w==='a'?'b':x.w==='b'?'':'a'; save(); render(); } break;}
     case 'h-clear': if(confirmKey!=='hclear'){confirmKey='hclear';render();break;} confirmKey=null; S.hist=[]; save(); render(); toast('History cleared'); break;
     case 'cancel': finish(ci,false); break;
-    case 'reshuffle':{ const c=S.courts[ci]; const old=c.p; c.p=[];
+    case 'reshuffle':{ const c=S.courts[ci]; const old=c.p; c.p=[]; c.tm='';
       // try a fresh group from the queue first; if not enough, mix the current players with the queue
       if(!fillCourt(ci,true,old)){ if(!fillCourt(ci,true)){c.p=old;toast('Not enough players to reshuffle');} }
       save();render(); break;}
