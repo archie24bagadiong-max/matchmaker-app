@@ -707,7 +707,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=89;
+const APP_VERSION=90;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1723,6 +1723,61 @@ function reportScope(){
 /* full backup of this device: everything needed to rebuild it (players, photos, attendance, courts, payments, history, settings) */
 const backupText=()=>JSON.stringify({app:'MatchMaker',kind:'backup',v:1,ver:APP_VERSION,at:Date.now(),state:S,photos:PH});
 const keyTime=k=>{const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d).getTime();};
+/* one sheet per session day, laid out like the club's daily sheet ("Sept 16" in 4th Qtr Wednesday.xlsx):
+   top = Qty / totals / shuttle cost & profit (A/C actual cost, S/P shuttle profit, T/P total profit, P/P price per piece, P/T price per tube),
+   left = players (Sub_Mem, Level, Wins, No, Player, Game, Guest, Shuttle, Total, Paid, Note),
+   right = the matches, two rows each (Que/Match, team 1, Number, Level, Match, Shuttle, VS, team 2, Number, Level, Match, Shuttle, Winner, Score, Remarks, Team 1, Team 2) */
+const DAY_C={Mon:'M',Tue:'T',Wed:'W',Thu:'Th',Fri:'F',Sat:'Sa',Sun:'Su'};
+const MON_S=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sept','Oct','Nov','Dec'];
+function addDaySheets(wb,pay,H){
+  const by={}; pay.forEach(r=>(by[r.day]||(by[r.day]=[])).push(r));
+  const keys=[...new Set(Object.keys(by).concat(H.map(x=>dayKey(x.d))))].sort((a,b)=>keyT(a)-keyT(b));
+  const yrs=new Set(keys.map(k=>k.split('-')[0])), used=new Set(), E=(c,r)=>XLSX.utils.encode_cell({c,r});
+  const pOf=r=>(r.id&&byId(r.id))||S.players.find(q=>q.n===r.n)||null;
+  keys.forEach(k=>{
+    const [y,m,d]=k.split('-').map(Number), wd=DAYS[(new Date(y,m-1,d).getDay()+6)%7];
+    let nm=MON_S[m-1]+' '+d+(yrs.size>1?' '+y:''), base=nm, n2=2; while(used.has(nm)) nm=base+' ('+(n2++)+')'; used.add(nm);
+    const M=H.filter(x=>dayKey(x.d)===k).sort((a,b)=>(a.s||a.d)-(b.s||b.d));
+    const nmOf=(ids,ns,i)=>ids[i]?((byId(ids[i])||{}).n||ns[i]||''):'';
+    const wins={}, played={};
+    M.forEach(x=>[['a',x.a,x.an||[]],['b',x.b,x.bn||[]]].forEach(([sd,ids,ns])=>ids.forEach((id,i)=>{ const n=nmOf(ids,ns,i); played[n]=(played[n]||0)+1; if(x.w===sd) wins[n]=(wins[n]||0)+1; })));
+    const rows=(by[k]||[]).filter(r=>+r.g>0||rowPaid(r)>0).sort((a,b)=>String(a.n).localeCompare(String(b.n)));
+    const ws={}, mg=[], put=(c,r,v,f,z)=>{ if((v===''||v==null)&&!f) return; const o=typeof v==='number'?{t:'n',v:v}:{t:'s',v:String(v==null?'':v)}; if(f) o.f=f; if(z) o.z=z; ws[E(c,r)]=o; };
+    const tfOf=r=>r.tf!=null?+r.tf:(+r.g?({G:S.fee.gp,MG:S.fee.mg,F:S.fee.fm}[r.t]||0):0), shOf=r=>r.sh!=null?+r.sh:r2((+r.g||0)*S.fee.sp);
+    const first=5, last=first+Math.max(rows.length,1)-1, tot=last+1;   // Excel row numbers
+    let gN=0,gS=0,shS=0,due=0,cash=0;
+    ['Sub_Mem','Level','Wins','No','Player','Game','Guest','Shuttle','Total','Paid','Note'].forEach((h,c)=>put(c,3,h));
+    rows.forEach((r,i)=>{ const p=pOf(r), tf=tfOf(r), sh=shOf(r), xr=first+i, ri=xr-1, ca=r2(rowCash(r)), st=r2(rowStc(r));
+      const dys=p&&p.dy&&p.dy.length?p.dy.map(x=>DAY_C[x]).join(''):'';
+      put(0,ri,r.t==='S'?(dys||'Sub'):tf); put(1,ri,r.c||(p&&p.c)||''); put(2,ri,wins[r.n]||0); put(3,ri,i+1); put(4,ri,r.n);
+      put(5,ri,'Play '+(+r.g||0)); if(tf>0){ put(6,ri,tf); gN++; gS+=tf; } put(7,ri,sh);
+      put(8,ri,+r.f,'IF(G'+xr+'="",ROUND(H'+xr+',0),ROUND(G'+xr+'+H'+xr+',0))');
+      put(9,ri,+r.f<=0?'':r.wv?'Waived':rowLeft(r)<=0.009?(st>0&&ca>0?'Yes+STC':st>0?'STC':'Yes'):rowPaid(r)>0?'Part':'No');
+      if(ca>0) put(10,ri,ca);
+      shS+=sh; due+=+r.f; cash+=ca; });
+    put(5,tot-1,rows.length,'COUNTA(E'+first+':E'+last+')'); put(6,tot-1,r2(gS),'SUM(G'+first+':G'+last+')'); put(7,tot-1,r2(shS),'SUM(H'+first+':H'+last+')');
+    put(8,tot-1,r2(due),'SUM(I'+first+':I'+last+')'); put(10,tot-1,r2(cash),'SUM(K'+first+':K'+last+')');
+    // top: Qty / totals / shuttle cost (tube of 12 at 90 SR: change K3 in Excel and the cost / profit update)
+    const tube=90, pp=tube/12, F3=r2(due-gS), G3=r2(M.length*pp);
+    put(3,0,'Qty'); put(4,0,r2(due),'F2+F3'); put(5,0,r2(cash),'K'+tot);
+    ws[E(6,0)]={t:'n',v:Math.round((Date.UTC(y,m-1,d)-Date.UTC(1899,11,30))/86400000),z:'dd-mmm-yy'}; put(10,0,wd);
+    put(3,1,gN,'COUNT(G'+first+':G'+last+')'); put(4,1,'Guest'); put(5,1,r2(gS),'G'+tot); ['A/C','S/P','T/P','P/P','P/T'].forEach((h,i)=>put(6+i,1,h));
+    put(3,2,M.length); put(4,2,'Shuttle'); put(5,2,F3,'I'+tot+'-F2'); put(6,2,G3,'D3*J3'); put(7,2,r2(F3-G3),'F3-G3'); put(8,2,r2(gS+F3-G3),'F2+H3'); put(9,2,pp,'K3/12'); put(10,2,tube);
+    // right: matches
+    ['Que/ Match','Name Partners Team 1','Number','Level','Match','Shuttle','VS','Name Partners team 2','Number','Level','Match','Shuttle','Winner','Score','','Remarks','Team 1','Team 2'].forEach((h,i)=>put(11+i,0,h));
+    const lvOf=n=>{ const q=S.players.find(z=>z.n===n); return q?q.c:'New'; }, gOf=n=>{ const r=(by[k]||[]).find(z=>z.n===n); return 'Play '+(r?+r.g||0:played[n]||0); };
+    M.forEach((x,i)=>{ const r0=1+i*2; put(11,r0,'Finish'); put(17,r0,i+1); mg.push({s:{r:r0,c:11},e:{r:r0+1,c:11}},{s:{r:r0,c:17},e:{r:r0+1,c:17}});
+      [0,1].forEach(j=>{ const a=nmOf(x.a,x.an||[],j), b=nmOf(x.b,x.bn||[],j);
+        if(a){ put(12,r0+j,a); put(13,r0+j,1); put(14,r0+j,lvOf(a)); put(15,r0+j,gOf(a)); }
+        if(b){ put(18,r0+j,b); put(19,r0+j,1); put(20,r0+j,lvOf(b)); put(21,r0+j,gOf(b)); } });
+      put(16,r0,1); put(22,r0,1);
+      const team=(ids,ns)=>ids.map((_,j)=>nmOf(ids,ns,j)).filter(Boolean).join(' & ');
+      put(23,r0,x.w==='a'?team(x.a,x.an||[]):x.w==='b'?team(x.b,x.bn||[]):x.w==='d'?'Draw':''); put(24,r0,x.sc||''); put(26,r0,x.c?'Court '+x.c:''); put(27,r0,x.ta||''); put(28,r0,x.tb||''); });
+    ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:Math.max(tot-1,M.length*2,3),c:28}});
+    ws['!merges']=mg; ws['!cols']=[10,6,6,6,14,9,8,10,8,8,8,10,16,7,6,8,7,4,16,7,6,8,7,18,10,3,11,14,14].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb,ws,nm);
+  });
+}
 function buildReport(){
   const today=dayKey(Date.now()), R=reportScope();
   const pay=S.ledger.concat(todayRows()).filter(r=>R.inP(r.id,r.n)&&R.inD(keyTime(r.day)));
@@ -1736,6 +1791,7 @@ function buildReport(){
   const T=t=>TYPE_L[t]||'Subscriber';
   const wb=XLSX.utils.book_new();
   const add=(name,aoa,widths)=>{const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=widths.map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws,name);};
+  addDaySheets(wb,pay,H);   // daily sheets first, like the club workbook
   add('Players',[['Name','Full Name','Level','Type','Active','Gender','Team','Days']].concat(PLs.slice().sort((a,b)=>lvCmp(a.c,b.c)||a.n.localeCompare(b.n)).map(p=>[p.n,p.fn||'',p.c,T(p.t),p.st||'',p.g==='M'?'Male':p.g==='F'?'Female':'',p.tm||'',(p.dy||[]).join(', ')])),[22,30,8,10,9,9,20,22]);
   const pst=r=>+r.f<=0?'-':r.wv?'Waived '+r.wv+' SR':rowLeft(r)<=0.009?'Paid':rowPaid(r)>0?'Part paid':'Unpaid';
   add('Payments',[['Date','Player','Team','Level','Type','Games','Type fee (SR)','Shuttles (SR)','Fee (SR)','Paid (SR)','Balance (SR)','Status','Method','Last payment']].concat(pay.slice().sort((a,b)=>keyT(a.day)-keyT(b.day)||String(a.n).localeCompare(b.n)).map(r=>[dayDate(r.day),r.n,r.tm||((S.players.find(p=>p.n===r.n)||{}).tm||''),r.c,T(r.t),r.g,r.tf!=null?+r.tf:(+r.g?({G:S.fee.gp,MG:S.fee.mg,F:S.fee.fm}[r.t]||0):0),r.sh!=null?+r.sh:r2((+r.g||0)*S.fee.sp),r.f,r2(rowPaid(r)),rowLeft(r),pst(r),rowPaid(r)>0?(r.pm||pmText(rowCash(r),rowStc(r))||'Cash'):'',r.sd&&r.sd!==r.day?dayDate(r.sd):''])),[13,24,18,10,12,8,12,12,10,10,12,10,16,13]);
@@ -2484,7 +2540,7 @@ async function importFile(f){
     await loadXLSX();
     const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
     // the club roster sheet (header "Player Master List") wherever it is in the workbook, else the first sheet
-    const sn=wb.SheetNames.find(n=>((XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:false,defval:''})[0])||[]).some(x=>/player\s*master\s*list/i.test(String(x))))||wb.SheetNames[0];
+    const sn=wb.SheetNames.find(n=>((XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:false,defval:''})[0])||[]).some(x=>/player\s*master\s*list/i.test(String(x))))||wb.SheetNames.find(n=>/^players$/i.test(n.trim()))||wb.SheetNames[0];
     const ws=wb.Sheets[sn];
     importRows(XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:''}));
     const tsn=wb.SheetNames.find((n,i)=>i>0&&/^teams?$/i.test(n.trim()));
