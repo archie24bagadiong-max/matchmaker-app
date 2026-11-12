@@ -1357,9 +1357,10 @@ function vPayDraw(){
     :`<div class="emptybox"><b>No players to show</b>${dc&&hidRows?'No '+DAY_L[dc]+' players checked in. Choose All days to see everyone.':'Only players checked in today appear here.'}<div style="margin-top:12px"><button class="btn pri" data-act="go" data-tab="checkin">Take attendance</button></div></div>`}
     <p class="hint">Games are counted automatically when you tap “Game done” on a court. <b>½ Part</b> takes part of a fee; what is left carries over as a balance when a new session starts.</p>
   </div>
-  <h2>Balances owed <small>${owing.length?`total <b style="color:#c0392b">${sr(r2(owing.reduce((a,x)=>a+x.t,0)))}</b> · ${owing.length} player${owing.length===1?'':'s'} · `:''}tap a name to collect</small></h2>
+  <h2>Balances owed <small>tap a name to collect</small></h2>
   <div class="card">
-    ${owing.length?`<div class="list">${owing.map(x=>`<button class="item tapr balrow" data-act="bal" data-id="${x.p.id}"><div class="nm">${esc(x.p.n)} <small style="color:var(--muted);font-weight:500">${x.b.length} bill${x.b.length===1?'':'s'}</small></div><b class="baltot">${sr(x.t)}</b></button>`).join('')}</div>`
+    ${owing.length?`<div class="list">${owing.map(x=>`<button class="item tapr balrow" data-act="bal" data-id="${x.p.id}"><div class="nm">${esc(x.p.n)} <small style="color:var(--muted);font-weight:500">${x.b.length} bill${x.b.length===1?'':'s'}</small></div><b class="baltot">${sr(x.t)}</b></button>`).join('')}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:14px 16px;border-radius:12px;background:#fdecea;border:2px solid #c0392b"><span style="font-weight:700;font-size:18px">Total owed <small style="color:var(--muted);font-weight:500;font-size:14px">${owing.length} player${owing.length===1?'':'s'}</small></span><b style="color:#c0392b;font-size:24px">${sr(r2(owing.reduce((a,x)=>a+x.t,0)))}</b></div>`
     :'<div class="hint" style="margin:0">Nobody owes anything. 👍</div>'}
   </div>
   <h2>Excel report</h2>
