@@ -26,6 +26,8 @@ Each device keeps its own data (players, attendance, payments, history). Back up
 - **Change teams:** drag a player onto another on the same court (touch: press and hold, then drag), until the first point is scored.
 - **Scoring:** official BWF rally scoring on the court card, on court tablets, or on any phone that scans the court's QR code.
 - **Fees and payments:** type fee + shuttles (Subscriber 0 SR, Member Guest 20 SR, Non-Member Guest 25 SR, plus 2.50 SR per game played), cash / STC Pay, part payments and dated balances.
+- **Tournament bracket:** doubles knockout — auto-pair or hand-pick pairs, seeded or random draw with byes, a two-sided bracket with a 🏆 champion card. Matches go onto courts automatically or by tap / right-click; Game done moves the winner up. Pop it out to a second screen, or show it on a Bracket viewer tablet or TV. See [Tournament bracket](DOCS.md#tournament-bracket).
+- **Score with a phone:** scan a court's QR code, or type the court's PIN at `…/matchmaker-app/?pin`.
 - **History and reports:** every match with teams and winner; Excel report by date or date range.
 
 Full documentation: [DOCS.md](DOCS.md).

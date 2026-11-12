@@ -114,6 +114,7 @@ Each session day:
 | Attendance | Present per level, tick list | Tick/untick, check in all or by level, search |
 | Players | Add form, Excel import, bulk paste, roster | Add, Choose file, Add list, change level, type, rename, delete |
 | Payments | Totals, per-player games and fee | Filter, mark Paid, Export Excel report, Copy summary |
+| Bracket | Doubles knockout tournament: pairs, two-sided bracket, champion | Auto-pair, Add pair, Start seeded / random, send matches to courts (tap, right-click, Auto-send), pick winner, Undo result, change a team, Pop out, New tournament — see [Tournament bracket](#tournament-bracket) |
 | History | Matches by day with court, teams, winner; wins leaderboard | Filter by date/court, Change winner, delete match, Export Excel |
 | Settings | Options | Courts 1–8, Doubles/Singles, mixing, priority, fees, Update app (top), Start new session, Clear history, Backup roster, Delete all players |
 
@@ -174,13 +175,113 @@ Each court has a **Keep score** button that opens a full-screen scoreboard, run 
 - The interval and change of ends happen at half the points (6, 8 or 11); in the last possible game the teams also change ends there.
 - The scoreboard header shows the format, e.g. "Game 2 of up to 3 · to 21".
 
+## Tournament bracket
+
+The **Bracket** tab runs a doubles knockout tournament on the club's courts: pairs are drawn into a two-sided bracket, matches go onto courts, and every winner moves up until one pair is the 🏆 Champion.
+
+### 1. Make the pairs
+
+| Button | What it does |
+| --- | --- |
+| **Auto-pair present players** | Pairs every checked-in player who is not resting and not paired yet: strongest with weakest, so the pairs come out even. With an odd number, one player is left without a partner (the message names them). |
+| **+ Add pair** | Choose 2 players yourself (search box; checked-in players first). Players already in a pair are not listed. |
+| **✕** on a pair | Removes that pair. |
+| **Clear pairs** | Removes all pairs (tap twice). |
+
+Auto-pair and Add pair can be mixed: for example add a few fixed pairs first, then auto-pair the rest.
+
+### 2. Start the draw
+
+| Button | Draw |
+| --- | --- |
+| **Start — seeded by level** | Pairs are ranked by their two players' levels. The strongest pairs are placed in different halves, so they can only meet late (1 v 16, 2 v 15 …, seeds 1 and 2 only in the final). |
+| **Start — random draw** | Pairs are placed at random. |
+
+Any number of pairs (2 or more) works. The bracket is rounded up to 4, 8, 16 or 32; the spare places are **Byes**, given to the top seeds, who go straight into round 2. Example: 11 pairs → bracket of 16 with 5 byes.
+
+### 3. Read the bracket
+
+The left half of the draw is on the left, the right half on the right, and both meet at the **🏆 Champion** box in the middle. Columns are labelled Round of 16 → Quarterfinal → Semifinal → Final → Champion. On a phone, swipe the bracket sideways.
+
+| Box | Meaning |
+| --- | --- |
+| Green glow | Match ready — both pairs known, not on a court yet |
+| Orange with a **Court N** tag | Being played on that court |
+| Pulsing lime neon | Won this match (the score is shown in the next round's box) |
+| Faded | Lost |
+| Dashed "—" | Waiting for an earlier result |
+| Dashed "Bye" | Empty place; the other pair goes through |
+| Pulsing gold | Champion |
+
+When the final is won, the gold banner at the top shows **Champion: …** with both players' photos. A player without a photo gets a square smiley picture from their Gender: girl (pink, long hair, bow), boy (blue), or green when no gender is set. Set Gender in Players → Edit, or in the Gender column of the Excel roster.
+
+### 4. Put matches on courts
+
+**Auto-send to free courts** (switch at the top of the Bracket screen, on by default):
+
+- Ready matches go onto free courts by themselves — when the draw starts, after every **Game done**, and with **🏆 Fill courts from bracket** — earliest round first.
+- A match waits while one of its players is still on another court, then goes on when they are free.
+
+**By hand** (Auto-send on or off), any of these:
+
+- **Tap** a match (or a row in **Up next**) → **Court N**.
+- **Right-click** a team (laptop) or **press and hold** (tablet) → **Choose court** lists every free court → click one. The menu also says why a match cannot go on yet (finished, already on Court N, waiting for the other team, a player busy on another court, no free court).
+- On the **Courts** tab, an empty court → **🏆 Choose tournament match** → pick from the ready matches.
+
+**While a tournament runs** (from the draw until there is a champion) the operator assigns every court:
+
+- An empty court shows "🏆 Tournament running" and only **🏆 Choose tournament match**. Auto match, Pick players and the "+ Assign player" boxes are hidden.
+- A court playing a bracket match shows its round (e.g. 🏆 Quarterfinal), **Keep score** and only **Game done**.
+- **Fill empty courts** becomes **🏆 Fill courts from bracket** and only places bracket matches. Game done does not start regular Next games.
+- Players whose pair is still in the tournament are kept out of the waiting queue; pairs that are knocked out go back to it.
+- Players sent to a court leave any planned Next game (the gap fills by itself), are checked in if they were not, and are taken off Resting.
+
+### 5. Record results
+
+- Score the match as usual (**Keep score**, a court tablet, or a phone by QR code / PIN). **Save result & clear court** or **Game done** records the winner and the score, and the winner moves up the bracket at once. Scores are stored winner first (e.g. 21–15, 21–18).
+- No court needed: tap the match → tap the winning pair.
+- **Undo result** (tap the match) works until that pair's next match has started.
+- **Take off court** (tap a match that is on a court) empties the court with no result; the match is ready again.
+- A draw or "no result" leaves the match ready to be played again.
+
+### 6. Change the draw
+
+Tap any first-round box:
+
+| Choice | What it does |
+| --- | --- |
+| **New team** | Choose 2 players; the new pair goes into that place. Use it on a **Bye** to add a late team. |
+| A team "not in bracket" | Puts an existing pair that is not placed yet into that place. |
+| **Swap with** | Swaps two first-round teams. |
+| **Make it a Bye** | Takes the team out (never both teams of one match). |
+| **Open match** | Court / winner, as in step 4–5. |
+
+A place is locked once its match is on a court or has a result — or, after a bye, once that pair's next match has started — so finished results are never broken.
+
+**New tournament** (tap twice) clears the bracket and keeps the pairs, ready for another draw.
+
+### 7. Show the bracket on a second screen or TV
+
+| Where | How |
+| --- | --- |
+| Second monitor on the same laptop | Bracket → **⧉ Pop out**. The bracket opens in its own window and follows every result live. Drag it to the second screen → **⛶ Full screen** (or F11). It fills the window at any size, shows only the bracket and champion, and cannot change anything. If nothing opens, allow pop-ups for the site. |
+| Spare tablet (APK) | Settings → Tablet sync → **Bracket viewer** → Main tablet address → Connect. Full-screen live bracket, read-only, with the "Now playing & up next" list. ⚙ Settings at the bottom to switch back. |
+| TV / laptop browser on the club Wi-Fi | Open `http://<Main tablet address>:8787/?view=bracket` (shown on the Main tablet under Tablet sync). |
+
+### Good to know
+
+- Tournament matches are doubles: Settings must be on **Doubles** to send a match to a court.
+- A tournament match played on a court (finished with Game done / Save result) is also saved in **History** and counts for games played and fees like any other game. A winner picked by tap without a court only updates the bracket.
+- The bracket is part of the session data: it is backed up, restored and synced to Display tablets with everything else.
+- Pop out is not available in the Android app or the Claude link (they cannot open a second window); use Bracket viewer there.
+
 ## Tablet sync (local network)
 
 Several tablets can show the same session over a hotspot or Wi-Fi, with no internet and no outside service. Needs APK 1.5 or later on every tablet.
 
 1. Turn on a hotspot (on the Main tablet or a phone) and connect all tablets to it.
 2. On the Main tablet: **Settings → Tablet sync → Main tablet**. It shows an address such as `192.168.43.1`.
-3. On each other tablet: **Settings → Tablet sync → Display tablet**, type that address, tap **Connect**.
+3. On each other tablet: **Settings → Tablet sync → Display tablet**, type that address, tap **Connect**. Choose **Bracket viewer** instead for a tablet or TV that shows only the live tournament bracket, full screen.
 4. The header shows **Main · sharing** or **Display · live**. Displays update about every 1.5 seconds.
 
 - Only the Main tablet makes changes (attendance, courts, scores, payments). Display tablets are read-only and dim the editing buttons.
@@ -199,6 +300,7 @@ Example for 4 courts: tablets 1–4 = Court tablets, tablet 5 = Main, tablet 6 =
 
 - How it works: the Main tablet runs a small server on port 8787 (`GET /state` returns the session as JSON, `POST /score` receives a court's score; APK 1.9+ also serves the app page at `GET /`); Displays and Court tablets poll it.
 - **Score with a phone (APK 1.9 on the Main):** Courts tab → 📱 Score with a phone shows a QR code per court. A phone on the hotspot scans it (`http://<main>:8787/?court=N`) and becomes that court's scorer in its browser — Android or iPhone, nothing installed. `http://<main>:8787/` without a court is a live view-only display. Each score carries a sequence number so the newest change wins.
+- **Court PIN (no camera):** in the 📱 Score with a phone codes (or tap a court), type a PIN of 4–8 letters or numbers under a court → **Save**. On the phone open `archie24bagadiong-max.github.io/matchmaker-app/?pin`, type the PIN → **Connect**: it opens the same scoring page as that court's QR code (one phone per court; Disconnect works the same). PINs are kept on the host device and need internet, like the online QR codes.
 
 ## Teams
 
