@@ -630,7 +630,11 @@ button.bx{cursor:pointer}
 .bx.tbd,.bx.bye{border-style:dashed;border-color:#b9c4d6;color:var(--muted)}
 .bx.tbd .ball,.bx.bye .ball{opacity:.35}
 .bx.lost{opacity:.45}
-.bx.won{border-color:#25a065;background:#e8f6ee}
+.bx.won{border-color:#25a065;background:#e8f6ee;animation:neonWin 1.4s ease-in-out infinite}
+@keyframes neonWin{0%,100%{box-shadow:0 0 0 2px #b6f23a,0 0 6px 2px rgba(182,242,58,.55);border-color:#7fd321}50%{box-shadow:0 0 0 3px #d4ff3a,0 0 18px 7px rgba(200,255,40,.95),0 0 32px 10px rgba(200,255,40,.45);border-color:#a6f000}}
+.bx.champ:not(.tbd){animation:neonChamp 1.6s ease-in-out infinite}
+@keyframes neonChamp{0%,100%{box-shadow:0 0 0 2px #f7c948,0 0 8px 3px rgba(247,201,72,.55)}50%{box-shadow:0 0 0 3px #ffd84d,0 0 22px 9px rgba(255,200,40,.95),0 0 40px 14px rgba(255,190,30,.45)}}
+@media (prefers-reduced-motion:reduce){.bx.won,.bx.champ{animation:none}}
 .bx.rdy{border-color:#8fb51c;box-shadow:0 0 0 3px rgba(200,241,105,.55)}
 .bx.oncrt{border-color:#e89b0c;background:#fdf1dc}
 .bx .crt{position:absolute;top:-9px;right:6px;background:#e89b0c;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px}
@@ -793,7 +797,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=106;
+const APP_VERSION=107;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
