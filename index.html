@@ -573,6 +573,16 @@ html.sheet-open,html.sheet-open body{overflow:hidden}
 .qrc b{font-family:"Barlow Condensed",sans-serif;font-size:22px;text-transform:uppercase;letter-spacing:.5px;color:var(--court)}
 .qrc svg{max-width:100%;height:auto}
 .qrc small{font-size:12px;color:var(--muted);word-break:break-all}
+.pinrow{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;margin-top:4px;border-top:1px dashed var(--border);padding-top:8px}
+.pinbig{font-family:"Barlow Condensed";font-size:26px;font-weight:700;letter-spacing:3px;color:var(--court)}
+.pinbig small{font-size:13px;letter-spacing:.5px;color:var(--muted);margin-right:6px}
+.pinrow .row{display:flex;gap:6px;width:100%;max-width:240px}
+.pinrow input{flex:1;min-width:0;text-transform:uppercase;letter-spacing:2px;text-align:center}
+body.pinjoin nav,body.pinjoin .helpbtn,body.pinjoin #sync{display:none}
+.pjbox{max-width:420px;margin:30px auto;text-align:center}
+.pjbox input{font-size:32px;text-align:center;letter-spacing:6px;text-transform:uppercase;padding:12px;font-family:"Barlow Condensed";font-weight:700}
+.pjbox .btn{width:100%;margin-top:12px;padding:14px;font-size:18px}
+#pj-st{margin-top:12px;min-height:20px;font-weight:600}
 .qrw{background:#f7fbe9;border-color:#dbe9b4;align-items:stretch}
 .qrw b{text-align:center}
 .qrw svg{align-self:center}
@@ -769,7 +779,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=100;
+const APP_VERSION=101;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -787,6 +797,8 @@ if(IS_SERVED){ ROLE=QS.get('court')?'court':'display'; MAIN_IP=location.hostname
    (WebRTC via PeerJS) and scores court N. Nothing is installed on the phone. */
 const JOIN_ID=(!IS_APP&&!IS_SERVED&&QS.get('join'))?String(QS.get('join')).replace(/[^\w-]/g,'').slice(0,40):'';
 const IS_JOIN=!!JOIN_ID&&!!QS.get('court');
+/* a phone without a camera: SITE_URL?pin → type the court PIN → it opens the same link the court's QR code holds */
+const IS_PINJOIN=!IS_APP&&!IS_SERVED&&!IS_JOIN&&QS.get('pin')!==null;
 if(IS_JOIN) ROLE='court';
 const IS_REMOTE=IS_SERVED||IS_JOIN;   // a phone scoring by QR code (local or online)
 const IS_DISPLAY=ROLE==='display';
@@ -1355,6 +1367,7 @@ function checkDone(){
 document.addEventListener('pointerdown',()=>{ try{ audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume(); }catch(e){} },{once:true});
 function render(){
   DAYS_SET=null;
+  if(IS_PINJOIN){ document.body.classList.add('pinjoin'); if(!$('#pj-in')){ $('#app').innerHTML=vPinJoin(); const i=$('#pj-in'); if(i){ i.addEventListener('keydown',e=>{ if(e.key==='Enter') pinJoin(); }); if(i.value) setTimeout(pinJoin,300); else i.focus(); } } return; }
   if(IS_COURT){ renderScore(); return; }
   checkDone();
   { const m=document.getElementById('app'); if(m) m.classList.toggle('wide',tab==='courts'||tab==='tour'); }
@@ -1772,7 +1785,7 @@ function sheetCourt(ci){
   openSheet(`<h3>Court ${ci+1}</h3>
   ${r?`<div class="cq on"><div class="cq-i">📱</div><b>${live?'Phone connected':'Phone reconnecting…'}</b><small>${seenText(ci)} · only this phone can score Court ${ci+1}</small>
       <button class="btn warn" data-act="rdis" data-c="${ci}">${confirmKey==='rdis'+ci?'Tap again to disconnect':'Disconnect phone'}</button></div>`
-     :`<div class="cq">${qrSvg(courtUrl(ci),260)}<b>Scan to score Court ${ci+1}</b><small>${rtcStatusText()}</small></div>`}
+     :`<div class="cq">${qrSvg(courtUrl(ci),260)}<b>Scan to score Court ${ci+1}</b><small>${rtcStatusText()}</small>${pinBox(ci)}</div>`}
   <div class="row" style="margin-top:12px"><span class="grow"></span><button class="btn" data-act="sheet-close">Close</button></div>`);
   sheetView={k:'court',c:ci};
 }
@@ -1788,14 +1801,15 @@ function sheetQR(only){
   const card=(title,url,sub,big)=>`<div class="qrc"><b>${title}</b>${qrSvg(url,big?260:190)}<small>${esc(sub||url)}</small></div>`;
   const courtCard=i=>(S.remote||{})[i]
     ?`<div class="qrc"><b>${courts.length===1?'':'② '}Court ${i+1}</b><div class="rb-big">📱</div><div><b style="font-size:16px;font-family:inherit;text-transform:none">Phone connected</b></div><small>${seenText(i)}</small><button class="btn sm warn" data-act="rdis" data-c="${i}">${confirmKey==='rdis'+i?'Tap again to disconnect':'Disconnect'}</button></div>`
-    :card((courts.length===1?'':'② ')+'Court '+(i+1),courtUrl(i),'Scan to score Court '+(i+1),courts.length===1);
+    :card((courts.length===1?'':'② ')+'Court '+(i+1),courtUrl(i),'Scan to score Court '+(i+1),courts.length===1).replace(/<\/div>$/,pinBox(i)+'</div>');
   const wifiBox=w&&w.s?`<div class="qrc qrw"><b>① Join the Wi-Fi</b>${qrSvg('WIFI:T:'+(w.p?'WPA':'nopass')+';S:'+wifiEsc(w.s)+';'+(w.p?'P:'+wifiEsc(w.p)+';':'')+';',170)}<small>${esc(w.s)} · <button class="linkbtn" data-act="wifi-edit">change</button></small></div>`
     :`<div class="qrc qrw"><b>① Join the Wi-Fi</b><div class="hint" style="margin:4px 0 8px">Optional: save the club Wi-Fi / hotspot name and password to show a "join Wi-Fi" QR code.</div>
       <input type="text" id="qr-ssid" placeholder="Hotspot name" autocomplete="off" value="${esc(w&&w.s||'')}"><input type="text" id="qr-pass" placeholder="Password (blank if open)" autocomplete="off" style="margin-top:6px" value="${esc(w&&w.p||'')}">
       <button class="btn sm pri" data-act="wifi-save" style="margin-top:8px">Save</button></div>`;
   openSheet(`<h3>📱 Score with a phone${courts.length===1?' — Court '+(courts[0]+1):''}</h3>
   <div class="hint" style="margin:0 0 6px">Any phone or tablet, nothing to install: scan the court's code with the camera — the Match Maker page opens and scores that court. You put the players on; every point comes straight back here.</div>
-  <div class="hint" style="margin:0 0 10px"><b>${rtcStatusText()}</b> · needs internet on this device and the phones.</div>
+  <div class="hint" style="margin:0 0 6px"><b>${rtcStatusText()}</b> · needs internet on this device and the phones.</div>
+  <div class="hint" style="margin:0 0 10px">No camera? On the phone open <b>${SITE_URL.replace('https://','')}?pin</b> and type the court's <b>PIN</b>.</div>
   <div class="qrgrid">${courts.length===1?'':wifiBox}${courts.map(courtCard).join('')}</div>
   <div class="hint">One phone per court — another phone scanning the same code is refused. Only you can disconnect a phone (that also replaces the court's code). Keep Match Maker open on this device while phones score.</div>
   <div class="row" style="margin-top:14px"><span class="grow"></span><button class="btn" data-act="sheet-close">Close</button></div>`);
@@ -1850,6 +1864,7 @@ function vHelp(){
     <li><b>Display tablet</b>: Settings → Tablet sync → <b>Display tablet</b> → address → <b>Connect</b>.</li>
     <li>Only one tablet? Leave Tablet sync <b>Off</b> and do everything on it.</li>
     <li><b>Score with a phone (nothing to install):</b> on the host — laptop, tablet or phone — tap a court; its menu shows the court's QR code. Any phone scans it and the Match Maker web page opens, scoring that court only with the players you put on. One phone per court; another phone is refused. Host and phone need internet.${shot('tab-courtqr',"Tap a court: its own QR code for phone scoring")}${shot('phone-score','A phone scoring its court after scanning the QR code',1)}</li>
+    <li><b>Court PIN (no camera):</b> in the QR codes (or tap a court), type a PIN of 4–8 letters or numbers under that court → <b>Save</b>. On the phone open <b>archie24bagadiong-max.github.io/matchmaker-app/?pin</b>, type the PIN → <b>Connect</b>: it opens the same scoring page as the QR code (one phone per court; Disconnect works the same). PINs are kept on the host device; it needs internet like the QR codes.</li>
     <li><b>Only you disconnect a phone:</b> court menu → <b>Disconnect</b> (tap twice). The court gets a new QR code, so that phone can only come back by scanning again. If a phone just loses the network it keeps retrying by itself and sends its points when it reconnects — no new scan needed.${shot('tab-linked','Court cards show 📱 Connected (green) or 📱 Reconnecting… (orange)')}</li>
 </ol>
     <p class="hint">Only the Main tablet makes changes. Court tablets only score; Display tablets only show.</p>`)}
@@ -2328,7 +2343,7 @@ function vSettings(){
 
 /* ---------- sheets ---------- */
 let sheetView=null; // which sheet is open, so it can refresh when a phone connects/disconnects
-function refreshSheet(){ if(!sheetView||!$('#sheet').classList.contains('open')) return; const v=sheetView; if(v.k==='court') sheetCourt(v.c); else if(v.k==='qr') sheetQR(v.only); }
+function refreshSheet(){ if(!sheetView||!$('#sheet').classList.contains('open')) return; { const a=document.activeElement; if(a&&a.tagName==='INPUT'&&a.closest&&a.closest('#sheet')) return; } const v=sheetView; if(v.k==='court') sheetCourt(v.c); else if(v.k==='qr') sheetQR(v.only); }
 function openSheet(html){sheetView=null;$('#sheet').innerHTML='<div class="grab"></div>'+html;$('#sheet').classList.add('open');$('#scrim').classList.add('open');document.documentElement.classList.add('sheet-open');}
 function closeSheet(){$('#sheet').classList.remove('open');$('#scrim').classList.remove('open');document.documentElement.classList.remove('sheet-open');}
 function gpill(id){const g=S.games[id]||0;return `<span class="gpill ${g===0?'z':''}">${g===0?'Not played':'Played '+g}</span>`;}
@@ -2525,6 +2540,12 @@ document.addEventListener('click',e=>{
   if(el.closest('#sheet')&&['gen','finish','score','cancel','reshuffle','sheet-close'].includes(a)){ closeSheet(); menuCourt=null; }
   switch(a){
     case 'court-menu': if(!IS_DISPLAY) sheetCourt(ci); break;
+    case 'pj-go': pinJoin(); break;
+    case 'pin-save':{ if(!IS_HOST()) break; const v=String((($('#pin-'+ci)||{}).value)||'').trim().toLowerCase().replace(/[^a-z0-9]/g,''); const P=pinsGet();
+      if(v&&!PIN_RX.test(v)){ toast('PIN: 4–8 letters or numbers'); break; }
+      if(v&&Object.keys(P).some(x=>+x!==ci&&P[x]===v)){ toast('Another court already has this PIN'); break; }
+      if(v) P[ci]=v; else delete P[ci]; try{ localStorage.setItem('mm_pins',JSON.stringify(P)); }catch(e){} delete pinBad[ci];
+      if(document.activeElement) document.activeElement.blur(); rtcHost(); pinSync(); refreshSheet(); toast(v?'Court '+(ci+1)+' PIN: '+v.toUpperCase():'Court '+(ci+1)+' PIN removed'); break;}
     case 't-auto': tAutoPair(); break;
     case 't-add': tSel=[]; tSearch=''; sheetTAdd(); break;
     case 't-pk':{ const i=tSel.indexOf(id); if(i>=0) tSel.splice(i,1); else tSel.push(id);
@@ -3179,7 +3200,7 @@ async function rtcHost(){
   if(rtcPeer) return;
   const p=new Peer(hostId(),{debug:0}); rtcPeer=p;
   const retry=()=>{ if(rtcPeer!==p) return; rtcState='offline'; try{ p.destroy(); }catch(e){} rtcPeer=null; refreshSheet(); setTimeout(rtcHost,4000); };
-  p.on('open',()=>{ rtcState='online'; refreshSheet(); });
+  p.on('open',()=>{ rtcState='online'; refreshSheet(); pinSync(); });
   p.on('connection',conn=>{
     conn.on('open',()=>{ rtcConns.add(conn); try{ conn.send(rtcSlim()); }catch(e){} });
     conn.on('data',d=>{ if(typeof d==='string'&&d.length<200000) RTC_IN.push(d); });
@@ -3188,6 +3209,48 @@ async function rtcHost(){
   p.on('disconnected',()=>{ rtcState='reconnecting'; setTimeout(()=>{ if(rtcPeer===p&&!p.destroyed){ try{ p.reconnect(); }catch(e){ retry(); } } },2000); });
   p.on('error',e=>{ const t=e&&e.type; if(['unavailable-id','network','server-error','socket-error','socket-closed','browser-incompatible'].includes(t)) retry(); });
 }
+/* court PINs (host): one small PeerJS peer per PIN, id 'mm-pin-<pin>', that answers a phone with the court's join link.
+   PINs are kept on this device only (localStorage mm_pins: {courtIndex: pin}). */
+const PIN_RX=/^[a-z0-9]{4,8}$/;
+function pinsGet(){ try{ const o=JSON.parse(localStorage.getItem('mm_pins')||'{}'); return o&&typeof o==='object'&&!Array.isArray(o)?o:{}; }catch(e){ return {}; } }
+const pinPeers=new Map(), pinBad={};
+function pinSync(){
+  if(!IS_HOST()||!window.Peer||rtcState!=='online') return;
+  const P=pinsGet();
+  pinPeers.forEach((pp,i)=>{ if(P[i]!==pp._pin||i>=S.courts.length){ try{ pp.destroy(); }catch(e){} pinPeers.delete(i); } });
+  Object.keys(P).forEach(key=>{ const i=+key, pin=P[key]; if(!(i>=0&&i<S.courts.length)||!PIN_RX.test(pin)||pinPeers.has(i)) return;
+    const pp=new Peer('mm-pin-'+pin,{debug:0}); pp._pin=pin; pinPeers.set(i,pp); delete pinBad[i];
+    pp.on('connection',conn=>{ conn.on('open',()=>{ try{ conn.send(JSON.stringify({t:'pin',court:i+1,url:courtUrl(i)})); }catch(e){} setTimeout(()=>{ try{ conn.close(); }catch(e){} },2000); }); });
+    pp.on('error',e=>{ const t=e&&e.type; if(t==='unavailable-id'){ pinBad[i]=1; try{ pp.destroy(); }catch(x){} pinPeers.delete(i); refreshSheet(); }
+      else if(['network','server-error','socket-error','socket-closed'].includes(t)){ try{ pp.destroy(); }catch(x){} pinPeers.delete(i); setTimeout(pinSync,5000); } });
+    pp.on('disconnected',()=>{ setTimeout(()=>{ try{ if(!pp.destroyed) pp.reconnect(); }catch(x){} },2000); });
+  }); }
+function pinBox(i){ if(!IS_HOST()) return ''; const pin=pinsGet()[i]||'';
+  return `<div class="pinrow">${pin?`<div class="pinbig"><small>PIN</small>${esc(pin.toUpperCase())}</div>`:'<small>No camera? Give this court a PIN</small>'}
+    <div class="row"><input type="text" id="pin-${i}" maxlength="8" autocomplete="off" autocapitalize="characters" placeholder="PIN" value="${esc(pin.toUpperCase())}"><button class="btn sm" data-act="pin-save" data-c="${i}">${pin?'Change':'Save'}</button></div>
+    ${pinBad[i]?'<small style="color:#c0392b">This PIN is already used somewhere else — choose another</small>':''}</div>`; }
+/* phone: type a PIN → find the court → open its join link */
+let pjBusy=false;
+function vPinJoin(){ const v=String(QS.get('pin')||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);
+  return `<div class="card pjbox"><div style="font-size:44px">📱</div><h2 style="justify-content:center;margin:6px 0">Score a court</h2>
+    <p class="hint" style="margin:0 0 14px">Type the court PIN shown on the organizer's screen.</p>
+    <input type="text" id="pj-in" maxlength="8" autocomplete="off" autocapitalize="characters" inputmode="text" placeholder="PIN" value="${esc(v)}">
+    <button class="btn pri" data-act="pj-go">Connect</button><div id="pj-st"></div>
+    <p class="hint" style="margin-top:16px">Or scan the court's QR code with the camera instead.</p></div>`; }
+function pjMsg(t,bad){ const e=$('#pj-st'); if(e){ e.textContent=t; e.style.color=bad?'#c0392b':'var(--court2)'; } }
+async function pinJoin(){
+  if(pjBusy) return; const pin=String((($('#pj-in')||{}).value)||'').trim().toLowerCase().replace(/[^a-z0-9]/g,'');
+  if(!PIN_RX.test(pin)){ pjMsg('The PIN has 4–8 letters or numbers',true); return; }
+  pjBusy=true; pjMsg('Connecting…');
+  const fail=t=>{ pjBusy=false; pjMsg(t,true); try{ pp.destroy(); }catch(e){} };
+  try{ await loadPeer(); }catch(e){ pjBusy=false; pjMsg('No internet connection — try again',true); return; }
+  const pp=new Peer({debug:0}); let done=false;
+  const to=setTimeout(()=>{ if(!done){ done=true; fail('No answer. Check the PIN, and that the organizer has Match Maker open with internet.'); } },15000);
+  pp.on('open',()=>{ const c=pp.connect('mm-pin-'+pin,{reliable:true});
+    c.on('data',d=>{ let o=null; try{ o=JSON.parse(d); }catch(e){}
+      if(o&&typeof o.url==='string'&&o.url.indexOf(SITE_URL)===0&&!done){ done=true; clearTimeout(to); pjMsg('Court '+o.court+' found — opening…'); setTimeout(()=>location.replace(o.url),300); } }); });
+  pp.on('error',e=>{ if(done) return; done=true; clearTimeout(to);
+    fail(e&&e.type==='peer-unavailable'?'No court with this PIN is online. Check the PIN, and that the organizer has Match Maker open with internet.':'Could not connect — check the internet and try again.'); }); }
 function rtcStatusText(){ return {online:'🟢 Online — phones can connect',starting:'⏳ Going online…',reconnecting:'⏳ Reconnecting to the internet…',offline:'🔴 No internet — phones can\'t connect until this device is online'}[rtcState]||'⏳ Going online…'; }
 // phone side
 let rtcConn=null, rtcPeerJ=null, rtcRetry=null, rtcWatch=null;
@@ -3320,7 +3383,7 @@ if(!IS_APP&&!IS_SERVED&&'serviceWorker' in navigator&&/^https?:$/.test(location.
    Hidden in the Android app, inside Claude, on court/display tablets, when already installed, or after "Not now". */
 (function(){
   try{
-    if(IS_APP||IS_COURT||IS_DISPLAY||(window.claude&&window.claude.use)||!/^https?:$/.test(location.protocol)) return;
+    if(IS_APP||IS_COURT||IS_DISPLAY||IS_PINJOIN||(window.claude&&window.claude.use)||!/^https?:$/.test(location.protocol)) return;
     const installed=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
     if(installed) return;
     let hideUntil=0; try{ hideUntil=+localStorage.getItem('mm_install_hide')||0; }catch(e){}
