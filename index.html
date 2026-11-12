@@ -71,6 +71,13 @@ h2 small{font-family:Barlow;font-size:13px;color:var(--muted);text-transform:non
 .stat{background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px 6px;text-align:center}
 .stat b{display:block;font-family:"Barlow Condensed";font-size:24px;line-height:1}
 .stat span{font-size:12px;color:var(--muted)}
+.stat{border-top:4px solid var(--sc,var(--border))}
+.stat b{color:var(--sc,var(--ink))}
+.stat span{font-weight:600}
+.stat.s-pr{--sc:#25a065;background:#e8f6ee;border-color:#bfe5cf}
+.stat.s-pl{--sc:#0f3d2e;background:#dff0d0;border-color:#b8dca0}
+.stat.s-wa{--sc:#c07a00;background:#fdf1dc;border-color:#f3d79f}
+.stat.s-re{--sc:#3a7bd5;background:#e7effb;border-color:#c2d6f3}
 
 /* courts */
 .courts{display:grid;gap:12px}
@@ -709,7 +716,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=93;
+const APP_VERSION=94;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1154,10 +1161,10 @@ function vCourts(){
   // Show day set: that day's players who have not arrived yet also wait in Resting; Back to play checks them in
   const dc=dayCur(), resting=S.players.filter(p=>S.present[p.id]?S.resting[p.id]:(dc&&dayIn(p)&&!isOff(p)));
   let h=`<div class="stats">
-    <div class="stat"><b>${present.length}</b><span>Present</span></div>
-    <div class="stat"><b>${S.courts.reduce((a,c)=>a+c.p.length,0)}</b><span>Playing</span></div>
-    <div class="stat"><b>${w.length+planned().size}</b><span>Waiting</span></div>
-    <div class="stat"><b>${resting.length}</b><span>Resting</span></div></div>`;
+    <div class="stat s-pr"><b>${present.length}</b><span>Present</span></div>
+    <div class="stat s-pl"><b>${S.courts.reduce((a,c)=>a+c.p.length,0)}</b><span>Playing</span></div>
+    <div class="stat s-wa"><b>${w.length+planned().size}</b><span>Waiting</span></div>
+    <div class="stat s-re"><b>${resting.length}</b><span>Resting</span></div></div>`;
   if(!present.length){
     h+=`<div class="card emptybox" style="margin-top:14px"><b>No one checked in yet</b>${S.players.length?'Mark today\'s attendees first.':'Add your players, then mark attendance.'}<div style="margin-top:12px"><button class="btn pri" data-act="go" data-tab="${S.players.length?'checkin':'players'}">${S.players.length?'Take attendance':'Add players'}</button></div></div>`;
   }
