@@ -78,6 +78,11 @@ h2 small{font-family:Barlow;font-size:13px;color:var(--muted);text-transform:non
 .stat.s-pl{--sc:#0f3d2e;background:#dff0d0;border-color:#b8dca0}
 .stat.s-wa{--sc:#c07a00;background:#fdf1dc;border-color:#f3d79f}
 .stat.s-re{--sc:#3a7bd5;background:#e7effb;border-color:#c2d6f3}
+.stat.s-gu{--sc:#7b4fbf;background:#f1ebfa;border-color:#d8c8f0}
+.stat.lv-A{--sc:#e4572e;background:#fdebe5;border-color:#f6c6b7}
+.stat.lv-B{--sc:#c07a00;background:#fdf1dc;border-color:#f3d79f}
+.stat.lv-C{--sc:#1e8a56;background:#e6f5ed;border-color:#bfe5cf}
+.stat.lv-D{--sc:#3a7bd5;background:#e7effb;border-color:#c2d6f3}
 
 /* courts */
 .courts{display:grid;gap:12px}
@@ -716,7 +721,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=94;
+const APP_VERSION=95;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1266,7 +1271,7 @@ function filterChips(cur,act){
 }
 function vCheckin(){
   if(!S.players.length) return `<div class="card emptybox"><b>No players yet</b>Add your roster first.<div style="margin-top:12px"><button class="btn pri" data-act="go" data-tab="players">Add players</button></div></div>`;
-  const counts=CATS.map(k=>`<div class="stat"><b>${S.players.filter(p=>p.c===k&&S.present[p.id]).length}</b><span>${k} present</span></div>`).join('');
+  const counts=CATS.map(k=>`<div class="stat lv-${grp(k)}"><b>${S.players.filter(p=>p.c===k&&S.present[p.id]).length}</b><span>${k} present</span></div>`).join('');
   const offN=S.players.filter(p=>isOff(p)&&!S.present[p.id]).length;
   let list=S.players.filter(p=>dayOk(p)&&teamMatch(p,ciTeam)&&(!S.hideOff||!isOff(p)||S.present[p.id])&&(!ciSearch||(p.n+' '+(p.fn||'')).toLowerCase().includes(ciSearch.toLowerCase())));
   list.sort((a,b)=>(dayCur()?0:dayIdx(a)-dayIdx(b))||lvCmp(a.c,b.c)||a.n.localeCompare(b.n));
@@ -1343,10 +1348,10 @@ function vPayDraw(){
   let list=rows.filter(p=>payFilter==='All'||(payFilter==='Guests'?isGuestFee(p):payFilter==='Unpaid'?leftAmt(p)>0||balOf(p)>0:!isGuestFee(p)));
   list.sort((a,b)=>((S.games[b.id]||0)-(S.games[a.id]||0))||a.n.localeCompare(b.n));
   return `${dc?`<div class="daybar" style="margin-top:10px">📅 Payments for <b>${DAY_L[dc]}</b> players only${dayViewNow()==='Today'?' (today)':''}${hidRows?` · ${hidRows} player${hidRows===1?'':'s'} from other days hidden (${sr(hidDue)} due)`:''}<span class="grow"></span><button class="btn sm" data-act="day-view" data-k="All">Show all days</button></div>`:''}<div class="stats" style="grid-template-columns:repeat(2,1fr)">
-    <div class="stat"><b class="money">${sr(tot(rows))}</b><span>Total due today${dc?' · '+DAY_L[dc]:''}</span></div>
-    <div class="stat"><b class="money">${sr(got)}</b><span>Collected</span><span class="pmsplit">💵 Cash ${sr(gotM('cash'))}<br>📱 STC Pay ${sr(gotM('stc'))}</span></div>
-    <div class="stat"><b class="money">${sr(tot(subs))}</b><span>${subs.length} subscribers &amp; family</span></div>
-    <div class="stat"><b class="money">${sr(tot(gs))}</b><span>${gs.length} guests (member &amp; non-member)</span></div>
+    <div class="stat s-pl"><b class="money">${sr(tot(rows))}</b><span>Total due today${dc?' · '+DAY_L[dc]:''}</span></div>
+    <div class="stat s-pr"><b class="money">${sr(got)}</b><span>Collected</span><span class="pmsplit">💵 Cash ${sr(gotM('cash'))}<br>📱 STC Pay ${sr(gotM('stc'))}</span></div>
+    <div class="stat s-re"><b class="money">${sr(tot(subs))}</b><span>${subs.length} subscribers &amp; family</span></div>
+    <div class="stat s-gu"><b class="money">${sr(tot(gs))}</b><span>${gs.length} guests (member &amp; non-member)</span></div>
 </div>
   ${leftToday>0||owTot>0?`<div class="tocollect">To collect: today <b>${sr(leftToday)}</b> · earlier <b>${sr(owTot)}</b></div>`:''}
   <p class="hint">${Math.round(games)} games played today · ${feeRulesText()}</p>
