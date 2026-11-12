@@ -788,7 +788,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=104;
+const APP_VERSION=105;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1334,7 +1334,7 @@ function vTour(){
   return `<div class="row" style="margin:4px 0 10px;align-items:center"><h2 style="margin:0;flex:1">Tournament <small>${T.pairs.length} pairs · bracket of ${N}</small></h2>${IS_DISPLAY?'':`${IS_APP||(window.claude&&window.claude.use)?'':'<button class="btn sm" data-act="t-pop" style="margin-right:8px">⧉ Pop out</button>'}<button class="chip ${T.auto?'on':''}" data-act="t-feed" style="margin-right:8px">Auto-send to free courts: ${T.auto?'On':'Off'}</button><button class="btn sm warn" data-act="t-reset">${confirmKey==='treset'?'Sure? Tap again':'New tournament'}</button>`}</div>
   ${Number.isInteger(champ)?`<div class="tchamp">🏆 Champion: ${esc(tPairName(champ))}${tChampCard(champ)}</div>`:''}
   <div class="card bwrap"><div class="bk" style="--h:${Math.max(1,N/2)*62}px">${cols.join('')}</div></div>
-  ${ready.length||live.length?`<h2>${IS_DISPLAY?'Now playing &amp; up next':'Up next <small>tap to send to a court</small>'}</h2><div class="card"><div class="list">
+  ${(ready.length||live.length)&&!IS_POP?`<h2>${IS_DISPLAY?'Now playing &amp; up next':'Up next <small>tap to send to a court</small>'}</h2><div class="card"><div class="list">
     ${live.map(i=>{ const m=tMatch(S.courts[i].tm,R); return m?line(m,`<b style="color:#c07a00">Court ${i+1}</b>`):''; }).join('')}
     ${ready.map(m=>line(m,'<b style="color:#25a065">Ready</b>')).join('')}
   </div></div>`:''}
