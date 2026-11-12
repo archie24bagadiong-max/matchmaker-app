@@ -626,8 +626,8 @@ const lvCmp=(a,b)=>(RATE[b]||0)-(RATE[a]||0);
 const onLv=(c,p)=>c.lv.includes(grp(p.c));
 /* old A/B/C/D data becomes A+/B+/C+/D+ */
 const normLv=c=>CATS.includes(c)?c:(GROUPS.includes(c)?c+'+':DEF_LV);
-/* player type: S = Subscriber, F = Family (pays like a Subscriber), MG = Member Guest, G = Non-Member Guest.
-   Fee = type fee (Subscriber / Family 0, Member Guest S.fee.mg, Non-Member Guest S.fee.gp) + shuttles (games played × S.fee.sp).
+/* player type: S = Subscriber, F = Family (own Family fee), MG = Member Guest, G = Non-Member Guest.
+   Fee = type fee (Subscriber 0, Family S.fee.fm, Member Guest S.fee.mg, Non-Member Guest S.fee.gp) + shuttles (games played × S.fee.sp).
    Member Guests rank with Subscribers on courts; only Non-Member Guests get guest priority and the guests' queue column.
    status (club roster "Active" column): Reg, A-SUB, No (= inactive, hidden from Attendance). Gender: M / F. */
 const STATUS=['Reg','A-SUB','Member-Guest','Non-Member','No'];
@@ -703,7 +703,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=87;
+const APP_VERSION=88;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -734,7 +734,7 @@ const CLIENT=Math.random().toString(36).slice(2);
 function fresh(){
   return {players:[],present:{},resting:{},games:{},lastEnd:{},partners:{},
     courts:[0,1,2].map(()=>({lv:GROUPS.slice(),p:[],t:0})),next:[],
-    mode:'doubles',mix:'adjacent',autoNext:true,prio:'strong',rounds:true,paid:{},part:{},sess:0,hist:[],ledger:[],log:[],teams:[],match:{n:3,pts:21,mode:'best'},fee:{gp:25,mg:20,sp:2.5},dayView:'Today',hideOff:true};
+    mode:'doubles',mix:'adjacent',autoNext:true,prio:'strong',rounds:true,paid:{},part:{},sess:0,hist:[],ledger:[],log:[],teams:[],match:{n:3,pts:21,mode:'best'},fee:{gp:25,mg:20,fm:0,sp:2.5},dayView:'Today',hideOff:true};
 }
 /* activity log: every check-in, payment and session change, with time */
 function logEv(k,o){ if(IS_DISPLAY||IS_COURT) return; if(!Array.isArray(S.log)) S.log=[]; S.log.push(Object.assign({d:Date.now(),k},o||{})); if(S.log.length>6000) S.log=S.log.slice(-6000); }
@@ -770,8 +770,8 @@ function normalize(s){
   if(typeof s.paid!=='object'||!s.paid||Array.isArray(s.paid)) s.paid={};
   const f=(s.fee&&typeof s.fee==='object')?s.fee:{};
   const fv=(k,d)=>f[k]!==undefined&&f[k]!==null&&f[k]!==''&&isFinite(+f[k])&&+f[k]>=0?+f[k]:d;
-  // gp Non-Member Guest fee, mg Member Guest fee, sp shuttle per game played (old gn / gx guest-minimum settings are dropped)
-  s.fee={gp:fv('gp',25), mg:fv('mg',20), sp:fv('sp',2.5)};
+  // gp Non-Member Guest fee, mg Member Guest fee, fm Family fee, sp shuttle per game played (old gn / gx guest-minimum settings are dropped)
+  s.fee={gp:fv('gp',25), mg:fv('mg',20), fm:fv('fm',0), sp:fv('sp',2.5)};
   return s;
 }
 
@@ -888,14 +888,14 @@ function prioritySort(list){
   return list.slice().sort((a,b)=>(S.prio==='strong'&&!S.rounds?(g(a,b)||n(a,b)):(n(a,b)||g(a,b)))||((S.lastEnd[a.id]||0)-(S.lastEnd[b.id]||0))||a.n.localeCompare(b.n));
 }
 /* type fee for one session (charged once a player has played) */
-const typeFee=p=>p.t==='G'?S.fee.gp:p.t==='MG'?S.fee.mg:0;
+const typeFee=p=>p.t==='G'?S.fee.gp:p.t==='MG'?S.fee.mg:p.t==='F'?(S.fee.fm||0):0;
 /* the bill before rounding: type fee + shuttles (one per game played) */
 function feeRaw(p){ const g=S.games[p.id]||0; return g?typeFee(p)+g*S.fee.sp:0; }
 /* every bill is a whole SR: .50 rounds up (2.50 → 3, 22.50 → 23) */
 const roundBill=v=>Math.round(r2(v));
 function fee(p){ return roundBill(feeRaw(p)); }
 const sr=v=>(Math.round(v*100)/100).toFixed(2).replace(/\.00$/,'')+' SR';
-const feeRulesText=()=>`Subscriber &amp; Family 0 SR + shuttles · Member Guest ${sr(S.fee.mg)} + shuttles · Non-Member Guest ${sr(S.fee.gp)} + shuttles · shuttle ${sr(S.fee.sp)} per game played · bills rounded to whole SR (.50 rounds up)`;
+const feeRulesText=()=>`Subscriber 0 SR + shuttles · Family ${sr(S.fee.fm||0)} + shuttles · Member Guest ${sr(S.fee.mg)} + shuttles · Non-Member Guest ${sr(S.fee.gp)} + shuttles · shuttle ${sr(S.fee.sp)} per game played · bills rounded to whole SR (.50 rounds up)`;
 function waiting(){
   const oc=onCourt(), dr=drafted(), pl=planned();
   return prioritySort(S.players.filter(p=>S.present[p.id]&&!S.resting[p.id]&&oc[p.id]===undefined&&!dr.has(p.id)&&!pl.has(p.id)&&dayOk(p)));
@@ -1640,7 +1640,8 @@ function vHelp(){
     <li>Even number of games and it ends level (e.g. 1–1)? Tap <b>⚡ Play decider</b> for one extra game to 11, or keep the result (more total points wins; equal points = draw).</li>
     <li><b>Team names:</b> tap <b>+ Team name</b> at the top of each side and type any name for this match (or pick one used before). It's filled in automatically when both players share a team. ✕ clears it.</li></ol>`)}
   ${sec('fees','6. Fees and payments',`<ul>
-    <li><b>Subscriber</b> (and <b>Family</b>): 0 SR fee + shuttles.</li>
+    <li><b>Subscriber:</b> 0 SR fee + shuttles.</li>
+    <li><b>Family:</b> ${sr(S.fee.fm||0)} fee + shuttles.</li>
     <li><b>Member Guest:</b> 20 SR fee + shuttles.</li>
     <li><b>Non-Member Guest:</b> 25 SR fee + shuttles.</li>
     <li><b>Members</b> (Players → Edit → Active): <b>Member-SUB (A-SUB)</b> pays as a Subscriber, <b>Member-Guest</b> as a Member Guest, <b>Non-Member</b> as a Non-Member Guest. Choosing one sets the fee.</li>
@@ -1904,6 +1905,7 @@ function vSettings(){
       <p class="hint">On: nobody plays a 4th game while someone waiting has played only 3 (and so on) — Auto match, Fill empty courts and substitutes take the fewest-games players first. Players from the next round are used only when there are not enough to fill a court at its levels. The organizer can still put anyone on by hand (Pick players, tap a court box, or pick a substitute). ${S.rounds?'Subscriber priority then decides the order within a round.':''}</p></div>
     <div><label>Fees</label>
       <div class="row"><span style="min-width:150px">Shuttle</span><input type="text" inputmode="decimal" data-fee="sp" value="${S.fee.sp}" style="width:80px"> SR per game played</div>
+      <div class="row" style="margin-top:8px"><span style="min-width:150px">Family fee</span><input type="text" inputmode="decimal" data-fee="fm" value="${S.fee.fm||0}" style="width:80px"> SR</div>
       <div class="row" style="margin-top:8px"><span style="min-width:150px">Member Guest fee</span><input type="text" inputmode="decimal" data-fee="mg" value="${S.fee.mg}" style="width:80px"> SR</div>
       <div class="row" style="margin-top:8px"><span style="min-width:150px">Non-Member Guest fee</span><input type="text" inputmode="decimal" data-fee="gp" value="${S.fee.gp}" style="width:80px"> SR</div>
       <p class="hint">${feeRulesText()}. Players who haven't played yet owe nothing.</p></div>
@@ -2363,7 +2365,7 @@ document.addEventListener('change',e=>{
   if(el.id==='restore-in'){ const f=el.files&&el.files[0]; el.value=''; if(f){ if(IS_DISPLAY||IS_COURT) toast('Restore on the Main tablet'); else readBackup(f); } return; }
   if(el.id==='rep-from'||el.id==='rep-to'){ if(/^\d{4}-\d\d-\d\d$/.test(el.value)){ if(el.id==='rep-from') repFrom=el.value; else repTo=el.value; repSave(); } render(); return; }
   if(el.dataset.fee){ const v=parseFloat(String(el.value).replace(',','.')); const k=el.dataset.fee;
-    if(isFinite(v)&&v>=0&&['gp','mg','sp'].includes(k)){ S.fee[k]=v; save(); toast('Fee updated'); } render(); }
+    if(isFinite(v)&&v>=0&&['gp','mg','fm','sp'].includes(k)){ S.fee[k]=v; save(); toast('Fee updated'); } render(); }
 });
 let xlsxLoading=null;
 let restorePending=null;

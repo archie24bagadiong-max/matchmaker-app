@@ -130,7 +130,7 @@ Player tags: level badge A–D, SUB (blue), FAMILY (green), MEM GUEST (purple) o
 
 Levels: 8 grades, A+ strongest … D- beginner. Skill mixing works on the letter: Same only = A+ with A-; Next level OK = A with B, B with C… Court level buttons (A B C D) each cover the + and - of that letter. Data from before 8 Nov 2026 with plain A/B/C/D became A+/B+/C+/D+.
 
-Player types: Subscriber (S), Family (F, pays like a Subscriber), Member Guest (MG) and Non-Member Guest (G); see Fees. Import and Add many at once read Subscriber / Member, Family, Member Guest (Mem Guest, MG) and Non-Member Guest (Non Member, NM Guest, NMG, or just Guest). Active status (member status, Players → Edit → Active): Reg, Member-SUB (A-SUB), Member-Guest, Non-Member, or No (inactive — hidden from Attendance until "Show inactive"). A member status sets the payment term: Member-SUB → Subscriber, Member-Guest → Member Guest, Non-Member → Non-Member Guest; the type button on Players keeps a member status (or a blank one) in step; new players get the status that matches their type. Excel import reads these statuses and uses them for the fee when a row has no Type. Gender (Male/Female) and Full Name are kept per player (Players → Edit).
+Player types: Subscriber (S), Family (F, pays the Family fee + shuttles), Member Guest (MG) and Non-Member Guest (G); see Fees. Import and Add many at once read Subscriber / Member, Family, Member Guest (Mem Guest, MG) and Non-Member Guest (Non Member, NM Guest, NMG, or just Guest). Active status (member status, Players → Edit → Active): Reg, Member-SUB (A-SUB), Member-Guest, Non-Member, or No (inactive — hidden from Attendance until "Show inactive"). A member status sets the payment term: Member-SUB → Subscriber, Member-Guest → Member Guest, Non-Member → Non-Member Guest; the type button on Players keeps a member status (or a blank one) in step; new players get the status that matches their type. Excel import reads these statuses and uses them for the fee when a row has no Type. Gender (Male/Female) and Full Name are kept per player (Players → Edit).
 
 Can't play: replaced by closest-level substitute and moved to Resting until Back to play; the unfinished game is not counted for them.
 
@@ -230,7 +230,7 @@ Every player pays a **type fee + shuttles**. Shuttles = the number of games play
 | Type | Fee | Court priority |
 | --- | --- | --- |
 | Subscriber | 0 SR + shuttles | Subscriber |
-| Family | 0 SR + shuttles | Subscriber |
+| Family | Family fee (Settings, default 0 SR) + shuttles | Subscriber |
 | Member Guest | 20 SR + shuttles | Subscriber |
 | Non-Member Guest | 25 SR + shuttles | Guest (own queue column) |
 
@@ -245,7 +245,7 @@ Fee = type fee + games × 2.50, then **rounded to a whole SR (.50 rounds up)**: 
 | 5 | 13 (12.50) | 33 (32.50) | 38 (37.50) |
 | 6 | 15 | 35 | 40 |
 
-Settings → Fees has the shuttle price, the Member Guest fee and the Non-Member Guest fee (S.fee = {sp, mg, gp}). Before page v75 guests paid a 25 SR minimum covering 3 games; that setting (gn, gx) is dropped and players who were "Guest" are Non-Member Guests. Payments groups Subscribers & Family vs Guests (member and non-member); the Excel Daily Summary does the same. Start new session archives the day's payment rows into a ledger (up to 4,000 rows); payment history starts 7 Nov 2026. Bills already archived keep the amount they had.
+Settings → Fees has the shuttle price, the Family fee, the Member Guest fee and the Non-Member Guest fee (S.fee = {sp, fm, mg, gp}). The Games table above assumes a Family fee of 0; with a Family fee set, Family = Family fee + shuttles, rounded the same way. Before page v75 guests paid a 25 SR minimum covering 3 games; that setting (gn, gx) is dropped and players who were "Guest" are Non-Member Guests. Payments groups Subscribers & Family vs Guests (member and non-member); the Excel Daily Summary does the same. Start new session archives the day's payment rows into a ledger (up to 4,000 rows); payment history starts 7 Nov 2026. Bills already archived keep the amount they had.
 
 ## Excel
 
@@ -310,6 +310,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 | 7 Nov 2026 | Page v29 (1.29) | Set the serve before starting: tap the player who serves first, then the player who receives (0–0, first game); serving team can still be changed until the first point |
 | 7 Nov 2026 | Page v30 (1.30) | Payments: mark each player paid by 💵 Cash or 📱 STC Pay; Collected shows the split; Excel Payments sheet has a Method column and Daily Summary has Cash / STC Pay totals |
 | 7 Nov 2026 | Page v31 (2.0) | Export all activity: new Activity Log sheet (check-ins/outs, match start and finish with result, payments received/cancelled with amount and Cash / STC Pay, new sessions — all with date and time). Export button also in Settings |
+| 12 Nov 2026 | Page v88 (3.26) | **Family fee**: Settings → Fees has a new Family fee (default 0 SR, so bills don't change until it is set). Family bill = Family fee + shuttles, rounded to a whole SR (.50 rounds up). Shown in the Payments notes, fee rules, Players hint and How to use → Fees. Web-only change (APK unchanged; it loads the page) |
 | 11 Nov 2026 | Page v87 (3.25) | Show day buttons moved from Players → Roster to **Attendance** (replacing Attendance's level filter chips); the Roster has its level filter back. Check in / Uncheck everyone cover the shown day's players. APK 1.26 |
 | 11 Nov 2026 | Page v86 (3.24) | Players → Roster: the level filter chips (All · A+ … D-) are replaced by the Show day buttons (All days · Today · Mon … Sun), the same as Settings → Show day; picking a day there also puts the day's players in Resting. APK 1.25 |
 | 11 Nov 2026 | Page v85 (3.23) | Show day set: the Courts Resting list also holds that day's active players who are not checked in yet (tagged "not checked in yet"; counted in Resting). Back to play checks them in and puts them in the Waiting queue, so you pick early arrivals and late comers wait in Resting. Nobody is marked present until tapped. APK 1.24 |
