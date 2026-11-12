@@ -652,6 +652,7 @@ button.bx{cursor:pointer}
 .tpair .nm2{flex:1;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
 .ttag{background:#c9a227;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:6px;font-family:Barlow,sans-serif}
 body.bview nav{display:none}
+body.pop .helpbtn,body.pop #sync{display:none}
 body.bview #app{padding-bottom:20px}
 .bvset{display:block;margin:14px auto 0;opacity:.6}
 .tcard{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;margin-top:12px}
@@ -779,7 +780,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=101;
+const APP_VERSION=102;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -799,11 +800,14 @@ const JOIN_ID=(!IS_APP&&!IS_SERVED&&QS.get('join'))?String(QS.get('join')).repla
 const IS_JOIN=!!JOIN_ID&&!!QS.get('court');
 /* a phone without a camera: SITE_URL?pin → type the court PIN → it opens the same link the court's QR code holds */
 const IS_PINJOIN=!IS_APP&&!IS_SERVED&&!IS_JOIN&&QS.get('pin')!==null;
+/* ⧉ Pop out (Bracket screen): a second window on the same device showing only the bracket, e.g. on a second screen */
+const IS_POP=!IS_APP&&!IS_SERVED&&!IS_JOIN&&QS.get('popout')==='bracket';
+if(IS_POP) ROLE='display';
 if(IS_JOIN) ROLE='court';
 const IS_REMOTE=IS_SERVED||IS_JOIN;   // a phone scoring by QR code (local or online)
 const IS_DISPLAY=ROLE==='display';
 let BVIEW=false;
-try{ BVIEW=IS_DISPLAY&&(IS_SERVED?QS.get('view')==='bracket':localStorage.getItem('bmm_bview')==='1'); }catch(e){}
+try{ BVIEW=IS_DISPLAY&&(IS_POP||(IS_SERVED?QS.get('view')==='bracket':localStorage.getItem('bmm_bview')==='1')); }catch(e){}
 const IS_COURT=ROLE==='court';
 let COURT_NO=0, COURT_PIN='';
 try{ COURT_NO=Math.max(0,(+localStorage.getItem('bmm_court')||1)-1); COURT_PIN=localStorage.getItem('bmm_pin')||''; }catch(e){}
@@ -878,6 +882,7 @@ function setSync(ok,label){const el=document.getElementById('sync');el.className
    persistNow() runs when the app is hidden/closed and before any reload, so nothing is lost. */
 let persistTimer=null;
 function persistNow(){
+  if(IS_POP){ clearTimeout(persistTimer); persistTimer=null; return; }
   clearTimeout(persistTimer); persistTimer=null;
   let txt; try{ txt=JSON.stringify(S); }catch(e){ return; }
   try{localStorage.setItem(LS_KEY,txt);}catch(e){}
@@ -1280,7 +1285,7 @@ function tFit(){ const bk=document.querySelector('.bk'); if(!bk) return; bk.styl
 window.addEventListener('resize',()=>{ if(tab==='tour') tFit(); });
 function vTour(){
   const T=S.tour;
-  const bvSet=BVIEW?'<button class="btn sm bvset" data-act="go" data-tab="settings">⚙ Settings</button>':'';
+  const bvSet=IS_POP?'<button class="btn sm bvset" data-act="t-fs">⛶ Full screen</button>':BVIEW?'<button class="btn sm bvset" data-act="go" data-tab="settings">⚙ Settings</button>':'';
   if(!tOn()&&IS_DISPLAY) return `<div class="card emptybox" style="margin-top:14px"><b>🏆 No tournament yet</b>The bracket appears here as soon as the Main tablet starts one.</div>${bvSet}`;
   if(!tOn()){
     const used=new Set(T.pairs.flat()), n=T.pairs.length; let sz=2; while(sz<n) sz*=2;
@@ -1315,7 +1320,7 @@ function vTour(){
   const ready=[]; for(let k=0;k<L;k++) for(let j=0;j<R[k].length/2;j++){ const m=tMatch(k+'-'+j,R); if(m&&m.ready&&m.ci<0) ready.push(m); }
   const live=S.courts.map((c,i)=>c.tm&&c.p.length?i:-1).filter(i=>i>=0);
   const line=(m,right)=>IS_DISPLAY?`<div class="item"><div class="nm" style="flex:1">${tRoundName(m.k)} · ${esc(tPairName(m.a))} <small style="color:var(--muted)">vs</small> ${esc(tPairName(m.b))}</div>${right}</div>`:`<button class="item tapr" style="text-align:left;background:#fff;width:100%" data-act="t-m" data-k="${m.k}-${m.j}"><div class="nm" style="flex:1">${tRoundName(m.k)} · ${esc(tPairName(m.a))} <small style="color:var(--muted)">vs</small> ${esc(tPairName(m.b))}</div>${right}</button>`;
-  return `<div class="row" style="margin:4px 0 10px;align-items:center"><h2 style="margin:0;flex:1">Tournament <small>${T.pairs.length} pairs · bracket of ${N}</small></h2>${IS_DISPLAY?'':`<button class="chip ${T.auto?'on':''}" data-act="t-feed" style="margin-right:8px">Auto-send to free courts: ${T.auto?'On':'Off'}</button><button class="btn sm warn" data-act="t-reset">${confirmKey==='treset'?'Sure? Tap again':'New tournament'}</button>`}</div>
+  return `<div class="row" style="margin:4px 0 10px;align-items:center"><h2 style="margin:0;flex:1">Tournament <small>${T.pairs.length} pairs · bracket of ${N}</small></h2>${IS_DISPLAY?'':`${IS_APP||(window.claude&&window.claude.use)?'':'<button class="btn sm" data-act="t-pop" style="margin-right:8px">⧉ Pop out</button>'}<button class="chip ${T.auto?'on':''}" data-act="t-feed" style="margin-right:8px">Auto-send to free courts: ${T.auto?'On':'Off'}</button><button class="btn sm warn" data-act="t-reset">${confirmKey==='treset'?'Sure? Tap again':'New tournament'}</button>`}</div>
   ${Number.isInteger(champ)?`<div class="tchamp">🏆 Champion: ${esc(tPairName(champ))}${tChampCard(champ)}</div>`:''}
   <div class="card bwrap"><div class="bk" style="--h:${Math.max(1,N/2)*62}px">${cols.join('')}</div></div>
   ${ready.length||live.length?`<h2>${IS_DISPLAY?'Now playing &amp; up next':'Up next <small>tap to send to a court</small>'}</h2><div class="card"><div class="list">
@@ -1893,6 +1898,7 @@ function vHelp(){
     <li><b>Auto-send to free courts</b> (on by default): ready matches go onto free courts by themselves — at the start, after every <b>Game done</b> and with <b>Fill empty courts</b> — before any planned Next games. The winner moves up and the next match goes on, until the champion. Players still in the tournament are kept out of Auto match; knocked-out pairs go back to the waiting queue. With it off, tap a match → <b>Court N</b>.</li>
     <li>No court needed? In the same sheet tap the winning pair. <b>Undo result</b> works until that pair's next match has started.</li>
     <li><b>Bracket viewer</b> (a TV or spare tablet): Settings → Tablet sync → <b>Bracket viewer</b> → Main tablet address → Connect. It shows only the live bracket, sized to the screen. A laptop or TV browser on the same Wi-Fi can open <b>http://&lt;Main address&gt;:8787/?view=bracket</b> instead.</li>
+    <li><b>Second screen (laptop):</b> tap <b>⧉ Pop out</b> on the Bracket screen — the bracket opens in its own window that follows every result live. Drag it to the second screen and tap <b>⛶ Full screen</b> (or press F11). Allow pop-ups for the site if the browser blocks it.</li>
     <li>The final's winner shows as 🏆 Champion in the middle, with both players' photos at the top (a smiley picture — boy or girl from Gender — for anyone without a photo). <b>New tournament</b> clears the bracket (pairs are kept).</li></ol>`)}
   ${sec('score','5. Keeping score',`<ol>
     <li>After the toss, tap <b>Serves first</b>. Use <b>⇄ Swap</b> so names match where players stand (only at 0–0).</li>
@@ -2555,6 +2561,9 @@ document.addEventListener('click',e=>{
     case 't-start': tStart(k); break;
     case 't-reset': if(confirmKey!=='treset'){ confirmKey='treset'; render(); break; } confirmKey=null; S.tour.pos=[]; S.tour.w={}; S.courts.forEach(c=>c.tm=''); save(); render(); toast('Bracket cleared — pairs kept'); break;
     case 't-m': sheetTMatch(k); break;
+    case 't-pop':{ persistNow(); const w=window.open(location.pathname+'?popout=bracket','mm_bracket','popup,width=1400,height=900');
+      if(w){ try{ w.focus(); }catch(e){} toast('Bracket opened in its own window — drag it to the second screen'); } else toast('The browser blocked the window — allow pop-ups for this site'); break;}
+    case 't-fs': try{ const d=document.documentElement; if(document.fullscreenElement) document.exitFullscreen(); else (d.requestFullscreen||d.webkitRequestFullscreen).call(d); }catch(e){} break;
     case 't-feed':{ S.tour.auto=!S.tour.auto; const f=S.tour.auto?tFeed():0; save(); render(); toast(S.tour.auto?'Auto-send on'+(f?` · ${f} match${f>1?'es':''} sent to courts`:''):'Auto-send off — tap a match to send it'); tFedMsg=''; break;}
     case 't-go': closeSheet(); tab='courts'; render(); window.scrollTo(0,0); break;
     case 't-win':{ const m=tMatch(k); if(!m||!m.ready||m.ci>=0){ closeSheet(); break; } const v=+el.dataset.v?1:0; S.tour.w[k]={s:v,sc:''}; tFeed(); closeSheet(); save(); render(); toast('Winner: '+tPairName(v?m.b:m.a)+(tFedMsg?' · '+tFedMsg:'')); tFedMsg=''; break;}
@@ -2992,6 +3001,10 @@ function mainAddr(){ try{ return AndroidApp.localIp(); }catch(e){ return ''; } }
 /* ---------- player photos ---------- */
 let PH={}, photoDb=null, lastPhRev=-1;
 const PH_KEY=IS_APP?((IS_DISPLAY||IS_COURT)?'bmm_photos_display':'bmm_photos'):'bmm_photos_web';
+if(IS_POP){ document.title='Bracket — Match Maker';
+  window.addEventListener('storage',e=>{ try{
+    if(e.key===LS_KEY&&e.newValue){ S=normalize(JSON.parse(e.newValue)); render(); }
+    else if(e.key===PH_KEY&&e.newValue){ PH=JSON.parse(e.newValue)||{}; render(); } }catch(x){} }); }
 try{ PH=JSON.parse(localStorage.getItem(PH_KEY)||'{}')||{}; }catch(e){ PH={}; }
 function initials(n){ return String(n||'?').replace(/[^\p{L}\p{N} ]/gu,'').trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase()||'?'; }
 /* photos are kept as text (data:…) but shown through a short blob: link made once per photo, so a redraw of a
@@ -3344,9 +3357,10 @@ function applyIncoming(){
   }
   if(changed){ save(); render(); if(remoteChanged) refreshSheet(); }
 }
-const VIEW_OK=new Set(['sc-help','go','help','help-topic','help-sec','wq-sort','pay-gone','rep-mode','stg-check','ci-f','pl-f','h-f','h-r','h-v','pay-f','score','sc-close','sync-role','sync-ip','upd-check','upd-go','upd-app','export','copypay','copy']);
+const VIEW_OK=new Set(['t-fs','sc-help','go','help','help-topic','help-sec','wq-sort','pay-gone','rep-mode','stg-check','ci-f','pl-f','h-f','h-r','h-v','pay-f','score','sc-close','sync-role','sync-ip','upd-check','upd-go','upd-app','export','copypay','copy']);
 if(IS_DISPLAY) document.body.classList.add('display');
 if(BVIEW) document.body.classList.add('bview');
+if(IS_POP) document.body.classList.add('pop');
 if(IS_APP||IS_SERVED){
   if(ROLE==='main'&&IS_APP){ try{ AndroidApp.startServer(); }catch(e){} shareState(); sharePhotos(); setInterval(syncHeader,3000); }
   if(ROLE==='display'||ROLE==='court'){ pollMain(); }
