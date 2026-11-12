@@ -677,7 +677,8 @@ function parseDays(v){
   if(/week\s*ends?/.test(t)) ['Sat','Sun'].forEach(d=>out.add(d));
   t=t.replace(/week\s*(days?|ends?)/g,' ');
   t=t.replace(/([a-z]+)\s*(?:-|–|—|to|until|till)\s*([a-z]+)/g,(m,a,b)=>{ const i=ix(a), j=ix(b); if(i<0||j<0) return m; for(let k=i;;k=(k+1)%7){ out.add(DAYS[k]); if(k===j) break; } return ' '; });
-  t.split(/[^a-z]+/).forEach(w=>{ const i=ix(w); if(i>=0) out.add(DAYS[i]); });
+  t.split(/[^a-z]+/).forEach(w=>{ const i=ix(w); if(i>=0) out.add(DAYS[i]);
+    else if(/^(th|tu|sa|su|m|t|w|f)+$/.test(w)) w.match(/th|tu|sa|su|m|t|w|f/g).forEach(c=>out.add({m:'Mon',t:'Tue',tu:'Tue',w:'Wed',th:'Thu',f:'Fri',sa:'Sat',su:'Sun'}[c])); });
   return DAYS.filter(d=>out.has(d));
 }
 const dayToday=()=>DAYS[(new Date().getDay()+6)%7];
@@ -687,7 +688,10 @@ const dayViewNow=()=>S.dayView&&S.dayView!=='Today'&&S.dayViewOn===dayKey(Date.n
 let DAYS_SET=null;   // does any player have playing days? worked out once per redraw / save
 const daysSet=()=>DAYS_SET!==null?DAYS_SET:(DAYS_SET=S.players.some(p=>p.dy&&p.dy.length));
 const dayCur=()=>{ const v=dayViewNow(); return v==='All'?null:v==='Today'?(daysSet()?dayToday():null):v; };
-const dayOk=p=>{ const d=dayCur(); return !d||(p.dy||[]).includes(d); };
+/* dayIn: scheduled for the shown day. dayOk (what lists show): also anyone checked in (an off-day subscriber who came)
+   and players with no days set (guests / walk-ins), so they can be checked in and billed */
+const dayIn=p=>{ const d=dayCur(); return !d||(p.dy||[]).includes(d); };
+const dayOk=p=>dayIn(p)||!!S.present[p.id]||!(p.dy&&p.dy.length);
 const dayIdx=p=>p.dy&&p.dy.length?DAYS.indexOf(p.dy[0]):7;
 const dyTag=p=>p.dy&&p.dy.length?`<small class="dytag">📅 ${p.dy.length===7?'Every day':p.dy.join(' · ')}</small>`:'';
 function dayBar(){ const d=dayCur(); if(!d) return '';
@@ -703,7 +707,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=88;
+const APP_VERSION=89;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -734,7 +738,7 @@ const CLIENT=Math.random().toString(36).slice(2);
 function fresh(){
   return {players:[],present:{},resting:{},games:{},lastEnd:{},partners:{},
     courts:[0,1,2].map(()=>({lv:GROUPS.slice(),p:[],t:0})),next:[],
-    mode:'doubles',mix:'adjacent',autoNext:true,prio:'strong',rounds:true,paid:{},part:{},sess:0,hist:[],ledger:[],log:[],teams:[],match:{n:3,pts:21,mode:'best'},fee:{gp:25,mg:20,fm:0,sp:2.5},dayView:'Today',hideOff:true};
+    mode:'doubles',mix:'adjacent',autoNext:true,prio:'strong',rounds:true,paid:{},part:{},sess:0,hist:[],ledger:[],log:[],teams:[],match:{n:3,pts:21,mode:'best'},fee:{gp:25,mg:20,fm:20,sp:2.5},feeV:1,dayView:'Today',hideOff:true};
 }
 /* activity log: every check-in, payment and session change, with time */
 function logEv(k,o){ if(IS_DISPLAY||IS_COURT) return; if(!Array.isArray(S.log)) S.log=[]; S.log.push(Object.assign({d:Date.now(),k},o||{})); if(S.log.length>6000) S.log=S.log.slice(-6000); }
@@ -771,7 +775,9 @@ function normalize(s){
   const f=(s.fee&&typeof s.fee==='object')?s.fee:{};
   const fv=(k,d)=>f[k]!==undefined&&f[k]!==null&&f[k]!==''&&isFinite(+f[k])&&+f[k]>=0?+f[k]:d;
   // gp Non-Member Guest fee, mg Member Guest fee, fm Family fee, sp shuttle per game played (old gn / gx guest-minimum settings are dropped)
-  s.fee={gp:fv('gp',25), mg:fv('mg',20), fm:fv('fm',0), sp:fv('sp',2.5)};
+  s.fee={gp:fv('gp',25), mg:fv('mg',20), fm:fv('fm',20), sp:fv('sp',2.5)};
+  // v89: Family fee is 20 SR (club 4th Qtr sheet); v88 had added it at 0
+  if(!(s.feeV>=1)){ if(!s.fee.fm) s.fee.fm=20; s.feeV=1; }
   return s;
 }
 
@@ -888,14 +894,19 @@ function prioritySort(list){
   return list.slice().sort((a,b)=>(S.prio==='strong'&&!S.rounds?(g(a,b)||n(a,b)):(n(a,b)||g(a,b)))||((S.lastEnd[a.id]||0)-(S.lastEnd[b.id]||0))||a.n.localeCompare(b.n));
 }
 /* type fee for one session (charged once a player has played) */
-const typeFee=p=>p.t==='G'?S.fee.gp:p.t==='MG'?S.fee.mg:p.t==='F'?(S.fee.fm||0):0;
+/* the weekday being billed: the Show day picked in Settings, else today */
+const billDay=()=>dayCur()||dayToday();
+/* a Subscriber with playing days set who plays on another day pays the Member Guest fee (club 4th Qtr sheet: Bokbok, Fri-only, played Wed = 20 + shuttles) */
+const offDay=p=>p.t==='S'&&!!(p.dy&&p.dy.length)&&!p.dy.includes(billDay());
+const typeFee=p=>p.t==='G'?S.fee.gp:p.t==='MG'?S.fee.mg:p.t==='F'?(S.fee.fm||0):offDay(p)?S.fee.mg:0;
+const feeLbl=p=>offDay(p)?'Member Guest (not a '+DAY_L[billDay()]+' subscriber)':TYPE_L[p.t];
 /* the bill before rounding: type fee + shuttles (one per game played) */
 function feeRaw(p){ const g=S.games[p.id]||0; return g?typeFee(p)+g*S.fee.sp:0; }
 /* every bill is a whole SR: .50 rounds up (2.50 → 3, 22.50 → 23) */
 const roundBill=v=>Math.round(r2(v));
 function fee(p){ return roundBill(feeRaw(p)); }
 const sr=v=>(Math.round(v*100)/100).toFixed(2).replace(/\.00$/,'')+' SR';
-const feeRulesText=()=>`Subscriber 0 SR + shuttles · Family ${sr(S.fee.fm||0)} + shuttles · Member Guest ${sr(S.fee.mg)} + shuttles · Non-Member Guest ${sr(S.fee.gp)} + shuttles · shuttle ${sr(S.fee.sp)} per game played · bills rounded to whole SR (.50 rounds up)`;
+const feeRulesText=()=>`Subscriber 0 SR + shuttles on their days (other days: Member Guest fee) · Family ${sr(S.fee.fm||0)} + shuttles · Member Guest ${sr(S.fee.mg)} + shuttles · Non-Member Guest ${sr(S.fee.gp)} + shuttles · shuttle ${sr(S.fee.sp)} per game played · bills rounded to whole SR (.50 rounds up)`;
 function waiting(){
   const oc=onCourt(), dr=drafted(), pl=planned();
   return prioritySort(S.players.filter(p=>S.present[p.id]&&!S.resting[p.id]&&oc[p.id]===undefined&&!dr.has(p.id)&&!pl.has(p.id)&&dayOk(p)));
@@ -1138,7 +1149,7 @@ function vCourts(){
   const present=S.players.filter(p=>S.present[p.id]);
   const w=waiting();
   // Show day set: that day's players who have not arrived yet also wait in Resting; Back to play checks them in
-  const dc=dayCur(), resting=S.players.filter(p=>S.present[p.id]?S.resting[p.id]:(dc&&dayOk(p)&&!isOff(p)));
+  const dc=dayCur(), resting=S.players.filter(p=>S.present[p.id]?S.resting[p.id]:(dc&&dayIn(p)&&!isOff(p)));
   let h=`<div class="stats">
     <div class="stat"><b>${present.length}</b><span>Present</span></div>
     <div class="stat"><b>${S.courts.reduce((a,c)=>a+c.p.length,0)}</b><span>Playing</span></div>
@@ -1334,7 +1345,7 @@ function vPayDraw(){
     ${gone.length?`<div class="daybar" style="background:#fff6e6;border-color:#f1d29a;color:#6b4a00">${payGone?'Showing':'Hidden:'} ${gone.length} player${gone.length===1?'':'s'} not in Attendance who played today (${sr(goneDue)}${goneUnpaid.length?', '+goneUnpaid.length+' unpaid':''})<span class="grow"></span><button class="btn sm" data-act="pay-gone">${payGone?'Hide':'Show'}</button></div>`:''}
     <div class="chips">${['All','Subscribers','Guests','Unpaid'].map(k=>`<button class="chip ${payFilter===k?'on':''}" data-act="pay-f" data-k="${k}">${k}</button>`).join('')}</div>
     ${list.length?`<div class="phead"><span class="pinfo">Player</span><span class="pg">Games</span><span class="pfee">Fee / Paid</span></div><div class="list">${list.map(p=>{const g=S.games[p.id]||0,f=fee(p);
-      const tf=typeFee(p), note=g?(tf?sr(tf)+' '+TYPE_L[p.t]+' fee + ':'')+g+' shuttle'+(g===1?'':'s')+' × '+sr(S.fee.sp)+(r2(feeRaw(p))!==fee(p)?' = '+sr(feeRaw(p))+', rounded to '+sr(fee(p)):''):'Nothing due until they play'+(tf?' (then '+sr(tf)+' fee + '+sr(S.fee.sp)+' per game)':' (then '+sr(S.fee.sp)+' per game)');
+      const tf=typeFee(p), note=g?(tf?sr(tf)+' '+feeLbl(p)+' fee + ':'')+g+' shuttle'+(g===1?'':'s')+' × '+sr(S.fee.sp)+(r2(feeRaw(p))!==fee(p)?' = '+sr(feeRaw(p))+', rounded to '+sr(fee(p)):''):'Nothing due until they play'+(tf?' (then '+sr(tf)+' fee + '+sr(S.fee.sp)+' per game)':' (then '+sr(S.fee.sp)+' per game)');
       return `<div class="prow">
         <div class="pinfo"><div class="nmc">${catBadge(p.c)}<span class="pn">${esc(p.n)}</span>${typeBadge(p)}</div><div class="pnote">${note}</div>${balOf(p)>0?`<button class="balflag" data-act="bal" data-id="${p.id}">⚠ Owes ${sr(balOf(p))} from ${bills(p).length} earlier bill${bills(p).length===1?'':'s'}</button>`:''}</div>
         <div class="pg"><b>${g}</b></div>
@@ -1640,11 +1651,11 @@ function vHelp(){
     <li>Even number of games and it ends level (e.g. 1–1)? Tap <b>⚡ Play decider</b> for one extra game to 11, or keep the result (more total points wins; equal points = draw).</li>
     <li><b>Team names:</b> tap <b>+ Team name</b> at the top of each side and type any name for this match (or pick one used before). It's filled in automatically when both players share a team. ✕ clears it.</li></ol>`)}
   ${sec('fees','6. Fees and payments',`<ul>
-    <li><b>Subscriber:</b> 0 SR fee + shuttles.</li>
+    <li><b>Subscriber:</b> 0 SR fee + shuttles on their subscribed days. On any other day they pay the Member Guest fee + shuttles.</li>
     <li><b>Family:</b> ${sr(S.fee.fm||0)} fee + shuttles.</li>
     <li><b>Member Guest:</b> 20 SR fee + shuttles.</li>
     <li><b>Non-Member Guest:</b> 25 SR fee + shuttles.</li>
-    <li><b>Members</b> (Players → Edit → Active): <b>Member-SUB (A-SUB)</b> pays as a Subscriber, <b>Member-Guest</b> as a Member Guest, <b>Non-Member</b> as a Non-Member Guest. Choosing one sets the fee.</li>
+    <li><b>Members</b> (Players → Edit → Active): <b>Member-SUB (A-SUB)</b> pays as a Subscriber, a Member with status <b>Reg</b> (not subscribed) as a Member Guest, <b>Member-Guest</b> as a Member Guest, <b>Non-Member</b> as a Non-Member Guest. Choosing one sets the fee.</li>
     <li><b>Shuttles</b> = the number of games played × 2.50 SR. Example: a Member Guest who plays 4 games pays 20 + 4 × 2.50 = 30 SR. Nobody owes anything until they play.</li>
     <li><b>Rounding:</b> every bill is a whole SR; .50 rounds up. 1 game as a Subscriber = 2.50 → <b>3 SR</b>; a Member Guest with 1 game = 22.50 → <b>23 SR</b>.</li>
     <li>Fees update automatically as games are played. Change prices in Settings → Fees.</li>
@@ -1679,7 +1690,7 @@ function vHelp(){
 }
 function todayRows(){
   const d=dayKey(Date.now());
-  return S.players.filter(p=>S.present[p.id]||(S.games[p.id]||0)>0).map(p=>({id:p.id,day:d,n:p.n,tm:p.tm||'',c:p.c,t:p.t,g:S.games[p.id]||0,f:r2(fee(p)),pa:paidAmt(p),pc:paidBy(p,'cash'),ps:paidBy(p,'stc'),pd:fee(p)>0&&leftAmt(p)<=0.009?1:0,pm:pmText(paidBy(p,'cash'),paidBy(p,'stc')),ss:S.sess||0}));
+  return S.players.filter(p=>S.present[p.id]||(S.games[p.id]||0)>0).map(p=>({id:p.id,day:d,n:p.n,tm:p.tm||'',c:p.c,t:p.t,g:S.games[p.id]||0,tf:typeFee(p),sh:r2((S.games[p.id]||0)*S.fee.sp),f:r2(fee(p)),pa:paidAmt(p),pc:paidBy(p,'cash'),ps:paidBy(p,'stc'),pd:fee(p)>0&&leftAmt(p)<=0.009?1:0,pm:pmText(paidBy(p,'cash'),paidBy(p,'stc')),ss:S.sess||0}));
 }
 function archiveDay(){
   const rows=todayRows().filter(r=>r.g>0||r.pa>0);
@@ -1727,7 +1738,7 @@ function buildReport(){
   const add=(name,aoa,widths)=>{const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=widths.map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws,name);};
   add('Players',[['Name','Full Name','Level','Type','Active','Gender','Team','Days']].concat(PLs.slice().sort((a,b)=>lvCmp(a.c,b.c)||a.n.localeCompare(b.n)).map(p=>[p.n,p.fn||'',p.c,T(p.t),p.st||'',p.g==='M'?'Male':p.g==='F'?'Female':'',p.tm||'',(p.dy||[]).join(', ')])),[22,30,8,10,9,9,20,22]);
   const pst=r=>+r.f<=0?'-':r.wv?'Waived '+r.wv+' SR':rowLeft(r)<=0.009?'Paid':rowPaid(r)>0?'Part paid':'Unpaid';
-  add('Payments',[['Date','Player','Team','Level','Type','Games','Fee (SR)','Paid (SR)','Balance (SR)','Status','Method','Last payment']].concat(pay.slice().sort((a,b)=>keyT(a.day)-keyT(b.day)||String(a.n).localeCompare(b.n)).map(r=>[dayDate(r.day),r.n,r.tm||((S.players.find(p=>p.n===r.n)||{}).tm||''),r.c,T(r.t),r.g,r.f,r2(rowPaid(r)),rowLeft(r),pst(r),rowPaid(r)>0?(r.pm||pmText(rowCash(r),rowStc(r))||'Cash'):'',r.sd&&r.sd!==r.day?dayDate(r.sd):''])),[13,24,18,10,12,8,10,10,12,10,16,13]);
+  add('Payments',[['Date','Player','Team','Level','Type','Games','Type fee (SR)','Shuttles (SR)','Fee (SR)','Paid (SR)','Balance (SR)','Status','Method','Last payment']].concat(pay.slice().sort((a,b)=>keyT(a.day)-keyT(b.day)||String(a.n).localeCompare(b.n)).map(r=>[dayDate(r.day),r.n,r.tm||((S.players.find(p=>p.n===r.n)||{}).tm||''),r.c,T(r.t),r.g,r.tf!=null?+r.tf:(+r.g?({G:S.fee.gp,MG:S.fee.mg,F:S.fee.fm}[r.t]||0):0),r.sh!=null?+r.sh:r2((+r.g||0)*S.fee.sp),r.f,r2(rowPaid(r)),rowLeft(r),pst(r),rowPaid(r)>0?(r.pm||pmText(rowCash(r),rowStc(r))||'Cash'):'',r.sd&&r.sd!==r.day?dayDate(r.sd):''])),[13,24,18,10,12,8,12,12,10,10,12,10,16,13]);
   { // every unpaid / part-paid bill, by player then date, with a running total per player
     const open=pay.filter(r=>rowLeft(r)>0.009).sort((a,b)=>String(a.n).localeCompare(b.n)||keyT(a.day)-keyT(b.day));
     const out=[]; let cur=null, run=0, grand=0;
@@ -2215,7 +2226,7 @@ document.addEventListener('click',e=>{
       else { S.present[id]=1; logEv('in',{n:pnm(id)}); }
       save(); render(); break;}
     case 'ci-all': case 'ci-none':{ const oc=onCourt();
-      S.players.filter(p=>dayOk(p)&&teamMatch(p,ciTeam)&&(a==='ci-none'||!S.hideOff||!isOff(p))).forEach(p=>{ if(a==='ci-all'){ if(!S.present[p.id]) logEv('in',{n:p.n}); S.present[p.id]=1; return; } if(S.present[p.id]&&oc[p.id]===undefined) logEv('out',{n:p.n}); if(oc[p.id]===undefined){delete S.present[p.id];delete S.resting[p.id];} });
+      S.players.filter(p=>(a==='ci-none'?dayOk(p):dayIn(p))&&teamMatch(p,ciTeam)&&(a==='ci-none'||!S.hideOff||!isOff(p))).forEach(p=>{ if(a==='ci-all'){ if(!S.present[p.id]) logEv('in',{n:p.n}); S.present[p.id]=1; return; } if(S.present[p.id]&&oc[p.id]===undefined) logEv('out',{n:p.n}); if(oc[p.id]===undefined){delete S.present[p.id];delete S.resting[p.id];} });
       save(); render(); break;}
     case 'bulk':{ const t=$('#bulk').value; let n=0;
       t.split(/\r?\n/).forEach(line=>{ line=line.trim(); if(!line) return;
@@ -2426,6 +2437,7 @@ function importRows(rows){
   let gi=head.findIndex(x=>/gender|sex/.test(x));
   const tmi=head.findIndex(x=>/team|squad|club/.test(x));
   let dyi=head.findIndex(x=>/\bdays?\b|schedule/.test(x)&&!/birth/.test(x));
+  if(dyi<0) head.forEach((x,i)=>{ if(/\bq(tr|uarter)/.test(x)) dyi=i; });   // club sheet: the latest quarter column ("4th Qtr": MWFSa = subscribed days, 20 / 25 = not subscribed)
   const hasHead=ni>=0||ci>=0||ti>=0||tmi>=0||ai>=0||gi>=0||fni>=0||dyi>=0;
   if(hasHead){ start=1; if(ni>=0) nameCol=ni; if(ci>=0) catCol=ci; }
   /* columns found by their values when the header is unclear (e.g. Member/Guest/Family under "Timestamp") */
@@ -2447,7 +2459,9 @@ function importRows(rows){
     const name=(r[nameCol]||'').slice(0,40); if(!name) return;
     let c=catCol>=0?parseCat(r[catCol]):null; if(!c){c=DEF_LV;noCat++;}
     const st=ai>=0?parseStatus(r[ai]):null, g=gi>=0?parseGender(r[gi]):null;
-    const t=(ti>=0?parseType(r[ti]):null)||STATUS_TYPE[st]||null;
+    let t=(ti>=0?parseType(r[ti]):null)||STATUS_TYPE[st]||null;
+    // A-SUB = Subscriber; a plain "Member" who is not A-SUB (Reg / No) pays as a Member Guest (club 4th Qtr sheet)
+    if(st==='A-SUB') t='S'; else if(t==='S'&&st&&ti>=0&&/^members?$/i.test(String(r[ti]).trim())) t='MG';
     let fn=fni>=0?String(r[fni]||'').trim().slice(0,80):''; if(/^\[?blank\]?$/i.test(fn)) fn='';
     const ex=idx[name.toLowerCase()];
     const tm=tmi>=0?String(r[tmi]||'').trim().slice(0,40):null;
@@ -2469,7 +2483,9 @@ async function importFile(f){
     }
     await loadXLSX();
     const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
-    const ws=wb.Sheets[wb.SheetNames[0]];
+    // the club roster sheet (header "Player Master List") wherever it is in the workbook, else the first sheet
+    const sn=wb.SheetNames.find(n=>((XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:false,defval:''})[0])||[]).some(x=>/player\s*master\s*list/i.test(String(x))))||wb.SheetNames[0];
+    const ws=wb.Sheets[sn];
     importRows(XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:''}));
     const tsn=wb.SheetNames.find((n,i)=>i>0&&/^teams?$/i.test(n.trim()));
     if(tsn){ const rows=XLSX.utils.sheet_to_json(wb.Sheets[tsn],{header:1,raw:false,defval:''}); let added=0;

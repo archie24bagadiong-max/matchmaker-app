@@ -229,14 +229,14 @@ Every player pays a **type fee + shuttles**. Shuttles = the number of games play
 
 | Type | Fee | Court priority |
 | --- | --- | --- |
-| Subscriber | 0 SR + shuttles | Subscriber |
-| Family | Family fee (Settings, default 0 SR) + shuttles | Subscriber |
+| Subscriber | 0 SR + shuttles on their subscribed days; **other days: Member Guest fee + shuttles** | Subscriber |
+| Family | Family fee (20 SR) + shuttles | Subscriber |
 | Member Guest | 20 SR + shuttles | Subscriber |
 | Non-Member Guest | 25 SR + shuttles | Guest (own queue column) |
 
 Fee = type fee + games × 2.50, then **rounded to a whole SR (.50 rounds up)**: 2.50 → 3, 22.50 → 23. fee() = roundBill(feeRaw()); the Payments note shows the unrounded amount when rounding changed it.
 
-| Games | Subscriber / Family | Member Guest | Non-Member Guest |
+| Games | Subscriber (own day) | Member Guest / Family / Subscriber off-day | Non-Member Guest |
 | --- | --- | --- | --- |
 | 1 | 3 (2.50) | 23 (22.50) | 28 (27.50) |
 | 2 | 5 | 25 | 30 |
@@ -245,7 +245,7 @@ Fee = type fee + games × 2.50, then **rounded to a whole SR (.50 rounds up)**: 
 | 5 | 13 (12.50) | 33 (32.50) | 38 (37.50) |
 | 6 | 15 | 35 | 40 |
 
-Settings → Fees has the shuttle price, the Family fee, the Member Guest fee and the Non-Member Guest fee (S.fee = {sp, fm, mg, gp}). The Games table above assumes a Family fee of 0; with a Family fee set, Family = Family fee + shuttles, rounded the same way. Before page v75 guests paid a 25 SR minimum covering 3 games; that setting (gn, gx) is dropped and players who were "Guest" are Non-Member Guests. Payments groups Subscribers & Family vs Guests (member and non-member); the Excel Daily Summary does the same. Start new session archives the day's payment rows into a ledger (up to 4,000 rows); payment history starts 7 Nov 2026. Bills already archived keep the amount they had.
+Settings → Fees has the shuttle price, the Family fee, the Member Guest fee and the Non-Member Guest fee (S.fee = {sp, fm, mg, gp}). Family pays the same as Member Guest at 20 SR. A Subscriber's fee depends on the day billed (billDay(): the Show day, else today) — offDay(p) is true when p.dy is set and does not include it; Subscribers with no days set always pay 0 + shuttles. Rules checked against the club's 4th Qtr Wednesday workbook: all 29 Sept 16 bills match (3rd Qtr subscriptions). Before page v75 guests paid a 25 SR minimum covering 3 games; that setting (gn, gx) is dropped and players who were "Guest" are Non-Member Guests. Payments groups Subscribers & Family vs Guests (member and non-member); the Excel Daily Summary does the same. Start new session archives the day's payment rows into a ledger (up to 4,000 rows); payment history starts 7 Nov 2026. Bills already archived keep the amount they had.
 
 ## Excel
 
@@ -310,6 +310,7 @@ Uninstalling or clearing app storage erases everything — back up with Export E
 | 7 Nov 2026 | Page v29 (1.29) | Set the serve before starting: tap the player who serves first, then the player who receives (0–0, first game); serving team can still be changed until the first point |
 | 7 Nov 2026 | Page v30 (1.30) | Payments: mark each player paid by 💵 Cash or 📱 STC Pay; Collected shows the split; Excel Payments sheet has a Method column and Daily Summary has Cash / STC Pay totals |
 | 7 Nov 2026 | Page v31 (2.0) | Export all activity: new Activity Log sheet (check-ins/outs, match start and finish with result, payments received/cancelled with amount and Cash / STC Pay, new sessions — all with date and time). Export button also in Settings |
+| 12 Nov 2026 | Page v89 (3.27) | Billing follows the club's **4th Qtr Wednesday** workbook: Family fee 20 SR (devices on 0 are moved to 20 once, S.feeV); a Subscriber playing on a day they're not subscribed to pays the Member Guest fee + shuttles; Excel upload reads the **Member_Guest** sheet (header "Player Master List") wherever it is, takes playing days from the latest quarter column ("4th Qtr": MWFSa, WSa, Th …), and imports a Member who is not A-SUB (Reg / No) as Member Guest. Show day keeps checked-in players and players with no days (guests) visible; Resting and Check in everyone still use only the day's scheduled players. Excel Payments adds Type fee and Shuttles columns. Web-only change |
 | 12 Nov 2026 | Page v88 (3.26) | **Family fee**: Settings → Fees has a new Family fee (default 0 SR, so bills don't change until it is set). Family bill = Family fee + shuttles, rounded to a whole SR (.50 rounds up). Shown in the Payments notes, fee rules, Players hint and How to use → Fees. Web-only change (APK unchanged; it loads the page) |
 | 11 Nov 2026 | Page v87 (3.25) | Show day buttons moved from Players → Roster to **Attendance** (replacing Attendance's level filter chips); the Roster has its level filter back. Check in / Uncheck everyone cover the shown day's players. APK 1.26 |
 | 11 Nov 2026 | Page v86 (3.24) | Players → Roster: the level filter chips (All · A+ … D-) are replaced by the Show day buttons (All days · Today · Mon … Sun), the same as Settings → Show day; picking a day there also puts the day's players in Resting. APK 1.25 |
