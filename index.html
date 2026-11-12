@@ -652,7 +652,12 @@ button.bx{cursor:pointer}
 .tpair .nm2{flex:1;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
 .ttag{background:#c9a227;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:6px;font-family:Barlow,sans-serif}
 body.bview nav{display:none}
-body.pop .helpbtn,body.pop #sync{display:none}
+body.pop .helpbtn,body.pop #sync,body.pop header{display:none}
+body.pop{overflow:hidden}
+body.pop main{max-width:none;padding:8px 10px 8px}
+body.pop .tchamp{margin-bottom:8px}
+body.pop .bvset{position:fixed;right:10px;bottom:10px;margin:0;z-index:5}
+body.pop:fullscreen .bvset,:fullscreen body.pop .bvset{display:none}
 body.bview #app{padding-bottom:20px}
 .bvset{display:block;margin:14px auto 0;opacity:.6}
 #ctxm{position:fixed;z-index:200;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.22);padding:6px;min-width:220px;max-width:280px}
@@ -788,7 +793,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=105;
+const APP_VERSION=106;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1289,7 +1294,15 @@ function tBox(v,cls,extra,key){ const nm=Number.isInteger(v)?tPairIds(v).map(id=
   return `<${tag} class="bx ${cls}" ${key?`data-act="t-m" data-k="${key}"`:''}><span class="ball"></span><span class="bn">${nm}${extra||''}</span></${tag}>`; }
 /* Bracket viewer: scale the whole bracket to the screen width (bigger on a TV, smaller on a tablet) */
 function tFit(){ const bk=document.querySelector('.bk'); if(!bk) return; bk.style.zoom=''; if(!BVIEW) return;
-  const w=bk.parentNode.clientWidth-24, f=Math.max(.4,Math.min(1.8,w/bk.scrollWidth)); bk.style.zoom=f; }
+  const w=bk.parentNode.clientWidth-24;
+  if(!IS_POP){ bk.style.zoom=Math.max(.4,Math.min(1.8,w/bk.scrollWidth)); return; }
+  /* pop-out window: fill the whole window — scale to the width or height (whichever runs out first),
+     then stretch the columns so the bracket also uses the full height */
+  const base=Math.max(1,S.tour.pos.length/2)*62; bk.style.setProperty('--h',base+'px');
+  const h=innerHeight-bk.getBoundingClientRect().top-40, W0=bk.scrollWidth, H0=bk.scrollHeight;
+  const f=Math.max(.3,Math.min(3,(w-16)/W0,h/H0)); bk.style.zoom=f;
+  const extra=h/f-H0; if(extra>4) bk.style.setProperty('--h',(base+extra)+'px'); }
+document.addEventListener('fullscreenchange',()=>{ if(tab==='tour') setTimeout(tFit,60); });
 window.addEventListener('resize',()=>{ if(tab==='tour') tFit(); });
 function vTour(){
   const T=S.tour;
