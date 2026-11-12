@@ -780,7 +780,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=102;
+const APP_VERSION=103;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1310,7 +1310,9 @@ function vTour(){
       else if(m.ready) cls+=' rdy'; }
     if(k>0){ const pm=T.w[(k-1)+'-'+j]; if(pm&&pm.sc&&Number.isInteger(v)) extra+=`<span class="bs">${esc(pm.sc)}</span>`; }
     const tap=!IS_DISPLAY&&m&&Number.isInteger(m.a)&&Number.isInteger(m.b);
-    return `<div class="bcell ${k>0?'in ':''}out">${tBox(v,cls,extra,tap?key:'')}</div>`; };
+    let box=tBox(v,cls,extra,tap?key:'');
+    if(k===0&&!IS_DISPLAY) box=box.replace(/^<(div|button) class="bx ([^"]*)"[^>]*>/,'<button class="bx $2" data-act="t-slot" data-k="'+j+'">').replace(/<\/(div|button)>$/,'</button>');
+    return `<div class="bcell ${k>0?'in ':''}out">${box}</div>`; };
   const col=(k,side)=>{ const half=R[k].length/2, js=[...Array(half).keys()].map(x=>side==='L'?x:x+half);
     return `<div class="bc ${side}"><div class="blab">${tRoundName(k)}</div><div class="bcol">${js.map(j=>cell(k,j)).join('')}</div></div>`; };
   const cols=[]; for(let k=0;k<L;k++) cols.push(col(k,'L'));
@@ -1344,6 +1346,28 @@ function sheetTMatch(key){ const m=tMatch(key); if(!m||!Number.isInteger(m.a)||!
     <div class="row" style="gap:8px"><button class="btn" style="flex:1" data-act="t-win" data-k="${key}" data-v="0">${esc(tPairName(m.a))}</button><button class="btn" style="flex:1" data-act="t-win" data-k="${key}" data-v="1">${esc(tPairName(m.b))}</button></div>
     <div class="acts"><button class="btn" data-act="sheet-close">Close</button></div>`; }
   openSheet(`<h3>${tRoundName(m.k)}</h3><div class="row" style="align-items:center;gap:10px;margin:6px 0"><div style="flex:1">${nm(m.a)}</div><b style="color:var(--muted)">vs</b><div style="flex:1;text-align:right">${nm(m.b)}</div></div>${body}`); }
+/* first-round slot j: change its team. Locked once its match (or, after a bye, the next match) is on a court or has a result. */
+let tTarget=null;
+function tSlotLocked(j){ const m=tMatch('0-'+(j>>1)); if(!m) return true; if(m.r||m.ci>=0) return true;
+  const a=S.tour.pos[2*(j>>1)], b=S.tour.pos[2*(j>>1)+1];
+  if(a===null||b===null){ const nx=tMatch('1-'+(j>>2)); if(nx&&(nx.r||nx.ci>=0)) return true; }   // bye: the pair already went through
+  return false; }
+function tPlaced(){ return new Set(S.tour.pos.filter(Number.isInteger)); }
+function sheetTSlot(j){ const T=S.tour, v=T.pos[j], other=T.pos[j^1], m=tMatch('0-'+(j>>1)), locked=tSlotLocked(j);
+  const nm=i=>tPairIds(i).map(id=>{ const p=byId(id); return p?`${catBadge(p.c)} ${esc(p.n)}`:'?'; }).join(' &nbsp;');
+  let h=`<h3>${tRoundName(0)} · spot ${j+1}</h3><div style="margin:4px 0 10px;font-weight:600">${Number.isInteger(v)?nm(v):'<span style="color:var(--muted)">Bye (empty)</span>'}</div>`;
+  if(m&&Number.isInteger(m.a)&&Number.isInteger(m.b)) h+=`<div class="acts" style="margin-top:0"><button class="btn pri" data-act="t-m" data-k="0-${j>>1}">Open match — court / winner</button></div>`;
+  if(locked){ h+=`<p class="hint">This match has started or finished, so the team here can't be changed.</p><div class="acts"><button class="btn" data-act="sheet-close">Close</button></div>`; openSheet(h); return; }
+  const placed=tPlaced(), spare=T.pairs.map((p,i)=>i).filter(i=>!placed.has(i));
+  const swaps=T.pos.map((x,i)=>i).filter(i=>i!==j&&Number.isInteger(T.pos[i])&&!tSlotLocked(i));
+  h+=`<div style="font-weight:600;margin:14px 0 6px">Put a team here</div><div class="list">
+    <button class="item tapr" style="text-align:left;background:#fff;width:100%" data-act="t-snew" data-k="${j}"><div class="nm" style="flex:1">➕ New team — choose 2 players</div></button>
+    ${spare.map(i=>`<button class="item tapr" style="text-align:left;background:#fff;width:100%" data-act="t-sput" data-k="${j}" data-v="${i}"><div class="nm" style="flex:1">${nm(i)}</div><small style="color:var(--muted)">not in bracket</small></button>`).join('')}
+  </div>`;
+  if(swaps.length) h+=`<div style="font-weight:600;margin:14px 0 6px">Swap with</div><div class="list" style="max-height:34vh;overflow:auto">${swaps.map(i=>`<button class="item tapr" style="text-align:left;background:#fff;width:100%" data-act="t-sswap" data-k="${j}" data-v="${i}"><div class="nm" style="flex:1">${nm(T.pos[i])}</div><small style="color:var(--muted)">spot ${i+1}</small></button>`).join('')}</div>`;
+  h+=`<div class="acts">${Number.isInteger(v)&&other!==null?`<button class="btn warn" data-act="t-sbye" data-k="${j}">Make it a Bye</button>`:''}<button class="btn" data-act="sheet-close">Close</button></div>`;
+  openSheet(h); }
+function tSlotDone(msg){ closeSheet(); tFeed(); save(); render(); toast(msg+(tFedMsg?' · '+tFedMsg:'')); tFedMsg=''; }
 function sheetTAdd(){ const used=new Set(S.tour.pairs.flat()), q=tSearch.trim().toLowerCase();
   const list=S.players.filter(p=>!used.has(p.id)&&!isOff(p)&&(!q||p.n.toLowerCase().includes(q))).sort((a,b)=>(S.present[b.id]?1:0)-(S.present[a.id]?1:0)||a.n.localeCompare(b.n));
   openSheet(`<h3>Add pair <small style="color:var(--muted);font-weight:500">${tSel.length}/2 chosen</small></h3>
@@ -1898,6 +1922,7 @@ function vHelp(){
     <li><b>Auto-send to free courts</b> (on by default): ready matches go onto free courts by themselves — at the start, after every <b>Game done</b> and with <b>Fill empty courts</b> — before any planned Next games. The winner moves up and the next match goes on, until the champion. Players still in the tournament are kept out of Auto match; knocked-out pairs go back to the waiting queue. With it off, tap a match → <b>Court N</b>.</li>
     <li>No court needed? In the same sheet tap the winning pair. <b>Undo result</b> works until that pair's next match has started.</li>
     <li><b>Bracket viewer</b> (a TV or spare tablet): Settings → Tablet sync → <b>Bracket viewer</b> → Main tablet address → Connect. It shows only the live bracket, sized to the screen. A laptop or TV browser on the same Wi-Fi can open <b>http://&lt;Main address&gt;:8787/?view=bracket</b> instead.</li>
+    <li><b>Change a team:</b> tap any first-round box → <b>New team</b> (choose 2 players — also fills a Bye), a team not in the bracket, <b>Swap with</b> another spot, or <b>Make it a Bye</b>. Locked once that match is on a court or has a result.</li>
     <li><b>Second screen (laptop):</b> tap <b>⧉ Pop out</b> on the Bracket screen — the bracket opens in its own window that follows every result live. Drag it to the second screen and tap <b>⛶ Full screen</b> (or press F11). Allow pop-ups for the site if the browser blocks it.</li>
     <li>The final's winner shows as 🏆 Champion in the middle, with both players' photos at the top (a smiley picture — boy or girl from Gender — for anyone without a photo). <b>New tournament</b> clears the bracket (pairs are kept).</li></ol>`)}
   ${sec('score','5. Keeping score',`<ol>
@@ -2553,9 +2578,16 @@ document.addEventListener('click',e=>{
       if(v) P[ci]=v; else delete P[ci]; try{ localStorage.setItem('mm_pins',JSON.stringify(P)); }catch(e){} delete pinBad[ci];
       if(document.activeElement) document.activeElement.blur(); rtcHost(); pinSync(); refreshSheet(); toast(v?'Court '+(ci+1)+' PIN: '+v.toUpperCase():'Court '+(ci+1)+' PIN removed'); break;}
     case 't-auto': tAutoPair(); break;
-    case 't-add': tSel=[]; tSearch=''; sheetTAdd(); break;
+    case 't-add': tTarget=null; tSel=[]; tSearch=''; sheetTAdd(); break;
+    case 't-slot': sheetTSlot(+k); break;
+    case 't-snew': if(tSlotLocked(+k)) break; tTarget=+k; tSel=[]; tSearch=''; sheetTAdd(); break;
+    case 't-sput':{ const j=+k, i=+el.dataset.v; if(tSlotLocked(j)||!S.tour.pairs[i]||tPlaced().has(i)) break; S.tour.pos[j]=i; tSlotDone(tPairName(i)+' put in the bracket'); break;}
+    case 't-sswap':{ const j=+k, i=+el.dataset.v, P=S.tour.pos; if(tSlotLocked(j)||tSlotLocked(i)) break; const t=P[j]; P[j]=P[i]; P[i]=t; tSlotDone('Teams swapped'); break;}
+    case 't-sbye':{ const j=+k, P=S.tour.pos; if(tSlotLocked(j)||P[j^1]===null) break; const nm=tPairName(P[j]); P[j]=null; tSlotDone(nm+' taken out — Bye'); break;}
     case 't-pk':{ const i=tSel.indexOf(id); if(i>=0) tSel.splice(i,1); else tSel.push(id);
-      if(tSel.length===2){ S.tour.pairs.push(tSel.slice()); const nm=tSel.map(pnm).join(' / '); tSel=[]; tSearch=''; save(); render(); sheetTAdd(); toast('Pair added: '+nm); } else sheetTAdd(); break;}
+      if(tSel.length===2){ S.tour.pairs.push(tSel.slice()); const nm=tSel.map(pnm).join(' / '); tSel=[]; tSearch='';
+        if(tTarget!==null&&tOn()&&!tSlotLocked(tTarget)){ S.tour.pos[tTarget]=S.tour.pairs.length-1; tTarget=null; tSlotDone(nm+' added to the bracket'); break; }
+        tTarget=null; save(); render(); sheetTAdd(); toast('Pair added: '+nm); } else sheetTAdd(); break;}
     case 't-del': if(!tOn()){ S.tour.pairs.splice(+k,1); save(); render(); } break;
     case 't-clr': if(confirmKey!=='tclr'){ confirmKey='tclr'; render(); break; } confirmKey=null; S.tour.pairs=[]; save(); render(); break;
     case 't-start': tStart(k); break;
@@ -2575,7 +2607,7 @@ document.addEventListener('click',e=>{
       if(busy){ toast(pnm(busy)+' is playing on Court '+(oc[busy]+1)); break; }
       tSend(k,ci);
       closeSheet(); save(); render(); toast(tRoundName(m.k)+' on Court '+(ci+1)); break;}
-    case 'sheet-close': break;
+    case 'sheet-close': tTarget=null; break;
     case 'stg-check': storageCheck(true).then(()=>toast(STG.persist?'Data is protected on this device':'Browser did not protect it — install the app to keep data safe')); break;
     case 'restore-go':{ const d=restorePending; restorePending=null; closeSheet(); if(!d||IS_DISPLAY||IS_COURT) break;
       try{ S=normalize(JSON.parse(JSON.stringify(d.state))); }catch(e){ toast('Backup could not be read'); break; }
