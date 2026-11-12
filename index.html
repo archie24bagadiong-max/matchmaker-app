@@ -641,6 +641,11 @@ button.bx{cursor:pointer}
 .tpair .no{font-family:"Barlow Condensed";font-weight:700;color:var(--muted);width:26px}
 .tpair .nm2{flex:1;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
 .ttag{background:#c9a227;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:6px;font-family:Barlow,sans-serif}
+.tcard{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;margin-top:12px}
+.tcard figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:8px;width:150px}
+.tcard .tph{width:140px;height:140px;border-radius:16px;object-fit:cover;border:4px solid #c9a227;box-shadow:0 6px 18px rgba(138,109,11,.25);background:#fff;display:block}
+.tcard figcaption{font-family:"Barlow Condensed";font-size:22px;font-weight:700;color:var(--ink);line-height:1.1;text-align:center;display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center}
+@media (max-width:420px){ .tcard{gap:14px} .tcard figure{width:130px} .tcard .tph{width:120px;height:120px} }
 .tchamp{text-align:center;font-family:"Barlow Condensed";font-size:22px;font-weight:700;color:#8a6d0b;background:#fff8dc;border:2px solid #c9a227;border-radius:12px;padding:10px;margin-bottom:12px}
 </style>
 </head>
@@ -761,7 +766,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=98;
+const APP_VERSION=99;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1143,7 +1148,7 @@ function finish(i,count,win){
     c.p.forEach(id=>{S.games[id]=(S.games[id]||0)+1;S.lastEnd[id]=now;});
     if(c.p.length===4){[[0,1],[2,3]].forEach(([a,b])=>{const k=pkey(c.p[a],c.p[b]);S.partners[k]=(S.partners[k]||0)+1;});}
   }
-  if(c.tm){ if(count&&c.p.length&&(win==='a'||win==='b')) tRecord(c.tm,win==='a'?c.p.slice(0,c.p.length/2):c.p.slice(c.p.length/2),scSummary(c.sc)); c.tm=''; }
+  if(c.tm){ if(count&&c.p.length&&(win==='a'||win==='b')) tRecord(c.tm,win==='a'?c.p.slice(0,c.p.length/2):c.p.slice(c.p.length/2),scSummary(c.sc),win==='b'); c.tm=''; }
   c.p=[];c.t=0;c.sc=null;
   const nx=count&&!tFeed(i)?startNext(i):0;
   save(); render();
@@ -1188,7 +1193,8 @@ const tPairName=i=>tPairIds(i).map(pnm).join(' / ');
 function tMatch(key,R){ if(!tOn()||typeof key!=='string') return null; R=R||tSlots(); const [k,j]=key.split('-').map(Number); if(!(k>=0&&k<tL())||!(j>=0&&j<R[k].length/2)) return null;
   const a=R[k][2*j], b=R[k][2*j+1], r=S.tour.w[key], ci=S.courts.findIndex(c=>c.tm===key&&c.p.length);
   return {k,j,a,b,r,ci,ready:Number.isInteger(a)&&Number.isInteger(b)&&!r}; }
-function tRecord(key,ids,sc){ const m=tMatch(key); if(!m||!m.ready) return;
+function tRecord(key,ids,sc,flip){ const m=tMatch(key); if(!m||!m.ready) return;
+  if(flip&&sc) sc=sc.replace(/(\d+)–(\d+)/g,'$2–$1');   // score shown winner first
   const ov=i=>ids.filter(x=>tPairIds(i).includes(x)).length;
   S.tour.w[key]={s:ov(m.a)>=ov(m.b)?0:1,sc:sc||''}; }
 /* players whose pair is still in a running tournament (not knocked out, no champion yet): kept out of the waiting queue */
@@ -1230,6 +1236,24 @@ function tAutoPair(){ const used=new Set(S.tour.pairs.flat());
   if(pool.length<2){ toast('Not enough present players who are not paired yet'); return; }
   let n=0; while(pool.length>=2){ const hi=pool.shift(), lo=pool.pop(); S.tour.pairs.push([hi.id,lo.id]); n++; }
   save(); render(); toast(`${n} pair${n>1?'s':''} made`+(pool.length?` · ${pool[0].n} left without a partner`:'')); }
+/* square smiley picture for a player without a photo: blue boy, pink girl, green when no gender is set */
+function smiley(g){
+  const bg=g==='F'?'#ffd6e7':g==='M'?'#d6e8ff':'#e2f5d0', face='#ffd9a8', hair=g==='F'?'#7a3e1d':'#3b2a1f';
+  const hairSvg=g==='F'
+    ?'<path d="M27 44c2-15 12-23 23-23s21 8 23 23c-6-7-14-10-23-10s-17 3-23 10z" fill="'+hair+'"/><circle cx="69" cy="27" r="7" fill="#ff5c93"/><circle cx="80" cy="31" r="6" fill="#ff5c93"/><circle cx="74.5" cy="29" r="3" fill="#c2185b"/>'
+    :g==='M'?'<path d="M26 46c0-18 12-28 24-28s24 10 24 28c-4-6-10-10-16-10-10 0-18-2-24-6-2 6-6 10-8 16z" fill="'+hair+'"/>'
+    :'<path d="M28 44c2-16 12-24 22-24s20 8 22 24c-8-8-36-8-44 0z" fill="'+hair+'"/>';
+  const lips=g==='F'?'<path d="M40 66q10 9 20 0" stroke="#d6336c" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="34" cy="60" r="4" fill="#ff9fbf" opacity=".7"/><circle cx="66" cy="60" r="4" fill="#ff9fbf" opacity=".7"/>'
+    :'<path d="M38 64q12 11 24 0" stroke="#7a3e1d" stroke-width="4" fill="none" stroke-linecap="round"/>';
+  const lashes=g==='F'?'<path d="M36 46l-3-4M42 44l0-4M58 44l0-4M64 46l3-4" stroke="#3b2a1f" stroke-width="2" stroke-linecap="round"/>':'';
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="'+bg+'"/>'
+    +'<path d="M20 100c2-16 14-22 30-22s28 6 30 22z" fill="'+(g==='F'?'#ff7aa8':g==='M'?'#4a90e2':'#25a065')+'"/>'
+    +(g==='F'?'<path d="M21 58c-2-24 11-37 29-37s31 13 29 37l-3 28H24z" fill="'+hair+'"/>':'')
+    +'<circle cx="50" cy="52" r="26" fill="'+face+'"/>'+hairSvg
+    +'<circle cx="40" cy="50" r="3.5" fill="#2b1d14"/><circle cx="60" cy="50" r="3.5" fill="#2b1d14"/>'+lashes+lips+'</svg>';
+  return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg); }
+function tChampCard(i){ return `<div class="tcard">${tPairIds(i).map(id=>{ const p=byId(id), u=PH[id];
+  return `<figure><img class="tph" src="${u?phSrc(u):smiley(p&&p.g)}" alt="${esc(pnm(id))}"><figcaption>${p?catBadge(p.c):''}${esc(pnm(id))}</figcaption></figure>`; }).join('')}</div>`; }
 function tBox(v,cls,extra,key){ const nm=Number.isInteger(v)?tPairIds(v).map(id=>`<i>${esc(pnm(id))}</i>`).join(''):v===null?'<i>Bye</i>':'<i>—</i>';
   const tag=key?'button':'div';
   return `<${tag} class="bx ${cls}" ${key?`data-act="t-m" data-k="${key}"`:''}><span class="ball"></span><span class="bn">${nm}${extra||''}</span></${tag}>`; }
@@ -1269,7 +1293,7 @@ function vTour(){
   const live=S.courts.map((c,i)=>c.tm&&c.p.length?i:-1).filter(i=>i>=0);
   const line=(m,right)=>`<button class="item tapr" style="text-align:left;background:#fff;width:100%" data-act="t-m" data-k="${m.k}-${m.j}"><div class="nm" style="flex:1">${tRoundName(m.k)} · ${esc(tPairName(m.a))} <small style="color:var(--muted)">vs</small> ${esc(tPairName(m.b))}</div>${right}</button>`;
   return `<div class="row" style="margin:4px 0 10px;align-items:center"><h2 style="margin:0;flex:1">Tournament <small>${T.pairs.length} pairs · bracket of ${N}</small></h2><button class="chip ${T.auto?'on':''}" data-act="t-feed" style="margin-right:8px">Auto-send to free courts: ${T.auto?'On':'Off'}</button><button class="btn sm warn" data-act="t-reset">${confirmKey==='treset'?'Sure? Tap again':'New tournament'}</button></div>
-  ${Number.isInteger(champ)?`<div class="tchamp">🏆 Champion: ${esc(tPairName(champ))}</div>`:''}
+  ${Number.isInteger(champ)?`<div class="tchamp">🏆 Champion: ${esc(tPairName(champ))}${tChampCard(champ)}</div>`:''}
   <div class="card bwrap"><div class="bk" style="--h:${Math.max(1,N/2)*62}px">${cols.join('')}</div></div>
   ${ready.length||live.length?`<h2>Up next <small>tap to send to a court</small></h2><div class="card"><div class="list">
     ${live.map(i=>{ const m=tMatch(S.courts[i].tm,R); return m?line(m,`<b style="color:#c07a00">Court ${i+1}</b>`):''; }).join('')}
@@ -1841,7 +1865,7 @@ function vHelp(){
     <li><b>Start — seeded by level</b> (strongest pairs kept apart until the end) or <b>Start — random draw</b>. Any number of pairs works: when it is not 4, 8, 16 or 32, the top seeds get a <b>Bye</b> into round 2.</li>
     <li><b>Auto-send to free courts</b> (on by default): ready matches go onto free courts by themselves — at the start, after every <b>Game done</b> and with <b>Fill empty courts</b> — before any planned Next games. The winner moves up and the next match goes on, until the champion. Players still in the tournament are kept out of Auto match; knocked-out pairs go back to the waiting queue. With it off, tap a match → <b>Court N</b>.</li>
     <li>No court needed? In the same sheet tap the winning pair. <b>Undo result</b> works until that pair's next match has started.</li>
-    <li>The final's winner shows as 🏆 Champion in the middle. <b>New tournament</b> clears the bracket (pairs are kept).</li></ol>`)}
+    <li>The final's winner shows as 🏆 Champion in the middle, with both players' photos at the top (a smiley picture — boy or girl from Gender — for anyone without a photo). <b>New tournament</b> clears the bracket (pairs are kept).</li></ol>`)}
   ${sec('score','5. Keeping score',`<ol>
     <li>After the toss, tap <b>Serves first</b>. Use <b>⇄ Swap</b> so names match where players stand (only at 0–0).</li>
     <li>Tap the big number of the team that wins the rally.${shot('tab-score','Scoreboard on a tablet: score, server and receiver')}${shot('phone-score','Scoreboard on a phone',1)}</li>
