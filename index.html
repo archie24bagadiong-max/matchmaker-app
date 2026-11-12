@@ -709,7 +709,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=91;
+const APP_VERSION=92;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1732,6 +1732,40 @@ const keyTime=k=>{const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d
    right = the matches, two rows each (Que/Match, team 1, Number, Level, Match, Shuttle, VS, team 2, Number, Level, Match, Shuttle, Winner, Score, Remarks, Team 1, Team 2) */
 const DAY_C={Mon:'M',Tue:'T',Wed:'W',Thu:'Th',Fri:'F',Sat:'Sa',Sun:'Su'};
 const MON_S=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sept','Oct','Nov','Dec'];
+/* report look, copied from the club's formatted MatchMaker_Report.xlsx: Calibri 12, thin lines inside a medium frame,
+   orange title rows, black totals bar. Written by xlsx-js-style; plain SheetJS ignores .s and writes the same data unstyled. */
+const XC={or6:'FCD5B5',or8:'FDEADA',aq6:'B7DEE8',nv8:'C6D9F1',gr6:'D7E4BD',gy:'F2F2F2',ye:'FFFF00',bk:'000000',wh:'FFFFFF'};
+const XACC='_(* #,##0.00_);_(* \\(#,##0.00\\);_(* "-"??_);_(@_)';
+const xCell=(ws,r,c)=>{ const a=XLSX.utils.encode_cell({r,c}); return ws[a]||(ws[a]={t:'s',v:''}); };
+/* style rows r1..r2 × columns c1..c2 (0-based). o: sz, b (bold), fill, fc (font colour), h (horizontal: value or function of column),
+   v (vertical), grid (line style between and around cells), tb ([top,bottom] lines only), z (number format) */
+function xsty(ws,r1,c1,r2,c2,o){
+  const L=st=>({style:st,color:{rgb:XC.bk}});
+  for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){
+    const cell=xCell(ws,r,c), s={font:{name:'Calibri',sz:o.sz||12,bold:!!o.b,color:{rgb:o.fc||XC.bk}}};
+    if(o.fill) s.fill={patternType:'solid',fgColor:{rgb:o.fill}};
+    const h=typeof o.h==='function'?o.h(c):o.h, al={}; if(h) al.horizontal=h; if(o.v) al.vertical=o.v; if(h||o.v) s.alignment=al;
+    if(o.grid) s.border={top:L(o.grid),bottom:L(o.grid),left:L(o.grid),right:L(o.grid)};
+    else if(o.tb){ s.border={}; if(o.tb[0]) s.border.top=L(o.tb[0]); if(o.tb[1]) s.border.bottom=L(o.tb[1]); }
+    if(o.z){ cell.z=o.z; s.numFmt=o.z; }
+    cell.s=s; }
+}
+/* medium outline around a block (keeps each cell's other lines) */
+function xframe(ws,r1,c1,r2,c2,st){
+  const L={style:st||'medium',color:{rgb:XC.bk}};
+  for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){ if(r>r1&&r<r2&&c>c1&&c<c2) continue;
+    const cell=xCell(ws,r,c), s=cell.s||(cell.s={font:{name:'Calibri',sz:12}}), b=s.border=Object.assign({},s.border);
+    if(r===r1) b.top=L; if(r===r2) b.bottom=L; if(c===c1) b.left=L; if(c===c2) b.right=L; }
+}
+/* list sheet: bold 16 orange header row, Calibri 12 rows, thin grid, medium frame (frame:false = thin only, like Balances);
+   cen = columns centred; body = last row of the table (default: last row of the sheet) */
+function xtable(ws,cen,o){ o=o||{};
+  const e=XLSX.utils.decode_range(ws['!ref']).e, last=o.body!=null?o.body:e.r, C=e.c;
+  xsty(ws,0,0,0,C,{sz:16,b:true,fill:XC.or8,h:'center',v:'center',grid:'thin'});
+  if(last>=1) xsty(ws,1,0,last,C,{grid:'thin',h:c=>cen.includes(c)?'center':null});
+  if(o.frame!==false) xframe(ws,0,0,last,C);
+  ws['!rows']=Array.from({length:e.r+1},(_,i)=>({hpt:i===0?21:15.75}));
+}
 function addDaySheets(wb,pay,H){
   const by={}; pay.forEach(r=>(by[r.day]||(by[r.day]=[])).push(r));
   const keys=[...new Set(Object.keys(by).concat(H.map(x=>dayKey(x.d))))].sort((a,b)=>keyT(a)-keyT(b));
@@ -1762,7 +1796,7 @@ function addDaySheets(wb,pay,H){
     put(8,tot-1,r2(due),'SUM(I'+first+':I'+last+')'); put(10,tot-1,r2(cash),'SUM(K'+first+':K'+last+')');
     // top: Qty / totals / shuttle cost (tube of 12 at 90 SR: change K3 in Excel and the cost / profit update)
     const tube=90, pp=tube/12, F3=r2(due-gS), G3=r2(M.length*pp);
-    put(3,0,'Qty'); put(4,0,r2(due),'F2+F3'); put(5,0,r2(cash),'K'+tot);
+    put(3,0,'QTY'); put(4,0,r2(due),'F2+F3'); put(5,0,r2(cash),'K'+tot);
     ws[E(6,0)]={t:'n',v:Math.round((Date.UTC(y,m-1,d)-Date.UTC(1899,11,30))/86400000),z:'dd-mmm-yy'}; put(10,0,wd);
     put(3,1,gN,'COUNT(G'+first+':G'+last+')'); put(4,1,'Guest'); put(5,1,r2(gS),'G'+tot); ['A/C','S/P','T/P','P/P','P/T'].forEach((h,i)=>put(6+i,1,h));
     put(3,2,M.length); put(4,2,'Shuttle'); put(5,2,F3,'I'+tot+'-F2'); put(6,2,G3,'D3*J3'); put(7,2,r2(F3-G3),'F3-G3'); put(8,2,r2(gS+F3-G3),'F2+H3'); put(9,2,pp,'K3/12'); put(10,2,tube);
@@ -1776,8 +1810,23 @@ function addDaySheets(wb,pay,H){
       put(16,r0,1); put(22,r0,1);
       const team=(ids,ns)=>ids.map((_,j)=>nmOf(ids,ns,j)).filter(Boolean).join(' & ');
       put(23,r0,x.w==='a'?team(x.a,x.an||[]):x.w==='b'?team(x.b,x.bn||[]):x.w==='d'?'Draw':''); put(24,r0,x.sc||''); put(26,r0,x.c?'Court '+x.c:''); put(27,r0,x.ta||''); put(28,r0,x.tb||''); });
-    ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:Math.max(tot-1,M.length*2,3),c:28}});
-    ws['!merges']=mg; ws['!cols']=[10,6,6,6,14,9,8,10,8,8,8,10,16,7,6,8,7,4,16,7,6,8,7,18,10,3,11,14,14].map(w=>({wch:w}));
+    const lastR=Math.max(tot-1,M.length*2,3);
+    ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:lastR,c:28}});
+    // look of the formatted report: top totals block, green match headers, yellow player header, grey player rows, black totals bar
+    mg.push({s:{r:0,c:6},e:{r:0,c:9}});   // date spans G1:J1
+    xsty(ws,0,3,0,5,{sz:18,b:true,fill:XC.or6,h:'center',v:'center',grid:'thin'});
+    xsty(ws,0,6,0,9,{sz:18,b:true,fill:XC.aq6,h:'center',v:'center',grid:'thin',z:'dd-mmm-yy'});
+    xsty(ws,0,10,0,10,{sz:14,b:true,fill:XC.aq6,h:'center',v:'center',grid:'thin'});
+    xsty(ws,1,3,2,5,{fill:XC.or8,h:c=>c===3?'center':null,v:'center',grid:'thin'});
+    xsty(ws,1,6,2,10,{fill:XC.nv8,h:'center',grid:'thin'});
+    xframe(ws,0,3,2,10); xframe(ws,0,6,2,10);   // thick line also between QTY block and date / cost block
+    xsty(ws,0,11,0,28,{sz:14,b:true,fill:XC.gr6,h:'center',v:'center',grid:'thin'});
+    if(M.length){ const mc=new Set([13,14,15,16,17,19,20,21,22,26]); xsty(ws,1,11,M.length*2,28,{grid:'thin',h:c=>mc.has(c)?'center':null}); xframe(ws,1,11,M.length*2,28); }
+    xsty(ws,3,0,3,10,{sz:14,b:true,fill:XC.ye,h:'center',v:'center'});
+    xsty(ws,first-1,0,last-1,10,{fill:XC.gy,grid:'thin',h:c=>c===0||c===4?null:'center'}); xframe(ws,first-1,0,last-1,10);
+    xsty(ws,tot-1,5,tot-1,10,{sz:18,b:true,fill:XC.bk,fc:XC.wh,h:'center',v:'center'});
+    ws['!rows']=Array.from({length:lastR+1},(_,i)=>({hpt:i===0?24:i===3?36.75:i===tot-1?23.25:15.75}));
+    ws['!merges']=mg; ws['!cols']=[11.125,6.375,6.125,5.5,8.875,7.5,14.375,8.75,7.375,5.375,6.5,13.25,24,9.25,6.375,7.5,8.375,3.625,23.75,9.25,6.375,7.5,8.375,16.375,6.625,3.875,9.75,8.25,8.25].map(w=>({width:w}));
     XLSX.utils.book_append_sheet(wb,ws,nm);
     // Summary sheet: totals split STC/Bank vs Cash, shuttles vs guest fees, Queuing Master taken off the Total
     { let sc=0,ss=0,gc=0,gs=0,qm=0,gN2=0,gA=0,left=0;
@@ -1786,16 +1835,22 @@ function addDaySheets(wb,pay,H){
       [sc,ss,gc,gs,qm,gA,left]=[sc,ss,gc,gs,qm,gA,left].map(r2);
       const W=XLSX.utils.aoa_to_sheet([]), A=[], P=(r,lab,q,v,f)=>{ A.push([r,lab,q,v,f]); };
       let r=0; const ttl=MON_S[m-1]+' '+d+' '+y+' ('+DAY_L[wd]+')';
-      P(r++,ttl); r++; P(r++,'', 'Qty','Amount');
-      const rT=r; P(r++,'Total Collected (Shuttles and Guest Fees) =','',r2(due));
-      P(r++,'STC/Bank =','',r2(ss+gs)); P(r++,'Cash on Hand =','',r2(sc+gc));
-      if(left>0) P(r++,'Unpaid =','',left);
-      r++; P(r++,'Shuttles = (Total qty and Amount)',M.length,r2(due-gA)); P(r++,'STC/Bank =','',ss); P(r++,'Cash =','',sc);
-      r++; P(r++,'Guest Fee = (Total no Guest and Amount)',gN2,gA); P(r++,'STC/Bank =','',gs); P(r++,'Cash =','',gc);
+      P(r++,ttl); P(r++,'', 'QTY','AMOUNT');
+      const rT=r, sub=new Set(); P(r++,'Total Collected (Shuttles and Guest Fees) =','',r2(due));
+      sub.add(r); P(r++,'STC/Bank =','',r2(ss+gs)); sub.add(r); P(r++,'Cash on Hand =','',r2(sc+gc));
+      if(left>0){ sub.add(r); P(r++,'Unpaid =','',left); }
+      r++; P(r++,'Shuttles = (Total qty and Amount)',M.length,r2(due-gA)); sub.add(r); P(r++,'STC/Bank =','',ss); sub.add(r); P(r++,'Cash =','',sc);
+      r++; P(r++,'Guest Fee = (Total no Guest and Amount)',gN2,gA); sub.add(r); P(r++,'STC/Bank =','',gs); sub.add(r); P(r++,'Cash =','',gc);
       r+=2; const rQ=r; P(r++,'Queuing Master','',qm); P(r++,'Total','',r2(due-qm),'C'+(rT+1)+'-C'+(rQ+1));
       A.forEach(([rr,lab,q,v,f])=>{ if(lab) W[E(0,rr)]={t:'s',v:lab}; if(q!==''&&q!=null) W[E(1,rr)]=typeof q==='number'?{t:'n',v:q}:{t:'s',v:q};
         if(v!==''&&v!=null){ W[E(2,rr)]=typeof v==='number'?{t:'n',v:v}:{t:'s',v:v}; if(f) W[E(2,rr)].f=f; } });
-      W['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:r-1,c:2}}); W['!merges']=[{s:{r:0,c:0},e:{r:0,c:2}}]; W['!cols']=[{wch:44},{wch:8},{wch:12}];
+      W['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:r-1,c:2}}); W['!merges']=[{s:{r:0,c:0},e:{r:0,c:2}}]; W['!cols']=[{width:44.875},{width:8.875},{width:12.875}];
+      // look: orange title bar, bold QTY / AMOUNT, thin grid, sub-lines right-aligned, amounts in accounting format, Total underlined
+      xsty(W,0,0,0,2,{sz:18,b:true,fill:XC.or8,h:'center',v:'center'});
+      xsty(W,1,0,1,2,{b:true,grid:'thin',h:'center',v:'center'});
+      for(let i=2;i<r;i++){ const tl=i===r-1, o=tl?{tb:['thin','medium']}:{grid:'thin'};
+        xsty(W,i,0,i,0,Object.assign({h:sub.has(i)?'right':null},o)); xsty(W,i,1,i,1,Object.assign({h:'center'},o)); xsty(W,i,2,i,2,Object.assign({z:XACC},o)); }
+      W['!rows']=Array.from({length:r},(_,i)=>({hpt:i===0?23.25:15.75}));
       let sn=(nm+' Summary').slice(0,31); while(wb.SheetNames.includes(sn)) sn=sn.slice(0,28)+'+';
       XLSX.utils.book_append_sheet(wb,W,sn); }
   });
@@ -1812,18 +1867,20 @@ function buildReport(){
     PLs=R.pl.filter(q=>seen.has(q.id)); }
   const T=t=>TYPE_L[t]||'Subscriber';
   const wb=XLSX.utils.book_new();
-  const add=(name,aoa,widths)=>{const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=widths.map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws,name);};
+  const add=(name,aoa,widths)=>{const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=widths.map(w=>({width:w}));XLSX.utils.book_append_sheet(wb,ws,name);return ws;};
   addDaySheets(wb,pay,H);   // daily sheets first, like the club workbook
-  add('Players',[['Name','Full Name','Level','Type','Active','Gender','Team','Days']].concat(PLs.slice().sort((a,b)=>lvCmp(a.c,b.c)||a.n.localeCompare(b.n)).map(p=>[p.n,p.fn||'',p.c,T(p.t),p.st||'',p.g==='M'?'Male':p.g==='F'?'Female':'',p.tm||'',(p.dy||[]).join(', ')])),[22,30,8,10,9,9,20,22]);
+  xtable(add('Players',[['NAME','FULLNAME','LEVEL','TYPE','ACTIVE','GENDER','TEAM','DAYS']].concat(PLs.slice().sort((a,b)=>lvCmp(a.c,b.c)||a.n.localeCompare(b.n)).map(p=>[p.n,p.fn||'',p.c,T(p.t),p.st||'',p.g==='M'?'Male':p.g==='F'?'Female':'',p.tm||'',(p.dy||[]).join(', ')])),[22.875,30.875,8.875,21.125,9.875,9.875,20.875,22.875]),[2,3,4,5,6,7]);
   const pst=r=>+r.f<=0?'-':r.wv?'Waived '+r.wv+' SR':rowLeft(r)<=0.009?'Paid':rowPaid(r)>0?'Part paid':'Unpaid';
-  add('Payments',[['Date','Player','Team','Level','Type','Games','Type fee (SR)','Shuttles (SR)','Fee (SR)','Paid (SR)','Balance (SR)','Status','Method','Last payment']].concat(pay.slice().sort((a,b)=>keyT(a.day)-keyT(b.day)||String(a.n).localeCompare(b.n)).map(r=>[dayDate(r.day),r.n,r.tm||((S.players.find(p=>p.n===r.n)||{}).tm||''),r.c,T(r.t),r.g,r.tf!=null?+r.tf:(+r.g?({G:S.fee.gp,MG:S.fee.mg,F:S.fee.fm}[r.t]||0):0),r.sh!=null?+r.sh:r2((+r.g||0)*S.fee.sp),r.f,r2(rowPaid(r)),rowLeft(r),pst(r),rowPaid(r)>0?(r.pm||pmText(rowCash(r),rowStc(r))||'Cash'):'',r.sd&&r.sd!==r.day?dayDate(r.sd):''])),[13,24,18,10,12,8,12,12,10,10,12,10,16,13]);
+  xtable(add('Payments',[['Date','Player','Team','Level','Type','Games','Type fee (SR)','Shuttles (SR)','Fee (SR)','Paid (SR)','Balance (SR)','Status','Method','Last payment']].concat(pay.slice().sort((a,b)=>keyT(a.day)-keyT(b.day)||String(a.n).localeCompare(b.n)).map(r=>[dayDate(r.day),r.n,r.tm||((S.players.find(p=>p.n===r.n)||{}).tm||''),r.c,T(r.t),r.g,r.tf!=null?+r.tf:(+r.g?({G:S.fee.gp,MG:S.fee.mg,F:S.fee.fm}[r.t]||0):0),r.sh!=null?+r.sh:r2((+r.g||0)*S.fee.sp),r.f,r2(rowPaid(r)),rowLeft(r),pst(r),rowPaid(r)>0?(r.pm||pmText(rowCash(r),rowStc(r))||'Cash'):'',r.sd&&r.sd!==r.day?dayDate(r.sd):''])),[19.25,18.25,28.625,6.5,26.75,8.375,15,14.625,9.625,10.5,14.25,17.875,9.625,15.625]),[0,3,4,5,6,7,8,9,10,11,12,13]);
   { // every unpaid / part-paid bill, by player then date, with a running total per player
     const open=pay.filter(r=>rowLeft(r)>0.009).sort((a,b)=>String(a.n).localeCompare(b.n)||keyT(a.day)-keyT(b.day));
     const out=[]; let cur=null, run=0, grand=0;
     open.forEach(r=>{ if(cur!==r.n){ if(cur!==null) out.push(['','TOTAL '+cur,'','','','',run,'']); cur=r.n; run=0; }
       run=r2(run+rowLeft(r)); grand=r2(grand+rowLeft(r)); out.push([dayDate(r.day),r.n,r.g,r.f,r2(rowPaid(r)),rowLeft(r),run,pst(r)]); });
     if(cur!==null) out.push(['','TOTAL '+cur,'','','','',run,'']);
-    add('Balances',[['Bill date','Player','Games','Fee (SR)','Paid (SR)','Balance (SR)','Player total owed (SR)','Status']].concat(out).concat(open.length?[[],['','ALL PLAYERS','','','','',grand,'']]:[['Nothing owed','','','','','','','']]),[13,26,8,10,10,12,20,10]); }
+    const B=add('Balances',[['BILL DATE','PLAYER','GAMES','FEE (SR)','PAID (SR)','BALANCE (SR)','PLAYER TOTAL (OWE) SR','STATUS']].concat(out).concat(open.length?[[],['','ALL PLAYERS','','','','',grand,'']]:[['Nothing owed','','','','','','','']]),[18.375,19.625,19.375,19.375,19.375,19.375,28.625,19.375]);
+    xtable(B,[0,2,3,4,5,6,7],{frame:false,body:out.length||1});   // Balances: thin lines only, black ALL PLAYERS bar
+    if(open.length){ const g=out.length+2; xsty(B,g,1,g,6,{sz:18,b:true,fill:XC.bk,fc:XC.wh,h:'center',v:'center'}); B['!rows'][g]={hpt:23.25}; } }
   { const L={in:'Checked in',out:'Checked out',pay:'Payment received',unpay:'Payment cancelled',waive:'Balance waived',session:'New session started',del:'Player deleted',wipe:'All players deleted'};
     const ev=LG.map(e=>({d:e.d,a:L[e.k]||e.k,p:e.n||'',c:'',x:e.k==='wipe'?(e.names||''):e.k==='waive'?'Bill of '+e.bal+' · '+e.amt+' SR':e.k==='pay'?(e.bal?'Balance for '+e.bal:(e.g?e.g+' games':'')+(e.part?' · part payment':'')):'',amt:(e.k==='pay'||e.k==='unpay')?(e.k==='unpay'?-e.amt:e.amt):'',m:e.m||''}));
     H.forEach(x=>{ const ns=(ids,n2)=>ids.map((id,j)=>(byId(id)||{}).n||n2[j]).join(' & ');
@@ -1831,19 +1888,19 @@ function buildReport(){
       ev.push({d:x.d,a:'Match finished',p:ns(x.a,x.an)+' vs '+ns(x.b,x.bn),c:x.c,x:(x.w==='a'?ns(x.a,x.an)+(x.ta?' ('+x.ta+')':'')+' won':x.w==='b'?ns(x.b,x.bn)+(x.tb?' ('+x.tb+')':'')+' won':x.w==='d'?'Draw':'No result')+(x.sc?' · '+x.sc:''),amt:'',m:''}); });
     ev.sort((p,q)=>p.d-q.d);
     const tm=d=>{const t=new Date(d);return String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');};
-    add('Activity Log',[['Date','Time','Activity','Player(s)','Court','Details','Amount (SR)','Method']].concat(ev.map(e=>[dayDate(dayKey(e.d)),tm(e.d),e.a,e.p,e.c,e.x,e.amt,e.m])).concat(ev.length?[]:[['No activity yet','','','','','','','']]),[12,7,20,40,7,40,12,10]); }
-  add('Match History',[['Date','Time','Court','Team 1 – Player 1','Team 1 – Player 2','Team 2 – Player 1','Team 2 – Player 2','Team 1 name','Team 2 name','Winner','Winning team','Score','Minutes']].concat(H.map(x=>{const nm=(ids,ns,i)=>ids[i]?((byId(ids[i])||{}).n||ns[i]):'';
-    return [dayDate(dayKey(x.d)),fmtTime(x.d),x.c,nm(x.a,x.an,0),nm(x.a,x.an,1),nm(x.b,x.bn,0),nm(x.b,x.bn,1),x.ta||'',x.tb||'',x.w==='a'?'Team 1':x.w==='b'?'Team 2':'',x.w==='a'?(x.ta||nm(x.a,x.an,0)+(x.a[1]?' & '+nm(x.a,x.an,1):'')):x.w==='b'?(x.tb||nm(x.b,x.bn,0)+(x.b[1]?' & '+nm(x.b,x.bn,1):'')):'',x.sc||'',Math.max(1,Math.round((x.d-x.s)/60000))];})),[13,10,7,20,20,20,20,18,18,9,26,20,9]);
+    xtable(add('Activity Log',[['DATE','TIME','ACTIVITY','PLAYER(S)','COURT','DETAILS','AMOUNT(SR)','METHOD']].concat(ev.map(e=>[dayDate(dayKey(e.d)),tm(e.d),e.a,e.p,e.c,e.x,e.amt,e.m])).concat(ev.length?[]:[['No activity yet','','','','','','','']]),[13.875,13.875,20.875,40.875,18.375,40.875,18.375,18.375]),[0,1,4,6,7]); }
+  xtable(add('Match History',[['DATE','TIME','COURT','TEAM 1 - PLAYER 1','TEAM 1 - PLAYER 2','TEAM 2 - PLAYER 1','TEAM 2 - PLAYER 2','TEAM 1 NAME','TEAM 2 NAME','WINNER','WINNING TEAM','SCORE','MINUTES']].concat(H.map(x=>{const nm=(ids,ns,i)=>ids[i]?((byId(ids[i])||{}).n||ns[i]):'';
+    return [dayDate(dayKey(x.d)),fmtTime(x.d),x.c,nm(x.a,x.an,0),nm(x.a,x.an,1),nm(x.b,x.bn,0),nm(x.b,x.bn,1),x.ta||'',x.tb||'',x.w==='a'?'Team 1':x.w==='b'?'Team 2':'',x.w==='a'?(x.ta||nm(x.a,x.an,0)+(x.a[1]?' & '+nm(x.a,x.an,1):'')):x.w==='b'?(x.tb||nm(x.b,x.bn,0)+(x.b[1]?' & '+nm(x.b,x.bn,1):'')):'',x.sc||'',Math.max(1,Math.round((x.d-x.s)/60000))];})),[14.375,14.375,14.375,22.625,22.625,22.625,22.625,22.625,22.625,14.375,26.875,22.625,22.625]),[0,1,2,9,12]);
   const st={};
   H.forEach(x=>{[['a',x.a,x.an],['b',x.b,x.bn]].forEach(([s,ids,ns])=>ids.forEach((id,j)=>{ if(!R.inP(id,ns[j])) return; const p=byId(id);const r=st[id]||(st[id]={n:p?p.n:ns[j],c:p?p.c:'',t:p?T(p.t):'',p:0,w:0,l:0});r.p++;if(x.w===s)r.w++;else if(x.w)r.l++;}));});
   const ws=Object.values(st).sort((a,b)=>b.w-a.w||b.p-a.p);
   const tstat=teamStats(H);
-  add('Team Statistics',[['Team','Played','Won','Lost','Win %','Players']].concat(tstat.map(r=>[r.n,r.p,r.w,r.l,r.w+r.l?Math.round(r.w*1000/(r.w+r.l))/10+'%':'-',R.pl.filter(p=>p.tm===r.n).map(p=>p.n).join(', ')]).concat(tstat.length?[]:[['No team results yet','','','','','']])),[24,8,8,8,8,50]);
-  add('Win Statistics',[['Player','Team','Level','Type','Played','Won','Lost','Win %']].concat(ws.map(r=>[r.n,(S.players.find(p=>p.n===r.n)||{}).tm||'',r.c,r.t,r.p,r.w,r.l,r.w+r.l?Math.round(r.w*1000/(r.w+r.l))/10+'%':'-'])),[24,18,10,12,8,8,8,8]);
+  xtable(add('Team Statistics',[['TEAM','PLAYED','WON','LOST','WIN %','PLAYERS']].concat(tstat.map(r=>[r.n,r.p,r.w,r.l,r.w+r.l?Math.round(r.w*1000/(r.w+r.l))/10+'%':'-',R.pl.filter(p=>p.tm===r.n).map(p=>p.n).join(', ')]).concat(tstat.length?[]:[['No team results yet','','','','','']])),[24.875,8.875,8.875,8.875,8.875,50.875]),tstat.length?[1,2,3,4]:[]);
+  xtable(add('Win Statistics',[['PLAYER','TEAM','LEVEL','TYPE','PLAYED','WON','LOST','WIN %']].concat(ws.map(r=>[r.n,(S.players.find(p=>p.n===r.n)||{}).tm||'',r.c,r.t,r.p,r.w,r.l,r.w+r.l?Math.round(r.w*1000/(r.w+r.l))/10+'%':'-'])),[16.25,28.625,19.25,19.25,19.25,19.25,19.25,19.25]),[2,3,4,5,6,7]);
   const days={}; pay.forEach(r=>{const d=days[r.day]||(days[r.day]={pl:0,who:new Set(),g:0,due:0,col:0,cash:0,stc:0,sub:0,gst:0});if((r.g>0||rowPaid(r)>0)&&!d.who.has(r.id||r.n)){d.who.add(r.id||r.n);d.pl++;}d.g+=r.g;d.due+=+r.f;d.col+=rowPaid(r);d.left=(d.left||0)+rowLeft(r);d.cash+=rowCash(r);d.stc+=rowStc(r);if(r.t==='G'||r.t==='MG')d.gst+=+r.f;else d.sub+=+r.f;});
   const mt={}; H.forEach(x=>{const k=dayKey(x.d);mt[k]=(mt[k]||0)+1;});
   const dk=[...new Set(Object.keys(days).concat(Object.keys(mt)))].sort((a,b)=>dayDate(a).localeCompare(dayDate(b)));
-  add('Daily Summary',[['Date','Players','Matches','Total due (SR)','Collected (SR)','Cash (SR)','STC Pay (SR)','Outstanding (SR)','Subscribers & Family (SR)','Guests (SR)']].concat(dk.map(k=>{const d=days[k]||{pl:0,due:0,col:0,cash:0,stc:0,sub:0,gst:0};return [dayDate(k),d.pl,mt[k]||0,r2(d.due),r2(d.col),r2(d.cash),r2(d.stc),r2(d.left||0),r2(d.sub),r2(d.gst)];})),[13,9,9,14,14,11,13,15,15,12]);
+  xtable(add('Daily Summary',[['Date','Players','Matches','Total due (SR)','Collected (SR)','Cash (SR)','STC Pay (SR)','Outstanding (SR)','Subscribers & Family (SR)','Guests (SR)']].concat(dk.map(k=>{const d=days[k]||{pl:0,due:0,col:0,cash:0,stc:0,sub:0,gst:0};return [dayDate(k),d.pl,mt[k]||0,r2(d.due),r2(d.col),r2(d.cash),r2(d.stc),r2(d.left||0),r2(d.sub),r2(d.gst)];})),[10.125,8.875,10.375,16.5,16.5,11.25,14.75,19.625,29.25,13.625]),[]);
   /* hidden Backup sheet: the whole app (not only this report's dates/day) in ≤30 000-character pieces (Excel cell limit 32 767) */
   const bk=backupText(), rb=[['Match Maker backup — do not edit. To restore: Settings → Backup & restore → Restore from backup file.'],['MMBACKUP1',new Date().toISOString(),S.players.length+' players']];
   for(let i=0;i<bk.length;i+=30000) rb.push([bk.slice(i,i+30000)]);
@@ -2459,6 +2516,7 @@ document.addEventListener('change',e=>{
     if(isFinite(v)&&v>=0&&['gp','mg','fm','sp'].includes(k)){ S.fee[k]=v; save(); toast('Fee updated'); } render(); }
 });
 let xlsxLoading=null;
+const XLSX_STYLE_URL='https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js';
 let restorePending=null;
 async function readBackup(f){
   toast('Reading '+f.name+'…');
@@ -2494,7 +2552,11 @@ function sheetRestore(){ const d=restorePending; if(!d) return; const st=d.state
 }
 function loadXLSX(){
   if(window.XLSX) return Promise.resolve();
-  if(!xlsxLoading) xlsxLoading=new Promise((res,rej)=>{const s=document.createElement('script');s.src=IS_APP?'file:///android_asset/xlsx.full.min.js':'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=res;s.onerror=()=>{xlsxLoading=null;rej();};document.head.appendChild(s);});
+  /* xlsx-js-style = SheetJS 0.18.5 + cell styles (fonts, fills, borders) for the formatted report. APKs before 1.27 only carry
+     plain SheetJS: they try the styled one online first and fall back to it (report then comes out without colours). */
+  const srcs=IS_APP?['file:///android_asset/xlsx-js-style.js',XLSX_STYLE_URL,'file:///android_asset/xlsx.full.min.js']:[XLSX_STYLE_URL,'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'];
+  const one=u=>new Promise((res,rej)=>{const s=document.createElement('script');s.src=u;s.onload=()=>window.XLSX?res():rej();s.onerror=()=>{s.remove();rej();};document.head.appendChild(s);});
+  if(!xlsxLoading) xlsxLoading=srcs.reduce((p,u)=>p.catch(()=>one(u)),Promise.reject()).catch(e=>{xlsxLoading=null;throw e;});
   return xlsxLoading;
 }
 function parseCat(v){

@@ -3,8 +3,8 @@
 # The signing key lives OUTSIDE the repo (D:\Codes\matchmaker-keys) — the repo is public. Back that folder up:
 # every future APK must be signed with the same key to install over an earlier one.
 param(
-  [int]$VersionCode = 27,
-  [string]$VersionName = '1.26',
+  [int]$VersionCode = 28,
+  [string]$VersionName = '1.27',
   [string]$KeyDir = 'D:\Codes\matchmaker-keys',
   [string]$Out = 'D:\Codes\matchmaker-build'
 )
@@ -23,13 +23,17 @@ New-Item -ItemType Directory -Force "$w\res\values", "$w\res\mipmap-xxxhdpi", "$
 Set-Content -Encoding utf8 "$w\res\values\strings.xml" '<?xml version="1.0" encoding="utf-8"?><resources><string name="app_name">Match Maker</string></resources>'
 Copy-Item "$repo\icons\icon-192.png" "$w\res\mipmap-xxxhdpi\ic_launcher.png"
 
-# assets: the app page (latest) and the Excel library used offline
+# assets: the app page (latest) and the Excel libraries used offline:
+# xlsx-js-style (SheetJS 0.18.5 + cell styles, for the formatted report) and plain SheetJS as a fallback
 Copy-Item "$repo\index.html" "$w\assets\index.html"
+New-Item -ItemType Directory -Force "$Out\assets" | Out-Null
 if (-not (Test-Path "$Out\assets\xlsx.full.min.js")) {
-  New-Item -ItemType Directory -Force "$Out\assets" | Out-Null
   Invoke-WebRequest -UseBasicParsing 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js' -OutFile "$Out\assets\xlsx.full.min.js"
 }
-Copy-Item "$Out\assets\xlsx.full.min.js" "$w\assets\"
+if (-not (Test-Path "$Out\assets\xlsx-js-style.js")) {
+  Invoke-WebRequest -UseBasicParsing 'https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js' -OutFile "$Out\assets\xlsx-js-style.js"
+}
+Copy-Item "$Out\assets\xlsx.full.min.js", "$Out\assets\xlsx-js-style.js" "$w\assets\"
 # manifest with this build's version
 $man = Get-Content -Raw "$here\AndroidManifest.xml"
 $man = $man -replace 'android:versionCode="\d+"', "android:versionCode=`"$VersionCode`"" -replace 'android:versionName="[^"]*"', "android:versionName=`"$VersionName`""
