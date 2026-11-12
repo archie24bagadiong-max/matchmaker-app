@@ -672,6 +672,8 @@ body.bview #app{padding-bottom:20px}
 #ctxm button.crt{color:var(--court2)}
 #ctxm hr{border:0;border-top:1px solid var(--border);margin:4px 0}
 #ctxm .no{padding:8px 10px;color:var(--muted);font-size:13px}
+.tempty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:96px;color:#fff;font-family:"Barlow Condensed";font-size:20px;font-weight:700;text-align:center;padding:10px}
+.tempty small{font-family:Barlow,sans-serif;font-size:13px;font-weight:500;opacity:.8}
 .tcard{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;margin-top:12px}
 .tcard figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:8px;width:150px}
 .tcard .tph{width:140px;height:140px;border-radius:16px;object-fit:cover;border:4px solid #c9a227;box-shadow:0 6px 18px rgba(138,109,11,.25);background:#fff;display:block}
@@ -797,7 +799,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=107;
+const APP_VERSION=108;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1173,6 +1175,7 @@ function fillCourt(i,quiet,exclude){
   return true;
 }
 function fillAll(){
+  if(tLive()){ const was=S.tour.auto; S.tour.auto=true; const tf=tFeed(); S.tour.auto=was; save(); render(); toast(tf?`${tf} tournament match${tf>1?'es':''} sent to courts`+(tFedMsg?' · '+tFedMsg:''):'No tournament match is ready for a free court'); tFedMsg=''; return; }
   const tf=tFeed(); let n=tf, m=0; S.courts.forEach((c,i)=>{ if(c.p.length) return; if(!slots(c).some(Boolean)&&startNext(i)){ n++; m++; } else if(fillCourt(i,true)) n++; });
   save(); render(); toast(n?`Filled ${n} court${n>1?'s':''}${tf?` (${tf} tournament)`:''}${m?` (${m} from Next games)`:''}`:'No court could be filled — check attendance & levels');
 }
@@ -1187,9 +1190,10 @@ function finish(i,count,win){
     c.p.forEach(id=>{S.games[id]=(S.games[id]||0)+1;S.lastEnd[id]=now;});
     if(c.p.length===4){[[0,1],[2,3]].forEach(([a,b])=>{const k=pkey(c.p[a],c.p[b]);S.partners[k]=(S.partners[k]||0)+1;});}
   }
+  if(!c.tm&&count&&tOn()) c.tm=tFindKey(c.p);
   if(c.tm){ if(count&&c.p.length&&(win==='a'||win==='b')) tRecord(c.tm,win==='a'?c.p.slice(0,c.p.length/2):c.p.slice(c.p.length/2),scSummary(c.sc),win==='b'); c.tm=''; }
   c.p=[];c.t=0;c.sc=null;
-  const nx=count&&!tFeed(i)?startNext(i):0;
+  const nx=count&&!tFeed(i)&&!tLive()?startNext(i):0;
   save(); render();
   return nx;
 }
@@ -1246,6 +1250,21 @@ function tBusy(){ if(!tOn()) return new Set();
     R[0].forEach(i=>{ if(Number.isInteger(i)&&!out.has(i)) tPairIds(i).forEach(x=>ids.add(x)); }); }
   TB_KEY=key; TB_SET=ids; return ids; }
 /* put a ready match on court ci (players leave planned games; the gap there fills by itself) */
+/* a tournament is running: started and no champion yet. Courts then take bracket matches only (the operator assigns them). */
+const tLive=()=>tOn()&&!Number.isInteger(tSlots()[tL()][0]);
+/* the ready bracket match whose two pairs are exactly the two teams on a court (for games not sent from the bracket) */
+function tFindKey(p){ if(!tOn()||p.length!==4) return ''; const A=p.slice(0,2), B=p.slice(2), R=tSlots();
+  for(let k=0;k<tL();k++) for(let j=0;j<R[k].length/2;j++){ const m=tMatch(k+'-'+j,R); if(!m||!m.ready||m.ci>=0) continue;
+    const pa=tPairIds(m.a), pb=tPairIds(m.b);
+    if((sameSet(A,pa)&&sameSet(B,pb))||(sameSet(A,pb)&&sameSet(B,pa))) return k+'-'+j; }
+  return ''; }
+function sheetTPickM(ci){ const c=S.courts[ci]; if(!c) return; if(c.p.length){ closeSheet(); return; }
+  const R=tSlots(), oc=onCourt(), rows=[];
+  for(let k=0;k<tL();k++) for(let j=0;j<R[k].length/2;j++){ const m=tMatch(k+'-'+j,R); if(!m||!m.ready||m.ci>=0) continue;
+    const busy=tPairIds(m.a).concat(tPairIds(m.b)).find(x=>oc[x]!==undefined);
+    rows.push(`<button class="item tapr" style="text-align:left;background:#fff;width:100%${busy?';opacity:.5':''}" data-act="t-send" data-k="${k}-${j}" data-c="${ci}" ${busy?'disabled':''}><div class="nm" style="flex:1">${tRoundName(k)} · ${esc(tPairName(m.a))} <small style="color:var(--muted)">vs</small> ${esc(tPairName(m.b))}${busy?`<br><small style="color:var(--muted)">${esc(pnm(busy))} is on Court ${oc[busy]+1}</small>`:''}</div><b style="color:#25a065">${busy?'':'Court '+(ci+1)}</b></button>`); }
+  openSheet(`<h3>🏆 Court ${ci+1} — choose a match</h3>${rows.length?`<div class="list">${rows.join('')}</div>`:'<p class="hint">No match is ready yet — waiting for results of the earlier matches.</p>'}
+  <div class="acts"><button class="btn" data-act="go" data-tab="tour">Open bracket</button><button class="btn" data-act="sheet-close">Close</button></div>`); }
 function tSend(key,ci){ const m=tMatch(key), c=S.courts[ci]; if(!m||!m.ready||m.ci>=0||!c||c.p.length) return false;
   const ids=tPairIds(m.a).concat(tPairIds(m.b)), oc=onCourt(); if(ids.some(x=>oc[x]!==undefined)) return false;
   S.next.forEach(g=>{ g.p=g.p.map(x=>ids.includes(x)?null:x); });
@@ -1364,7 +1383,7 @@ function sheetTMatch(key){ const m=tMatch(key); if(!m||!Number.isInteger(m.a)||!
     body=`<p style="margin:6px 0 12px">Winner: <b>${esc(tPairName(m.r.s?m.b:m.a))}</b>${m.r.sc?` · ${esc(m.r.sc)}`:''}</p>
     <div class="acts">${locked?'':`<button class="btn warn" data-act="t-undo" data-k="${key}">Undo result</button>`}<button class="btn" data-act="sheet-close">Close</button></div>${locked?'<p class="hint">This pair\'s next match has already started, so this result is fixed.</p>':''}`; }
   else if(m.ci>=0){ body=`<p class="hint" style="margin:6px 0 12px">Playing on <b>Court ${m.ci+1}</b>. Tap <b>Game done</b> there when it ends — the winner moves up the bracket by itself.</p>
-    <div class="acts"><button class="btn pri" data-act="t-go">Go to Courts</button><button class="btn" data-act="sheet-close">Close</button></div>`; }
+    <div class="acts"><button class="btn pri" data-act="t-go">Go to Courts</button><button class="btn warn" data-act="t-off" data-c="${m.ci}">Take off court</button><button class="btn" data-act="sheet-close">Close</button></div>`; }
   else { const free=S.courts.map((c,i)=>!c.p.length?i:-1).filter(i=>i>=0);
     body=`<div style="font-weight:600;margin:10px 0 6px">Send to a court</div>
     ${free.length?`<div class="row" style="flex-wrap:wrap;gap:8px">${free.map(i=>`<button class="btn pri" data-act="t-send" data-k="${key}" data-c="${i}">Court ${i+1}</button>`).join('')}</div>`:'<p class="hint" style="margin:0">No free court — finish or clear a court first.</p>'}
@@ -1467,6 +1486,7 @@ function plBtn(id,ci){
 }
 function vCourts(){
   if(CAN_PLAN()) nextFix();
+  const TLV0=tLive();
   const present=S.players.filter(p=>S.present[p.id]);
   const w=waiting();
   // Show day set: that day's players who have not arrived yet also wait in Resting; Back to play checks them in
@@ -1476,12 +1496,16 @@ function vCourts(){
     <div class="stat s-pl"><b>${S.courts.reduce((a,c)=>a+c.p.length,0)}</b><span>Playing</span></div>
     <div class="stat s-wa"><b>${w.length+planned().size}</b><span>Waiting</span></div>
     <div class="stat s-re"><b>${resting.length}</b><span>Resting</span></div></div>`;
-  h+=`<h2>Courts <small>${S.mode==='doubles'?'Doubles':'Singles'}</small><span class="grow"></span>${IS_HOST()?'<button class="btn sm" data-act="qr" data-k="all">📱 Score with a phone</button>':''}<button class="btn lime sm" data-act="fill-all">Fill empty courts</button></h2><div class="courts n${S.courts.length}">`;
+  h+=`<h2>Courts <small>${S.mode==='doubles'?'Doubles':'Singles'}</small><span class="grow"></span>${IS_HOST()?'<button class="btn sm" data-act="qr" data-k="all">📱 Score with a phone</button>':''}<button class="btn lime sm" data-act="fill-all">${TLV0?'🏆 Fill courts from bracket':'Fill empty courts'}</button></h2><div class="courts n${S.courts.length}">`;
+  const TLV=tLive();
   S.courts.forEach((c,i)=>{
     const lv=GROUPS.map(k=>`<button class="${c.lv.includes(k)?'on':''}" data-act="lv" data-c="${i}" data-k="${k}">${k}</button>`).join('');
     let pitch;
     const d=c.p.length?null:slots(c), hasD=d&&d.some(Boolean);
-    if(!c.p.length){
+    if(!c.p.length&&TLV){
+      pitch=`<div class="tempty">🏆 Tournament running<small>The operator assigns a bracket match to this court</small></div>`;
+    }
+    else if(!c.p.length){
       const half=S.mode==='doubles'?2:1;
       const box=k=>{ const id=d[k], p=id&&byId(id);
         return p?`<button class="pl slotf" data-act="slot" data-c="${i}" data-k="${k}">${av(id,'',true)}${catBadge(p.c)}<span class="nm">${esc(p.n)}</span>${typeBadge(p)}<span class="g">${S.games[id]||0}g</span></button>`
@@ -1500,7 +1524,10 @@ function vCourts(){
       <div class="lv"><span>Levels</span>${lv}</div>
       <div class="pitch">${pitch}</div>
       ${c.p.length?scoreStrip(i):''}
-      <div class="court-f">${c.p.length
+      <div class="court-f">${c.p.length&&c.tm&&tOn()
+        ?`<button class="btn ${c.sc&&c.sc.done?'gdone':'lime'}" data-act="finish" data-c="${i}" style="flex:1">${c.sc&&c.sc.done?'🔔 Game done':'Game done'}</button>`
+        :!c.p.length&&TLV?`<button class="btn lime" data-act="t-pickm" data-c="${i}" style="flex:1">🏆 Choose tournament match</button>`
+        :c.p.length
         ?`<button class="btn ${c.sc&&c.sc.done?'gdone':'lime'}" data-act="finish" data-c="${i}">${c.sc&&c.sc.done?'🔔 Game done':'Game done'}</button><button class="btn ghost" data-act="reshuffle" data-c="${i}">Reshuffle</button><button class="btn ghost" data-act="cancel" data-c="${i}">Clear</button>`
         :hasD?`<button class="btn lime" data-act="gen" data-c="${i}">Auto fill rest</button><button class="btn ghost" data-act="slot-clear" data-c="${i}">Empty boxes</button>`
         :nextFor(i)>=0?`<button class="btn lime" data-act="nx-start" data-c="${i}">▶ Start Next ${nextFor(i)+1}</button><button class="btn ghost" data-act="gen" data-c="${i}">Auto match</button><button class="btn ghost" data-act="pick" data-c="${i}">Pick players</button>`
@@ -1970,6 +1997,7 @@ function vHelp(){
     <li>No court needed? In the same sheet tap the winning pair. <b>Undo result</b> works until that pair's next match has started.</li>
     <li><b>Bracket viewer</b> (a TV or spare tablet): Settings → Tablet sync → <b>Bracket viewer</b> → Main tablet address → Connect. It shows only the live bracket, sized to the screen. A laptop or TV browser on the same Wi-Fi can open <b>http://&lt;Main address&gt;:8787/?view=bracket</b> instead.</li>
     <li><b>Change a team:</b> tap any first-round box → <b>New team</b> (choose 2 players — also fills a Bye), a team not in the bracket, <b>Swap with</b> another spot, or <b>Make it a Bye</b>. Locked once that match is on a court or has a result.</li>
+    <li><b>While a tournament runs</b> (until the champion): courts show no Auto match / Pick players — an empty court has <b>🏆 Choose tournament match</b>, a court playing a bracket match shows only <b>Game done</b>. <b>Save result &amp; clear court</b> or Game done moves the winner up at once. To take a match back off a court, tap it in the bracket → <b>Take off court</b>.</li>
     <li><b>Right-click a team</b> (or press and hold on a tablet) → <b>Choose court</b>: the free courts are listed — click one to put that match on it. The same menu has Pick winner and, in the first round, Change team.</li>
     <li><b>Second screen (laptop):</b> tap <b>⧉ Pop out</b> on the Bracket screen — the bracket opens in its own window that follows every result live. Drag it to the second screen and tap <b>⛶ Full screen</b> (or press F11). Allow pop-ups for the site if the browser blocks it.</li>
     <li>The final's winner shows as 🏆 Champion in the middle, with both players' photos at the top (a smiley picture — boy or girl from Gender — for anyone without a photo). <b>New tournament</b> clears the bracket (pairs are kept).</li></ol>`)}
@@ -2641,6 +2669,8 @@ document.addEventListener('click',e=>{
     case 't-start': tStart(k); break;
     case 't-reset': if(confirmKey!=='treset'){ confirmKey='treset'; render(); break; } confirmKey=null; S.tour.pos=[]; S.tour.w={}; S.courts.forEach(c=>c.tm=''); save(); render(); toast('Bracket cleared — pairs kept'); break;
     case 't-m': sheetTMatch(k); break;
+    case 't-pickm': sheetTPickM(ci); break;
+    case 't-off':{ const c=S.courts[ci]; if(!c||!c.tm){ closeSheet(); break; } closeSheet(); finish(ci,false); toast('Match taken off Court '+(ci+1)+' — it is ready again in the bracket'); break;}
     case 't-pop':{ persistNow(); const w=window.open(location.pathname+'?popout=bracket','mm_bracket','popup,width=1400,height=900');
       if(w){ try{ w.focus(); }catch(e){} toast('Bracket opened in its own window — drag it to the second screen'); } else toast('The browser blocked the window — allow pop-ups for this site'); break;}
     case 't-fs': try{ const d=document.documentElement; if(document.fullscreenElement) document.exitFullscreen(); else (d.requestFullscreen||d.webkitRequestFullscreen).call(d); }catch(e){} break;
