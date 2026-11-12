@@ -761,7 +761,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=97;
+const APP_VERSION=98;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -792,7 +792,7 @@ const CLIENT=Math.random().toString(36).slice(2);
 function fresh(){
   return {players:[],present:{},resting:{},games:{},lastEnd:{},partners:{},
     courts:[0,1,2].map(()=>({lv:GROUPS.slice(),p:[],t:0})),next:[],
-    mode:'doubles',mix:'adjacent',autoNext:true,prio:'strong',rounds:true,paid:{},part:{},sess:0,hist:[],ledger:[],log:[],teams:[],match:{n:3,pts:21,mode:'best'},fee:{gp:25,mg:20,fm:20,sp:2.5},feeV:1,dayView:'Today',hideOff:true,tour:{pairs:[],pos:[],w:{}}};
+    mode:'doubles',mix:'adjacent',autoNext:true,prio:'strong',rounds:true,paid:{},part:{},sess:0,hist:[],ledger:[],log:[],teams:[],match:{n:3,pts:21,mode:'best'},fee:{gp:25,mg:20,fm:20,sp:2.5},feeV:1,dayView:'Today',hideOff:true,tour:{pairs:[],pos:[],w:{},auto:true}};
 }
 /* activity log: every check-in, payment and session change, with time */
 function logEv(k,o){ if(IS_DISPLAY||IS_COURT) return; if(!Array.isArray(S.log)) S.log=[]; S.log.push(Object.assign({d:Date.now(),k},o||{})); if(S.log.length>6000) S.log=S.log.slice(-6000); }
@@ -836,7 +836,7 @@ function normalize(s){
   { const T=(s.tour&&typeof s.tour==='object')?s.tour:{};
     const pos=Array.isArray(T.pos)?T.pos.slice(0,64).map(x=>Number.isInteger(x)?x:null):[];
     s.tour={pairs:Array.isArray(T.pairs)?T.pairs.filter(x=>Array.isArray(x)&&x.length===2&&x.every(y=>typeof y==='string')).slice(0,64):[],
-      pos:pos.length>=2&&(pos.length&(pos.length-1))===0?pos:[], w:(T.w&&typeof T.w==='object'&&!Array.isArray(T.w))?T.w:{}}; }
+      pos:pos.length>=2&&(pos.length&(pos.length-1))===0?pos:[], w:(T.w&&typeof T.w==='object'&&!Array.isArray(T.w))?T.w:{}, auto:T.auto!==false}; }
   return s;
 }
 
@@ -968,7 +968,8 @@ const sr=v=>(Math.round(v*100)/100).toFixed(2).replace(/\.00$/,'')+' SR';
 const feeRulesText=()=>`Subscriber 0 SR + shuttles on their days (other days: Member Guest fee) · Family ${sr(S.fee.fm||0)} + shuttles · Member Guest ${sr(S.fee.mg)} + shuttles · Non-Member Guest ${sr(S.fee.gp)} + shuttles · shuttle ${sr(S.fee.sp)} per game played · bills rounded to whole SR (.50 rounds up)`;
 function waiting(){
   const oc=onCourt(), dr=drafted(), pl=planned();
-  return prioritySort(S.players.filter(p=>S.present[p.id]&&!S.resting[p.id]&&oc[p.id]===undefined&&!dr.has(p.id)&&!pl.has(p.id)&&dayOk(p)));
+  const tb=tBusy();
+  return prioritySort(S.players.filter(p=>S.present[p.id]&&!S.resting[p.id]&&oc[p.id]===undefined&&!dr.has(p.id)&&!pl.has(p.id)&&!tb.has(p.id)&&dayOk(p)));
 }
 /* empty court boxes: players placed in a box (c.d) before the game starts.
    Box order = c.p order: first half is the left team, second half the right team. */
@@ -1037,7 +1038,8 @@ function undoNext(){
 /* Game done / result saved: save it, then start the next planned game on that court */
 function finishNext(i,win,msg){
   const nx=finish(i,true,win);
-  if(nx) toastAct(msg+` · Court ${i+1}: Next ${nx} started`,'Undo','nx-undo'); else toast(msg);
+  if(nx) toastAct(msg+` · Court ${i+1}: Next ${nx} started`,'Undo','nx-undo'); else toast(msg+(tFedMsg?' · '+tFedMsg:''));
+  tFedMsg='';
 }
 function startFromSlots(i){
   const c=S.courts[i], d=slots(c);
@@ -1127,8 +1129,8 @@ function fillCourt(i,quiet,exclude){
   return true;
 }
 function fillAll(){
-  let n=0, m=0; S.courts.forEach((c,i)=>{ if(c.p.length) return; if(!slots(c).some(Boolean)&&startNext(i)){ n++; m++; } else if(fillCourt(i,true)) n++; });
-  save(); render(); toast(n?`Filled ${n} court${n>1?'s':''}${m?` (${m} from Next games)`:''}`:'No court could be filled — check attendance & levels');
+  const tf=tFeed(); let n=tf, m=0; S.courts.forEach((c,i)=>{ if(c.p.length) return; if(!slots(c).some(Boolean)&&startNext(i)){ n++; m++; } else if(fillCourt(i,true)) n++; });
+  save(); render(); toast(n?`Filled ${n} court${n>1?'s':''}${tf?` (${tf} tournament)`:''}${m?` (${m} from Next games)`:''}`:'No court could be filled — check attendance & levels');
 }
 function finish(i,count,win){
   const c=S.courts[i]; const now=Date.now();
@@ -1143,7 +1145,7 @@ function finish(i,count,win){
   }
   if(c.tm){ if(count&&c.p.length&&(win==='a'||win==='b')) tRecord(c.tm,win==='a'?c.p.slice(0,c.p.length/2):c.p.slice(c.p.length/2),scSummary(c.sc)); c.tm=''; }
   c.p=[];c.t=0;c.sc=null;
-  const nx=count?startNext(i):0;
+  const nx=count&&!tFeed(i)?startNext(i):0;
   save(); render();
   return nx;
 }
@@ -1189,6 +1191,30 @@ function tMatch(key,R){ if(!tOn()||typeof key!=='string') return null; R=R||tSlo
 function tRecord(key,ids,sc){ const m=tMatch(key); if(!m||!m.ready) return;
   const ov=i=>ids.filter(x=>tPairIds(i).includes(x)).length;
   S.tour.w[key]={s:ov(m.a)>=ov(m.b)?0:1,sc:sc||''}; }
+/* players whose pair is still in a running tournament (not knocked out, no champion yet): kept out of the waiting queue */
+let TB_KEY='', TB_SET=new Set();
+function tBusy(){ if(!tOn()) return new Set();
+  const key=S.tour.pos.join(',')+'|'+JSON.stringify(S.tour.w)+'|'+S.tour.pairs.length; if(key===TB_KEY) return TB_SET;
+  const R=tSlots(), L=tL(), out=new Set(), ids=new Set();
+  if(!Number.isInteger(R[L][0])){
+    for(let k=0;k<L;k++) for(let j=0;j<R[k].length/2;j++){ const a=R[k][2*j], b=R[k][2*j+1], r=S.tour.w[k+'-'+j]; if(r&&Number.isInteger(a)&&Number.isInteger(b)) out.add(r.s?a:b); }
+    R[0].forEach(i=>{ if(Number.isInteger(i)&&!out.has(i)) tPairIds(i).forEach(x=>ids.add(x)); }); }
+  TB_KEY=key; TB_SET=ids; return ids; }
+/* put a ready match on court ci (players leave planned games; the gap there fills by itself) */
+function tSend(key,ci){ const m=tMatch(key), c=S.courts[ci]; if(!m||!m.ready||m.ci>=0||!c||c.p.length) return false;
+  const ids=tPairIds(m.a).concat(tPairIds(m.b)), oc=onCourt(); if(ids.some(x=>oc[x]!==undefined)) return false;
+  S.next.forEach(g=>{ g.p=g.p.map(x=>ids.includes(x)?null:x); });
+  ids.forEach(x=>{ delete S.resting[x]; if(!S.present[x]){ S.present[x]=1; logEv('in',{n:pnm(x)}); } });
+  c.p=ids; c.d=[]; c.t=Date.now(); c.sc=null; c.tm=key; return true; }
+/* auto-send: every free court (or only court `only`) gets the next ready match, earliest round first */
+let tFedMsg='';
+function tFeed(only){ if(!tOn()||S.tour.auto===false||S.mode!=='doubles') return 0;
+  let n=0; const msgs=[];
+  S.courts.forEach((c,i)=>{ if((only!==undefined&&i!==only)||c.p.length||slots(c).some(Boolean)) return;
+    const R=tSlots(), oc=onCourt();
+    for(let k=0;k<tL();k++) for(let j=0;j<R[k].length/2;j++){ const key=k+'-'+j, m=tMatch(key,R);
+      if(m&&m.ready&&m.ci<0&&!tPairIds(m.a).concat(tPairIds(m.b)).some(x=>oc[x]!==undefined)&&tSend(key,i)){ n++; msgs.push(tRoundName(k)+' on Court '+(i+1)); return; } } });
+  tFedMsg=msgs.join(', '); return n; }
 /* seeding order for a bracket of n: 1 v n, 2 v n-1 …, top seeds kept in different halves */
 function tSeedOrder(n){ let o=[1]; while(o.length<n){ const m=o.length*2; o=o.flatMap(x=>[x,m+1-x]); } return o; }
 function tStart(mode){ const P=S.tour.pairs; if(P.length<2){ toast('Make at least 2 pairs first'); return; }
@@ -1197,7 +1223,8 @@ function tStart(mode){ const P=S.tour.pairs; if(P.length<2){ toast('Make at leas
   if(mode==='rand'){ for(let i=order.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [order[i],order[j]]=[order[j],order[i]]; } }
   else { const st=i=>tPairIds(i).reduce((a,id)=>a+(RATE[(byId(id)||{}).c]||0),0); order.sort((x,y)=>st(y)-st(x)||x-y); }
   S.tour.pos=tSeedOrder(n).map(sd=>sd<=order.length?order[sd-1]:null); S.tour.w={};
-  save(); render(); toast(`Bracket of ${n} made`+(n>P.length?` · ${n-P.length} bye${n-P.length>1?'s':''}`:'')); }
+  const f=tFeed();
+  save(); render(); toast(`Bracket of ${n} made`+(n>P.length?` · ${n-P.length} bye${n-P.length>1?'s':''}`:'')+(f?` · ${f} match${f>1?'es':''} sent to courts`:S.tour.auto?' · matches go on as courts free up':'')); }
 function tAutoPair(){ const used=new Set(S.tour.pairs.flat());
   const pool=S.players.filter(p=>S.present[p.id]&&!S.resting[p.id]&&!used.has(p.id)).sort((a,b)=>(RATE[b.c]||0)-(RATE[a.c]||0)||a.n.localeCompare(b.n));
   if(pool.length<2){ toast('Not enough present players who are not paired yet'); return; }
@@ -1241,14 +1268,14 @@ function vTour(){
   const ready=[]; for(let k=0;k<L;k++) for(let j=0;j<R[k].length/2;j++){ const m=tMatch(k+'-'+j,R); if(m&&m.ready&&m.ci<0) ready.push(m); }
   const live=S.courts.map((c,i)=>c.tm&&c.p.length?i:-1).filter(i=>i>=0);
   const line=(m,right)=>`<button class="item tapr" style="text-align:left;background:#fff;width:100%" data-act="t-m" data-k="${m.k}-${m.j}"><div class="nm" style="flex:1">${tRoundName(m.k)} · ${esc(tPairName(m.a))} <small style="color:var(--muted)">vs</small> ${esc(tPairName(m.b))}</div>${right}</button>`;
-  return `<div class="row" style="margin:4px 0 10px;align-items:center"><h2 style="margin:0;flex:1">Tournament <small>${T.pairs.length} pairs · bracket of ${N}</small></h2><button class="btn sm warn" data-act="t-reset">${confirmKey==='treset'?'Sure? Tap again':'New tournament'}</button></div>
+  return `<div class="row" style="margin:4px 0 10px;align-items:center"><h2 style="margin:0;flex:1">Tournament <small>${T.pairs.length} pairs · bracket of ${N}</small></h2><button class="chip ${T.auto?'on':''}" data-act="t-feed" style="margin-right:8px">Auto-send to free courts: ${T.auto?'On':'Off'}</button><button class="btn sm warn" data-act="t-reset">${confirmKey==='treset'?'Sure? Tap again':'New tournament'}</button></div>
   ${Number.isInteger(champ)?`<div class="tchamp">🏆 Champion: ${esc(tPairName(champ))}</div>`:''}
   <div class="card bwrap"><div class="bk" style="--h:${Math.max(1,N/2)*62}px">${cols.join('')}</div></div>
   ${ready.length||live.length?`<h2>Up next <small>tap to send to a court</small></h2><div class="card"><div class="list">
     ${live.map(i=>{ const m=tMatch(S.courts[i].tm,R); return m?line(m,`<b style="color:#c07a00">Court ${i+1}</b>`):''; }).join('')}
     ${ready.map(m=>line(m,'<b style="color:#25a065">Ready</b>')).join('')}
   </div></div>`:''}
-  <p class="hint">Tap a match to send it to a free court or to pick the winner. <b>Game done</b> on a court moves the winner up by itself. On a phone, swipe the bracket sideways.</p>`;
+  <p class="hint">${T.auto?'Ready matches go onto free courts by themselves (before Next games); <b>Game done</b> moves the winner up and puts the next match on. Players still in the tournament are kept out of Auto match.':'Tap a match to send it to a free court or to pick the winner. <b>Game done</b> on a court moves the winner up by itself.'} On a phone, swipe the bracket sideways.</p>`;
 }
 function sheetTMatch(key){ const m=tMatch(key); if(!m||!Number.isInteger(m.a)||!Number.isInteger(m.b)){ closeSheet(); return; }
   const nm=i=>tPairIds(i).map(id=>{ const p=byId(id); return p?`${catBadge(p.c)} ${esc(p.n)}`:'?'; }).join('<br>');
@@ -1812,7 +1839,7 @@ function vHelp(){
   ${sec('tour','4b. Tournament bracket (knockout)',`<ol>
     <li>Open <b>Bracket</b>. Make doubles pairs: <b>Auto-pair present players</b> (strongest with weakest, so pairs are even) or <b>+ Add pair</b> to choose 2 players yourself. ✕ removes a pair.</li>
     <li><b>Start — seeded by level</b> (strongest pairs kept apart until the end) or <b>Start — random draw</b>. Any number of pairs works: when it is not 4, 8, 16 or 32, the top seeds get a <b>Bye</b> into round 2.</li>
-    <li>Tap a match (both pairs known, green glow) → <b>Court N</b> sends it to that free court. Score it as usual; <b>Game done</b> moves the winner up the bracket by itself.</li>
+    <li><b>Auto-send to free courts</b> (on by default): ready matches go onto free courts by themselves — at the start, after every <b>Game done</b> and with <b>Fill empty courts</b> — before any planned Next games. The winner moves up and the next match goes on, until the champion. Players still in the tournament are kept out of Auto match; knocked-out pairs go back to the waiting queue. With it off, tap a match → <b>Court N</b>.</li>
     <li>No court needed? In the same sheet tap the winning pair. <b>Undo result</b> works until that pair's next match has started.</li>
     <li>The final's winner shows as 🏆 Champion in the middle. <b>New tournament</b> clears the bracket (pairs are kept).</li></ol>`)}
   ${sec('score','5. Keeping score',`<ol>
@@ -2470,17 +2497,16 @@ document.addEventListener('click',e=>{
     case 't-start': tStart(k); break;
     case 't-reset': if(confirmKey!=='treset'){ confirmKey='treset'; render(); break; } confirmKey=null; S.tour.pos=[]; S.tour.w={}; S.courts.forEach(c=>c.tm=''); save(); render(); toast('Bracket cleared — pairs kept'); break;
     case 't-m': sheetTMatch(k); break;
+    case 't-feed':{ S.tour.auto=!S.tour.auto; const f=S.tour.auto?tFeed():0; save(); render(); toast(S.tour.auto?'Auto-send on'+(f?` · ${f} match${f>1?'es':''} sent to courts`:''):'Auto-send off — tap a match to send it'); tFedMsg=''; break;}
     case 't-go': closeSheet(); tab='courts'; render(); window.scrollTo(0,0); break;
-    case 't-win':{ const m=tMatch(k); if(!m||!m.ready||m.ci>=0){ closeSheet(); break; } const v=+el.dataset.v?1:0; S.tour.w[k]={s:v,sc:''}; closeSheet(); save(); render(); toast('Winner: '+tPairName(v?m.b:m.a)); break;}
+    case 't-win':{ const m=tMatch(k); if(!m||!m.ready||m.ci>=0){ closeSheet(); break; } const v=+el.dataset.v?1:0; S.tour.w[k]={s:v,sc:''}; tFeed(); closeSheet(); save(); render(); toast('Winner: '+tPairName(v?m.b:m.a)+(tFedMsg?' · '+tFedMsg:'')); tFedMsg=''; break;}
     case 't-undo':{ const m=tMatch(k); if(m&&m.r){ const nx=tMatch((m.k+1)+'-'+(m.j>>1)); if(!(nx&&(nx.r||nx.ci>=0))){ delete S.tour.w[k]; save(); render(); toast('Result removed'); } } closeSheet(); break;}
     case 't-send':{ const m=tMatch(k), c=S.courts[ci]; if(!m||!m.ready||m.ci>=0||!c){ closeSheet(); break; }
       if(S.mode!=='doubles'){ toast('Tournament matches are doubles — switch Settings to Doubles'); break; }
       if(c.p.length){ toast('Court '+(ci+1)+' is busy'); sheetTMatch(k); break; }
       const ids=tPairIds(m.a).concat(tPairIds(m.b)), oc=onCourt(), busy=ids.find(x=>oc[x]!==undefined);
       if(busy){ toast(pnm(busy)+' is playing on Court '+(oc[busy]+1)); break; }
-      S.next.forEach(g=>{ g.p=g.p.map(x=>ids.includes(x)?null:x); });   // out of planned games; the gap fills by itself
-      ids.forEach(x=>{ delete S.resting[x]; if(!S.present[x]){ S.present[x]=1; logEv('in',{n:pnm(x)}); } });
-      c.p=ids; c.d=[]; c.t=Date.now(); c.sc=null; c.tm=k;
+      tSend(k,ci);
       closeSheet(); save(); render(); toast(tRoundName(m.k)+' on Court '+(ci+1)); break;}
     case 'sheet-close': break;
     case 'stg-check': storageCheck(true).then(()=>toast(STG.persist?'Data is protected on this device':'Browser did not protect it — install the app to keep data safe')); break;
