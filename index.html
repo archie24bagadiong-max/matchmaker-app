@@ -639,7 +639,9 @@ const TYPE_STATUS={S:'A-SUB',MG:'Member-Guest',G:'Non-Member'};
 const r2=v=>Math.round(v*100)/100;
 const partSum=id=>{ const x=S.part&&S.part[id]; return x?(+x.cash||0)+(+x.stc||0):0; };
 const paidAmt=p=>{ const f=r2(fee(p)); return S.paid[p.id]?f:Math.min(f,r2(partSum(p.id))); };
-const leftAmt=p=>Math.max(0,r2(r2(fee(p))-paidAmt(p)));
+/* Queuing Master (Settings → Fees): plays free — the bill still shows (report: "Queuing Master" line, taken off the Total) but is never owed */
+const isQM=p=>!!(p&&S.qm&&p.id===S.qm);
+const leftAmt=p=>isQM(p)?0:Math.max(0,r2(r2(fee(p))-paidAmt(p)));
 const paidBy=(p,m)=>{ const x=(S.part&&S.part[p.id])||{}, ps=partSum(p.id); return r2((+x[m]||0)+(payM(p.id)===m?Math.max(0,r2(fee(p))-ps):0)); };
 const pmText=(c,st)=>[c>0?'Cash':'',st>0?'STC Pay':''].filter(Boolean).join(' + ');
 const rowPaid=r=>r.pa!=null?+r.pa:(r.pd?+r.f:0);
@@ -707,7 +709,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=90;
+const APP_VERSION=91;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -778,6 +780,7 @@ function normalize(s){
   s.fee={gp:fv('gp',25), mg:fv('mg',20), fm:fv('fm',20), sp:fv('sp',2.5)};
   // v89: Family fee is 20 SR (club 4th Qtr sheet); v88 had added it at 0
   if(!(s.feeV>=1)){ if(!s.fee.fm) s.fee.fm=20; s.feeV=1; }
+  if(typeof s.qm!=='string') s.qm='';
   return s;
 }
 
@@ -1345,7 +1348,7 @@ function vPayDraw(){
     ${gone.length?`<div class="daybar" style="background:#fff6e6;border-color:#f1d29a;color:#6b4a00">${payGone?'Showing':'Hidden:'} ${gone.length} player${gone.length===1?'':'s'} not in Attendance who played today (${sr(goneDue)}${goneUnpaid.length?', '+goneUnpaid.length+' unpaid':''})<span class="grow"></span><button class="btn sm" data-act="pay-gone">${payGone?'Hide':'Show'}</button></div>`:''}
     <div class="chips">${['All','Subscribers','Guests','Unpaid'].map(k=>`<button class="chip ${payFilter===k?'on':''}" data-act="pay-f" data-k="${k}">${k}</button>`).join('')}</div>
     ${list.length?`<div class="phead"><span class="pinfo">Player</span><span class="pg">Games</span><span class="pfee">Fee / Paid</span></div><div class="list">${list.map(p=>{const g=S.games[p.id]||0,f=fee(p);
-      const tf=typeFee(p), note=g?(tf?sr(tf)+' '+feeLbl(p)+' fee + ':'')+g+' shuttle'+(g===1?'':'s')+' × '+sr(S.fee.sp)+(r2(feeRaw(p))!==fee(p)?' = '+sr(feeRaw(p))+', rounded to '+sr(fee(p)):''):'Nothing due until they play'+(tf?' (then '+sr(tf)+' fee + '+sr(S.fee.sp)+' per game)':' (then '+sr(S.fee.sp)+' per game)');
+      const tf=typeFee(p), note=isQM(p)?'<b>Queuing Master</b> — plays free'+(g?' ('+g+' game'+(g===1?'':'s')+', '+sr(fee(p))+' shown on the report)':''):g?(tf?sr(tf)+' '+feeLbl(p)+' fee + ':'')+g+' shuttle'+(g===1?'':'s')+' × '+sr(S.fee.sp)+(r2(feeRaw(p))!==fee(p)?' = '+sr(feeRaw(p))+', rounded to '+sr(fee(p)):''):'Nothing due until they play'+(tf?' (then '+sr(tf)+' fee + '+sr(S.fee.sp)+' per game)':' (then '+sr(S.fee.sp)+' per game)');
       return `<div class="prow">
         <div class="pinfo"><div class="nmc">${catBadge(p.c)}<span class="pn">${esc(p.n)}</span>${typeBadge(p)}</div><div class="pnote">${note}</div>${balOf(p)>0?`<button class="balflag" data-act="bal" data-id="${p.id}">⚠ Owes ${sr(balOf(p))} from ${bills(p).length} earlier bill${bills(p).length===1?'':'s'}</button>`:''}</div>
         <div class="pg"><b>${g}</b></div>
@@ -1690,7 +1693,7 @@ function vHelp(){
 }
 function todayRows(){
   const d=dayKey(Date.now());
-  return S.players.filter(p=>S.present[p.id]||(S.games[p.id]||0)>0).map(p=>({id:p.id,day:d,n:p.n,tm:p.tm||'',c:p.c,t:p.t,g:S.games[p.id]||0,tf:typeFee(p),sh:r2((S.games[p.id]||0)*S.fee.sp),f:r2(fee(p)),pa:paidAmt(p),pc:paidBy(p,'cash'),ps:paidBy(p,'stc'),pd:fee(p)>0&&leftAmt(p)<=0.009?1:0,pm:pmText(paidBy(p,'cash'),paidBy(p,'stc')),ss:S.sess||0}));
+  return S.players.filter(p=>S.present[p.id]||(S.games[p.id]||0)>0).map(p=>({id:p.id,day:d,n:p.n,tm:p.tm||'',c:p.c,t:p.t,g:S.games[p.id]||0,tf:typeFee(p),sh:r2((S.games[p.id]||0)*S.fee.sp),f:r2(fee(p)),pa:paidAmt(p),pc:paidBy(p,'cash'),ps:paidBy(p,'stc'),pd:fee(p)>0&&leftAmt(p)<=0.009&&!isQM(p)?1:0,...(isQM(p)?{qm:1,wv:r2(Math.max(0,fee(p)-paidAmt(p)))||undefined}:{}),pm:pmText(paidBy(p,'cash'),paidBy(p,'stc')),ss:S.sess||0}));
 }
 function archiveDay(){
   const rows=todayRows().filter(r=>r.g>0||r.pa>0);
@@ -1752,7 +1755,7 @@ function addDaySheets(wb,pay,H){
       put(0,ri,r.t==='S'?(dys||'Sub'):tf); put(1,ri,r.c||(p&&p.c)||''); put(2,ri,wins[r.n]||0); put(3,ri,i+1); put(4,ri,r.n);
       put(5,ri,'Play '+(+r.g||0)); if(tf>0){ put(6,ri,tf); gN++; gS+=tf; } put(7,ri,sh);
       put(8,ri,+r.f,'IF(G'+xr+'="",ROUND(H'+xr+',0),ROUND(G'+xr+'+H'+xr+',0))');
-      put(9,ri,+r.f<=0?'':r.wv?'Waived':rowLeft(r)<=0.009?(st>0&&ca>0?'Yes+STC':st>0?'STC':'Yes'):rowPaid(r)>0?'Part':'No');
+      put(9,ri,+r.f<=0?'':r.qm?'QM':r.wv?'Waived':rowLeft(r)<=0.009?(st>0&&ca>0?'Yes+STC':st>0?'STC':'Yes'):rowPaid(r)>0?'Part':'No');
       if(ca>0) put(10,ri,ca);
       shS+=sh; due+=+r.f; cash+=ca; });
     put(5,tot-1,rows.length,'COUNTA(E'+first+':E'+last+')'); put(6,tot-1,r2(gS),'SUM(G'+first+':G'+last+')'); put(7,tot-1,r2(shS),'SUM(H'+first+':H'+last+')');
@@ -1776,6 +1779,25 @@ function addDaySheets(wb,pay,H){
     ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:Math.max(tot-1,M.length*2,3),c:28}});
     ws['!merges']=mg; ws['!cols']=[10,6,6,6,14,9,8,10,8,8,8,10,16,7,6,8,7,4,16,7,6,8,7,18,10,3,11,14,14].map(w=>({wch:w}));
     XLSX.utils.book_append_sheet(wb,ws,nm);
+    // Summary sheet: totals split STC/Bank vs Cash, shuttles vs guest fees, Queuing Master taken off the Total
+    { let sc=0,ss=0,gc=0,gs=0,qm=0,gN2=0,gA=0,left=0;
+      rows.forEach(r=>{ const f=+r.f||0, tf=Math.min(tfOf(r),f), ca=rowCash(r), st=rowStc(r), sh=f>0?(f-tf)/f:0, gp=f>0?tf/f:0;
+        sc+=ca*sh; ss+=st*sh; gc+=ca*gp; gs+=st*gp; if(tf>0){ gN2++; gA+=tf; } if(r.qm) qm+=f-rowPaid(r); else left+=rowLeft(r); });
+      [sc,ss,gc,gs,qm,gA,left]=[sc,ss,gc,gs,qm,gA,left].map(r2);
+      const W=XLSX.utils.aoa_to_sheet([]), A=[], P=(r,lab,q,v,f)=>{ A.push([r,lab,q,v,f]); };
+      let r=0; const ttl=MON_S[m-1]+' '+d+' '+y+' ('+DAY_L[wd]+')';
+      P(r++,ttl); r++; P(r++,'', 'Qty','Amount');
+      const rT=r; P(r++,'Total Collected (Shuttles and Guest Fees) =','',r2(due));
+      P(r++,'STC/Bank =','',r2(ss+gs)); P(r++,'Cash on Hand =','',r2(sc+gc));
+      if(left>0) P(r++,'Unpaid =','',left);
+      r++; P(r++,'Shuttles = (Total qty and Amount)',M.length,r2(due-gA)); P(r++,'STC/Bank =','',ss); P(r++,'Cash =','',sc);
+      r++; P(r++,'Guest Fee = (Total no Guest and Amount)',gN2,gA); P(r++,'STC/Bank =','',gs); P(r++,'Cash =','',gc);
+      r+=2; const rQ=r; P(r++,'Queuing Master','',qm); P(r++,'Total','',r2(due-qm),'C'+(rT+1)+'-C'+(rQ+1));
+      A.forEach(([rr,lab,q,v,f])=>{ if(lab) W[E(0,rr)]={t:'s',v:lab}; if(q!==''&&q!=null) W[E(1,rr)]=typeof q==='number'?{t:'n',v:q}:{t:'s',v:q};
+        if(v!==''&&v!=null){ W[E(2,rr)]=typeof v==='number'?{t:'n',v:v}:{t:'s',v:v}; if(f) W[E(2,rr)].f=f; } });
+      W['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:r-1,c:2}}); W['!merges']=[{s:{r:0,c:0},e:{r:0,c:2}}]; W['!cols']=[{wch:44},{wch:8},{wch:12}];
+      let sn=(nm+' Summary').slice(0,31); while(wb.SheetNames.includes(sn)) sn=sn.slice(0,28)+'+';
+      XLSX.utils.book_append_sheet(wb,W,sn); }
   });
 }
 function buildReport(){
@@ -1975,7 +1997,8 @@ function vSettings(){
       <div class="row" style="margin-top:8px"><span style="min-width:150px">Family fee</span><input type="text" inputmode="decimal" data-fee="fm" value="${S.fee.fm||0}" style="width:80px"> SR</div>
       <div class="row" style="margin-top:8px"><span style="min-width:150px">Member Guest fee</span><input type="text" inputmode="decimal" data-fee="mg" value="${S.fee.mg}" style="width:80px"> SR</div>
       <div class="row" style="margin-top:8px"><span style="min-width:150px">Non-Member Guest fee</span><input type="text" inputmode="decimal" data-fee="gp" value="${S.fee.gp}" style="width:80px"> SR</div>
-      <p class="hint">${feeRulesText()}. Players who haven't played yet owe nothing.</p></div>
+      <div class="row" style="margin-top:8px"><span style="min-width:150px">Queuing Master</span><select id="qm-sel" style="width:auto;flex:1;min-width:0"><option value="">None</option>${S.players.slice().sort((a,b)=>a.n.localeCompare(b.n)).map(p=>`<option value="${p.id}"${S.qm===p.id?' selected':''}>${esc(p.n)}</option>`).join('')}</select></div>
+      <p class="hint">${feeRulesText()}. Players who haven't played yet owe nothing. The Queuing Master plays free: their bill is shown on the report's Summary sheet and taken off the Total.</p></div>
   </div>
   <h2>Backup &amp; restore</h2>
   <div class="card">
@@ -2422,6 +2445,7 @@ document.addEventListener('click',e=>{
   }
 });
 document.addEventListener('change',e=>{
+  if(e.target.id==='qm-sel'){ S.qm=e.target.value; save(); render(); toast(S.qm?'Queuing Master: '+((byId(S.qm)||{}).n||''):'No Queuing Master'); return; }
   const el=e.target;
   if(el.dataset.scteam&&scoreOpen!==null){ if(IS_DISPLAY) return; const sc=scEnsure(scoreOpen); if(!sc) return; sc.tn=Object.assign({a:scTN(sc,'a'),b:scTN(sc,'b')},sc.tn||{}); const v=el.value.trim().slice(0,40); if(v===scTN(sc,el.dataset.scteam)) return; sc.tn[el.dataset.scteam]=v; sc.seq=(sc.seq||0)+1; save(); scoreDeferred=true; toast(v?'Team name: '+v:'Team name removed'); return; }
   if(el.dataset.act==='pl-team'){ plTeam=el.value; render(); return; }
