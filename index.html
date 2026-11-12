@@ -641,6 +641,9 @@ button.bx{cursor:pointer}
 .tpair .no{font-family:"Barlow Condensed";font-weight:700;color:var(--muted);width:26px}
 .tpair .nm2{flex:1;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
 .ttag{background:#c9a227;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:6px;font-family:Barlow,sans-serif}
+body.bview nav{display:none}
+body.bview #app{padding-bottom:20px}
+.bvset{display:block;margin:14px auto 0;opacity:.6}
 .tcard{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;margin-top:12px}
 .tcard figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:8px;width:150px}
 .tcard .tph{width:140px;height:140px;border-radius:16px;object-fit:cover;border:4px solid #c9a227;box-shadow:0 6px 18px rgba(138,109,11,.25);background:#fff;display:block}
@@ -766,7 +769,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=99;
+const APP_VERSION=100;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -787,6 +790,8 @@ const IS_JOIN=!!JOIN_ID&&!!QS.get('court');
 if(IS_JOIN) ROLE='court';
 const IS_REMOTE=IS_SERVED||IS_JOIN;   // a phone scoring by QR code (local or online)
 const IS_DISPLAY=ROLE==='display';
+let BVIEW=false;
+try{ BVIEW=IS_DISPLAY&&(IS_SERVED?QS.get('view')==='bracket':localStorage.getItem('bmm_bview')==='1'); }catch(e){}
 const IS_COURT=ROLE==='court';
 let COURT_NO=0, COURT_PIN='';
 try{ COURT_NO=Math.max(0,(+localStorage.getItem('bmm_court')||1)-1); COURT_PIN=localStorage.getItem('bmm_pin')||''; }catch(e){}
@@ -848,7 +853,7 @@ function normalize(s){
 let S=fresh();
 try{ const raw=localStorage.getItem(LS_KEY); if(raw) S=normalize(JSON.parse(raw)); }catch(e){}
 
-let tab='courts', ciFilter='All', ciSearch='', wqSearch='', plSearch='', plFilter='All', confirmKey=null, plTeam='', ciTeam='';
+let tab=BVIEW?'tour':'courts', ciFilter='All', ciSearch='', wqSearch='', plSearch='', plFilter='All', confirmKey=null, plTeam='', ciTeam='';
 /* after an automatic update the app reopens on the screen it was on */
 let updJustDone=0;
 try{ const t=localStorage.getItem('mm_upd_tab'); if(t){ localStorage.removeItem('mm_upd_tab'); if(['courts','checkin','players','pay','tour','hist','help','settings'].includes(t)) tab=t; updJustDone=1; } }catch(e){}
@@ -1257,8 +1262,14 @@ function tChampCard(i){ return `<div class="tcard">${tPairIds(i).map(id=>{ const
 function tBox(v,cls,extra,key){ const nm=Number.isInteger(v)?tPairIds(v).map(id=>`<i>${esc(pnm(id))}</i>`).join(''):v===null?'<i>Bye</i>':'<i>—</i>';
   const tag=key?'button':'div';
   return `<${tag} class="bx ${cls}" ${key?`data-act="t-m" data-k="${key}"`:''}><span class="ball"></span><span class="bn">${nm}${extra||''}</span></${tag}>`; }
+/* Bracket viewer: scale the whole bracket to the screen width (bigger on a TV, smaller on a tablet) */
+function tFit(){ const bk=document.querySelector('.bk'); if(!bk) return; bk.style.zoom=''; if(!BVIEW) return;
+  const w=bk.parentNode.clientWidth-24, f=Math.max(.4,Math.min(1.8,w/bk.scrollWidth)); bk.style.zoom=f; }
+window.addEventListener('resize',()=>{ if(tab==='tour') tFit(); });
 function vTour(){
   const T=S.tour;
+  const bvSet=BVIEW?'<button class="btn sm bvset" data-act="go" data-tab="settings">⚙ Settings</button>':'';
+  if(!tOn()&&IS_DISPLAY) return `<div class="card emptybox" style="margin-top:14px"><b>🏆 No tournament yet</b>The bracket appears here as soon as the Main tablet starts one.</div>${bvSet}`;
   if(!tOn()){
     const used=new Set(T.pairs.flat()), n=T.pairs.length; let sz=2; while(sz<n) sz*=2;
     const free=S.players.filter(p=>S.present[p.id]&&!S.resting[p.id]&&!used.has(p.id)).length;
@@ -1281,7 +1292,7 @@ function vTour(){
       else if(m.ci>=0){ cls+=' oncrt'; extra=`<span class="crt">Court ${m.ci+1}</span>`; }
       else if(m.ready) cls+=' rdy'; }
     if(k>0){ const pm=T.w[(k-1)+'-'+j]; if(pm&&pm.sc&&Number.isInteger(v)) extra+=`<span class="bs">${esc(pm.sc)}</span>`; }
-    const tap=m&&Number.isInteger(m.a)&&Number.isInteger(m.b);
+    const tap=!IS_DISPLAY&&m&&Number.isInteger(m.a)&&Number.isInteger(m.b);
     return `<div class="bcell ${k>0?'in ':''}out">${tBox(v,cls,extra,tap?key:'')}</div>`; };
   const col=(k,side)=>{ const half=R[k].length/2, js=[...Array(half).keys()].map(x=>side==='L'?x:x+half);
     return `<div class="bc ${side}"><div class="blab">${tRoundName(k)}</div><div class="bcol">${js.map(j=>cell(k,j)).join('')}</div></div>`; };
@@ -1291,15 +1302,15 @@ function vTour(){
   for(let k=L-1;k>=0;k--) cols.push(col(k,'R'));
   const ready=[]; for(let k=0;k<L;k++) for(let j=0;j<R[k].length/2;j++){ const m=tMatch(k+'-'+j,R); if(m&&m.ready&&m.ci<0) ready.push(m); }
   const live=S.courts.map((c,i)=>c.tm&&c.p.length?i:-1).filter(i=>i>=0);
-  const line=(m,right)=>`<button class="item tapr" style="text-align:left;background:#fff;width:100%" data-act="t-m" data-k="${m.k}-${m.j}"><div class="nm" style="flex:1">${tRoundName(m.k)} · ${esc(tPairName(m.a))} <small style="color:var(--muted)">vs</small> ${esc(tPairName(m.b))}</div>${right}</button>`;
-  return `<div class="row" style="margin:4px 0 10px;align-items:center"><h2 style="margin:0;flex:1">Tournament <small>${T.pairs.length} pairs · bracket of ${N}</small></h2><button class="chip ${T.auto?'on':''}" data-act="t-feed" style="margin-right:8px">Auto-send to free courts: ${T.auto?'On':'Off'}</button><button class="btn sm warn" data-act="t-reset">${confirmKey==='treset'?'Sure? Tap again':'New tournament'}</button></div>
+  const line=(m,right)=>IS_DISPLAY?`<div class="item"><div class="nm" style="flex:1">${tRoundName(m.k)} · ${esc(tPairName(m.a))} <small style="color:var(--muted)">vs</small> ${esc(tPairName(m.b))}</div>${right}</div>`:`<button class="item tapr" style="text-align:left;background:#fff;width:100%" data-act="t-m" data-k="${m.k}-${m.j}"><div class="nm" style="flex:1">${tRoundName(m.k)} · ${esc(tPairName(m.a))} <small style="color:var(--muted)">vs</small> ${esc(tPairName(m.b))}</div>${right}</button>`;
+  return `<div class="row" style="margin:4px 0 10px;align-items:center"><h2 style="margin:0;flex:1">Tournament <small>${T.pairs.length} pairs · bracket of ${N}</small></h2>${IS_DISPLAY?'':`<button class="chip ${T.auto?'on':''}" data-act="t-feed" style="margin-right:8px">Auto-send to free courts: ${T.auto?'On':'Off'}</button><button class="btn sm warn" data-act="t-reset">${confirmKey==='treset'?'Sure? Tap again':'New tournament'}</button>`}</div>
   ${Number.isInteger(champ)?`<div class="tchamp">🏆 Champion: ${esc(tPairName(champ))}${tChampCard(champ)}</div>`:''}
   <div class="card bwrap"><div class="bk" style="--h:${Math.max(1,N/2)*62}px">${cols.join('')}</div></div>
-  ${ready.length||live.length?`<h2>Up next <small>tap to send to a court</small></h2><div class="card"><div class="list">
+  ${ready.length||live.length?`<h2>${IS_DISPLAY?'Now playing &amp; up next':'Up next <small>tap to send to a court</small>'}</h2><div class="card"><div class="list">
     ${live.map(i=>{ const m=tMatch(S.courts[i].tm,R); return m?line(m,`<b style="color:#c07a00">Court ${i+1}</b>`):''; }).join('')}
     ${ready.map(m=>line(m,'<b style="color:#25a065">Ready</b>')).join('')}
   </div></div>`:''}
-  <p class="hint">${T.auto?'Ready matches go onto free courts by themselves (before Next games); <b>Game done</b> moves the winner up and puts the next match on. Players still in the tournament are kept out of Auto match.':'Tap a match to send it to a free court or to pick the winner. <b>Game done</b> on a court moves the winner up by itself.'} On a phone, swipe the bracket sideways.</p>`;
+  ${IS_DISPLAY?bvSet:`<p class="hint">${T.auto?'Ready matches go onto free courts by themselves (before Next games); <b>Game done</b> moves the winner up and puts the next match on. Players still in the tournament are kept out of Auto match.':'Tap a match to send it to a free court or to pick the winner. <b>Game done</b> on a court moves the winner up by itself.'} On a phone, swipe the bracket sideways.</p>`}`;
 }
 function sheetTMatch(key){ const m=tMatch(key); if(!m||!Number.isInteger(m.a)||!Number.isInteger(m.b)){ closeSheet(); return; }
   const nm=i=>tPairIds(i).map(id=>{ const p=byId(id); return p?`${catBadge(p.c)} ${esc(p.n)}`:'?'; }).join('<br>');
@@ -1358,6 +1369,7 @@ function render(){
   else if(tab==='help') app.innerHTML=vHelp();
   else app.innerHTML=vSettings();
   if(scoreOpen!==null) renderScore();
+  if(tab==='tour') tFit();
 }
 function elapsed(t){if(!t)return'';const m=Math.floor((Date.now()-t)/60000);return m<1?'just started':m+' min';}
 function plBtn(id,ci){
@@ -1865,6 +1877,7 @@ function vHelp(){
     <li><b>Start — seeded by level</b> (strongest pairs kept apart until the end) or <b>Start — random draw</b>. Any number of pairs works: when it is not 4, 8, 16 or 32, the top seeds get a <b>Bye</b> into round 2.</li>
     <li><b>Auto-send to free courts</b> (on by default): ready matches go onto free courts by themselves — at the start, after every <b>Game done</b> and with <b>Fill empty courts</b> — before any planned Next games. The winner moves up and the next match goes on, until the champion. Players still in the tournament are kept out of Auto match; knocked-out pairs go back to the waiting queue. With it off, tap a match → <b>Court N</b>.</li>
     <li>No court needed? In the same sheet tap the winning pair. <b>Undo result</b> works until that pair's next match has started.</li>
+    <li><b>Bracket viewer</b> (a TV or spare tablet): Settings → Tablet sync → <b>Bracket viewer</b> → Main tablet address → Connect. It shows only the live bracket, sized to the screen. A laptop or TV browser on the same Wi-Fi can open <b>http://&lt;Main address&gt;:8787/?view=bracket</b> instead.</li>
     <li>The final's winner shows as 🏆 Champion in the middle, with both players' photos at the top (a smiley picture — boy or girl from Gender — for anyone without a photo). <b>New tournament</b> clears the bracket (pairs are kept).</li></ol>`)}
   ${sec('score','5. Keeping score',`<ol>
     <li>After the toss, tap <b>Serves first</b>. Use <b>⇄ Swap</b> so names match where players stand (only at 0–0).</li>
@@ -2232,15 +2245,15 @@ function vSettings(){
   <button class="btn pri" style="width:100%;margin-top:10px" data-act="help">📖 How to use this app</button>
   ${IS_APP?`<h2>Tablet sync (local network)</h2>
   <div class="card">${!CAN_SYNC?`<p class="hint" style="margin:0">Install the latest MatchMaker.apk on every tablet to use sync.</p>`:`
-    <p class="hint" style="margin-top:0">Connect all tablets to the same hotspot or Wi-Fi. No internet needed. One <b>Main</b> tablet makes all changes; <b>Display</b> tablets show the same courts, scores and lists live.</p>
-    <div class="seg"><button class="${ROLE==='off'?'on':''}" data-act="sync-role" data-k="off">Off</button><button class="${ROLE==='main'?'on':''}" data-act="sync-role" data-k="main">Main tablet</button><button class="${ROLE==='display'?'on':''}" data-act="sync-role" data-k="display">Display tablet</button><button class="${courtSetup?'on':''}" data-act="court-setup">Court tablet</button></div>
-    ${ROLE==='main'?`<div class="syncbox"><div class="hint" style="margin:0">On each Display tablet, enter this address:</div><div class="bigip">${esc(mainAddr()||'No network — join a hotspot or Wi-Fi')}</div><div class="hint" id="syncstat" style="margin:0">${syncStatusText()}</div><button class="btn pri" data-act="qr" data-k="all">📱 Score with a phone — show QR codes</button></div>`:''}
+    <p class="hint" style="margin-top:0">Connect all tablets to the same hotspot or Wi-Fi. No internet needed. One <b>Main</b> tablet makes all changes; <b>Display</b> tablets show the same courts, scores and lists live; a <b>Bracket viewer</b> shows only the tournament bracket, full screen.</p>
+    <div class="seg"><button class="${ROLE==='off'?'on':''}" data-act="sync-role" data-k="off">Off</button><button class="${ROLE==='main'?'on':''}" data-act="sync-role" data-k="main">Main tablet</button><button class="${ROLE==='display'&&!BVIEW?'on':''}" data-act="sync-role" data-k="display">Display tablet</button><button class="${courtSetup?'on':''}" data-act="court-setup">Court tablet</button><button class="${BVIEW?'on':''}" data-act="sync-role" data-k="bracket">Bracket viewer</button></div>
+    ${ROLE==='main'?`<div class="syncbox"><div class="hint" style="margin:0">On each Display tablet or Bracket viewer, enter this address:</div><div class="bigip">${esc(mainAddr()||'No network — join a hotspot or Wi-Fi')}</div>${mainAddr()?`<div class="hint" style="margin:0">Laptop, TV or phone on the same Wi-Fi: open <b>http://${esc(mainAddr())}:8787/?view=bracket</b> in the browser for the live bracket.</div>`:''}<div class="hint" id="syncstat" style="margin:0">${syncStatusText()}</div><button class="btn pri" data-act="qr" data-k="all">📱 Score with a phone — show QR codes</button></div>`:''}
     ${courtSetup?`<div class="syncbox"><div class="hint" style="margin:0">This tablet will show only one court's scoreboard. Players can score, undo and choose who serves — nothing else.</div>
       <label for="court-ip" style="font-weight:600;font-size:14px">Main tablet address</label><input type="text" id="court-ip" inputmode="decimal" placeholder="192.168.43.1" value="${esc(MAIN_IP)}">
       <label for="court-no" style="font-weight:600;font-size:14px">Court</label><select id="court-no">${[1,2,3,4,5,6,7,8].map(n=>`<option value="${n}" ${n===COURT_NO+1?'selected':''}>Court ${n}</option>`).join('')}</select>
       <label for="court-pin" style="font-weight:600;font-size:14px">Organizer PIN (to leave court mode)</label><input type="password" id="court-pin" inputmode="numeric" maxlength="8" placeholder="e.g. 2580 — leave blank for none" value="${esc(COURT_PIN)}">
       <button class="btn pri" data-act="court-start">Start court mode</button></div>`:''}
-    ${ROLE==='display'?`<div class="syncbox"><label for="main-ip" style="font-weight:600;font-size:14px">Main tablet address</label><div class="row"><input type="text" id="main-ip" inputmode="decimal" placeholder="192.168.43.1" value="${esc(MAIN_IP)}" style="flex:1;min-width:140px"><button class="btn pri" data-act="sync-ip">Connect</button></div><div class="hint" id="syncstat" style="margin:0">${syncStatusText()}</div><p class="hint">This tablet shows the Main tablet's data and can't change it. Its own data is kept and comes back when you switch to Off.</p></div>`:''}`}
+    ${ROLE==='display'?`<div class="syncbox"><label for="main-ip" style="font-weight:600;font-size:14px">Main tablet address</label><div class="row"><input type="text" id="main-ip" inputmode="decimal" placeholder="192.168.43.1" value="${esc(MAIN_IP)}" style="flex:1;min-width:140px"><button class="btn pri" data-act="sync-ip">Connect</button></div><div class="hint" id="syncstat" style="margin:0">${syncStatusText()}</div><p class="hint">${BVIEW?'This tablet shows only the live tournament bracket, sized to fit the screen — winners move up as the Main tablet records them. ':''}This tablet shows the Main tablet's data and can't change it. Its own data is kept and comes back when you switch to Off.</p>${BVIEW?'<button class="btn pri" data-act="go" data-tab="tour">Show the bracket</button>':''}</div>`:''}`}
   </div>`:''}
   <h2>Session settings</h2>
   <div class="card set">
@@ -2702,7 +2715,7 @@ document.addEventListener('click',e=>{
     case 'ph-cam': if(IS_APP&&typeof AndroidApp.takePhoto==='function') AndroidApp.takePhoto(id); else webPhoto(id,true); break;
     case 'ph-gal': if(IS_APP&&typeof AndroidApp.choosePhoto==='function') AndroidApp.choosePhoto(id); else webPhoto(id,false); break;
     case 'ph-del': if(confirmKey!=='phd'+id){ confirmKey='phd'+id; const b=el; b.textContent='Tap again'; break; } confirmKey=null; setPhoto(id,''); break;
-    case 'sync-role':{ if(!CAN_SYNC) break; if(k===ROLE) break; try{ localStorage.setItem('bmm_role',k); }catch(e){} if(ROLE==='main') try{AndroidApp.stopServer();}catch(e){} persistFlush(); location.reload(); break;}
+    case 'sync-role':{ if(!CAN_SYNC) break; const bv=k==='bracket', rk=bv?'display':k; if(rk===ROLE&&bv===BVIEW) break; try{ localStorage.setItem('bmm_role',rk); if(bv) localStorage.setItem('bmm_bview','1'); else localStorage.removeItem('bmm_bview'); }catch(e){} if(ROLE==='main') try{AndroidApp.stopServer();}catch(e){} persistFlush(); location.reload(); break;}
     case 'sync-ip':{ const v=($('#main-ip')||{}).value||''; const ip=v.trim().replace(/^https?:\/\//,'').replace(/[:\/].*$/,''); if(!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)){ toast('Type the address shown on the Main tablet, e.g. 192.168.43.1'); break; } MAIN_IP=ip; try{localStorage.setItem('bmm_main_ip',ip);}catch(e){} syncFails=0; toast('Connecting to '+ip+'…'); pollMain(); break;}
     case 'upd-check': toast('Checking…'); checkUpdate(true); break;
     case 'upd-go': doUpdate(); break;
@@ -3270,6 +3283,7 @@ function applyIncoming(){
 }
 const VIEW_OK=new Set(['sc-help','go','help','help-topic','help-sec','wq-sort','pay-gone','rep-mode','stg-check','ci-f','pl-f','h-f','h-r','h-v','pay-f','score','sc-close','sync-role','sync-ip','upd-check','upd-go','upd-app','export','copypay','copy']);
 if(IS_DISPLAY) document.body.classList.add('display');
+if(BVIEW) document.body.classList.add('bview');
 if(IS_APP||IS_SERVED){
   if(ROLE==='main'&&IS_APP){ try{ AndroidApp.startServer(); }catch(e){} shareState(); sharePhotos(); setInterval(syncHeader,3000); }
   if(ROLE==='display'||ROLE==='court'){ pollMain(); }
