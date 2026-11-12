@@ -655,6 +655,14 @@ body.bview nav{display:none}
 body.pop .helpbtn,body.pop #sync{display:none}
 body.bview #app{padding-bottom:20px}
 .bvset{display:block;margin:14px auto 0;opacity:.6}
+#ctxm{position:fixed;z-index:200;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.22);padding:6px;min-width:220px;max-width:280px}
+#ctxm .ch{font-size:12px;color:var(--muted);font-weight:600;padding:6px 10px 4px;line-height:1.3}
+#ctxm .ch b{display:block;color:var(--ink);font-size:13px}
+#ctxm button{display:block;width:100%;text-align:left;border:0;background:none;padding:9px 10px;border-radius:8px;font:inherit;font-weight:600;color:var(--ink);cursor:pointer}
+#ctxm button:hover{background:#eef5ec}
+#ctxm button.crt{color:var(--court2)}
+#ctxm hr{border:0;border-top:1px solid var(--border);margin:4px 0}
+#ctxm .no{padding:8px 10px;color:var(--muted);font-size:13px}
 .tcard{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;margin-top:12px}
 .tcard figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:8px;width:150px}
 .tcard .tph{width:140px;height:140px;border-radius:16px;object-fit:cover;border:4px solid #c9a227;box-shadow:0 6px 18px rgba(138,109,11,.25);background:#fff;display:block}
@@ -780,7 +788,7 @@ const parseType=v=>{ const s=String(v||'').trim();
   return /^fam/i.test(s)?'F':/^(non[\s.-]*mem|nm\b|nmg$|nm[\s.-]*guest)/i.test(s)?'G':/^(mg$|mem(ber)?[\s.-]*guest)/i.test(s)?'MG':/^g/i.test(s)?'G':/^(s|m)/i.test(s)?'S':null; };
 const parseStatus=v=>{ const s=String(v||'').trim().toUpperCase().replace(/[\s_.]+/g,''); return s==='NO'||s==='N'||s==='INACTIVE'?'No':/^(A-?SUB|MEMBER-?SUB)/.test(s)?'A-SUB':/^(MEMBER-?GUEST|MEM-?GUEST)/.test(s)?'Member-Guest':/^(NON-?MEMBER|NONMEM)/.test(s)?'Non-Member':/^REG/.test(s)||s==='YES'||s==='ACTIVE'?'Reg':null; };
 const parseGender=v=>{ const s=String(v||'').trim(); return /^(m|male|boy|man)$/i.test(s)?'M':/^(f|female|girl|woman)$/i.test(s)?'F':null; };
-const APP_VERSION=103;
+const APP_VERSION=104;
 /* shown as major.minor: minor runs 0–30, then the major goes up (30 = 1.30, 31 = 2.0) */
 const fmtVer=n=>{ n=+n||0; return (Math.floor(n/31)+1)+'.'+(n%31); };
 const IS_APP=!!window.AndroidApp;
@@ -1312,6 +1320,7 @@ function vTour(){
     const tap=!IS_DISPLAY&&m&&Number.isInteger(m.a)&&Number.isInteger(m.b);
     let box=tBox(v,cls,extra,tap?key:'');
     if(k===0&&!IS_DISPLAY) box=box.replace(/^<(div|button) class="bx ([^"]*)"[^>]*>/,'<button class="bx $2" data-act="t-slot" data-k="'+j+'">').replace(/<\/(div|button)>$/,'</button>');
+    if(m&&Number.isInteger(v)&&!IS_DISPLAY) box=box.replace(/^<(div|button) /,'<$1 data-mk="'+key+'"'+(k===0?' data-sj="'+j+'"':'')+' ');
     return `<div class="bcell ${k>0?'in ':''}out">${box}</div>`; };
   const col=(k,side)=>{ const half=R[k].length/2, js=[...Array(half).keys()].map(x=>side==='L'?x:x+half);
     return `<div class="bc ${side}"><div class="blab">${tRoundName(k)}</div><div class="bcol">${js.map(j=>cell(k,j)).join('')}</div></div>`; };
@@ -1367,6 +1376,27 @@ function sheetTSlot(j){ const T=S.tour, v=T.pos[j], other=T.pos[j^1], m=tMatch('
   if(swaps.length) h+=`<div style="font-weight:600;margin:14px 0 6px">Swap with</div><div class="list" style="max-height:34vh;overflow:auto">${swaps.map(i=>`<button class="item tapr" style="text-align:left;background:#fff;width:100%" data-act="t-sswap" data-k="${j}" data-v="${i}"><div class="nm" style="flex:1">${nm(T.pos[i])}</div><small style="color:var(--muted)">spot ${i+1}</small></button>`).join('')}</div>`;
   h+=`<div class="acts">${Number.isInteger(v)&&other!==null?`<button class="btn warn" data-act="t-sbye" data-k="${j}">Make it a Bye</button>`:''}<button class="btn" data-act="sheet-close">Close</button></div>`;
   openSheet(h); }
+/* right-click (or long-press) a team in the bracket: choose a court for its match */
+function ctxClose(){ const m=document.getElementById('ctxm'); if(m) m.remove(); }
+function ctxOpen(x,y,key,sj){ ctxClose(); const m=tMatch(key); if(!m) return;
+  const both=Number.isInteger(m.a)&&Number.isInteger(m.b);
+  let h=`<div class="ch">${tRoundName(m.k)}<b>${both?esc(tPairName(m.a))+' <span style="color:var(--muted);font-weight:500">vs</span> '+esc(tPairName(m.b)):esc(tPairName(Number.isInteger(m.a)?m.a:m.b))}</b></div><hr>`;
+  if(m.r) h+=`<div class="no">✓ Finished — winner ${esc(tPairName(m.r.s?m.b:m.a))}</div>`;
+  else if(m.ci>=0) h+=`<div class="no">Playing on Court ${m.ci+1}</div>`;
+  else if(!both) h+=`<div class="no">Waiting for the other team</div>`;
+  else { const oc=onCourt(), busy=tPairIds(m.a).concat(tPairIds(m.b)).find(x=>oc[x]!==undefined), free=S.courts.map((c,i)=>!c.p.length?i:-1).filter(i=>i>=0);
+    if(busy) h+=`<div class="no">${esc(pnm(busy))} is playing on Court ${oc[busy]+1}</div>`;
+    else if(!free.length) h+=`<div class="no">No free court — finish or clear a court first</div>`;
+    else h+=`<div class="ch">Choose court</div>`+free.map(i=>`<button class="crt" data-act="t-send" data-k="${key}" data-c="${i}">🏸 Court ${i+1}</button>`).join(''); }
+  h+=`<hr>${both?`<button data-act="t-m" data-k="${key}">${m.r?'Result…':'Pick winner / match details…'}</button>`:''}${sj!==undefined&&sj!==''?`<button data-act="t-slot" data-k="${sj}">Change team…</button>`:''}`;
+  const d=document.createElement('div'); d.id='ctxm'; d.innerHTML=h; document.body.appendChild(d);
+  const r=d.getBoundingClientRect(); d.style.left=Math.max(8,Math.min(x,innerWidth-r.width-8))+'px'; d.style.top=Math.max(8,Math.min(y,innerHeight-r.height-8))+'px'; }
+document.addEventListener('contextmenu',e=>{ if(IS_DISPLAY||tab!=='tour') return; const b=e.target.closest&&e.target.closest('[data-mk]'); if(!b) return;
+  e.preventDefault(); ctxOpen(e.clientX,e.clientY,b.dataset.mk,b.dataset.sj); });
+document.addEventListener('click',e=>{ const m=document.getElementById('ctxm'); if(m&&!(e.target.closest&&e.target.closest('#ctxm'))) ctxClose(); },true);
+document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('#ctxm [data-act]')) setTimeout(ctxClose,0); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') ctxClose(); });
+window.addEventListener('scroll',ctxClose,true); window.addEventListener('resize',ctxClose);
 function tSlotDone(msg){ closeSheet(); tFeed(); save(); render(); toast(msg+(tFedMsg?' · '+tFedMsg:'')); tFedMsg=''; }
 function sheetTAdd(){ const used=new Set(S.tour.pairs.flat()), q=tSearch.trim().toLowerCase();
   const list=S.players.filter(p=>!used.has(p.id)&&!isOff(p)&&(!q||p.n.toLowerCase().includes(q))).sort((a,b)=>(S.present[b.id]?1:0)-(S.present[a.id]?1:0)||a.n.localeCompare(b.n));
@@ -1923,6 +1953,7 @@ function vHelp(){
     <li>No court needed? In the same sheet tap the winning pair. <b>Undo result</b> works until that pair's next match has started.</li>
     <li><b>Bracket viewer</b> (a TV or spare tablet): Settings → Tablet sync → <b>Bracket viewer</b> → Main tablet address → Connect. It shows only the live bracket, sized to the screen. A laptop or TV browser on the same Wi-Fi can open <b>http://&lt;Main address&gt;:8787/?view=bracket</b> instead.</li>
     <li><b>Change a team:</b> tap any first-round box → <b>New team</b> (choose 2 players — also fills a Bye), a team not in the bracket, <b>Swap with</b> another spot, or <b>Make it a Bye</b>. Locked once that match is on a court or has a result.</li>
+    <li><b>Right-click a team</b> (or press and hold on a tablet) → <b>Choose court</b>: the free courts are listed — click one to put that match on it. The same menu has Pick winner and, in the first round, Change team.</li>
     <li><b>Second screen (laptop):</b> tap <b>⧉ Pop out</b> on the Bracket screen — the bracket opens in its own window that follows every result live. Drag it to the second screen and tap <b>⛶ Full screen</b> (or press F11). Allow pop-ups for the site if the browser blocks it.</li>
     <li>The final's winner shows as 🏆 Champion in the middle, with both players' photos at the top (a smiley picture — boy or girl from Gender — for anyone without a photo). <b>New tournament</b> clears the bracket (pairs are kept).</li></ol>`)}
   ${sec('score','5. Keeping score',`<ol>
